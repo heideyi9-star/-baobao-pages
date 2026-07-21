@@ -5090,13 +5090,13 @@ ${offlineMemory}
     const old=state.hceProfiles[key] || {};
     const has=(r)=>r.test(txt);
     const dna={
-      warmth: has(/温柔|体贴|治愈|宠|暖/) ? 78 : has(/冷淡|高冷|疏离/) ? 24 : 56,
+      warmth: has(/温柔|体贴|治愈|宠|暖/) ? 78 : has(/冷淡|高冷|疏离/) ? 24 : 48,
       initiative: has(/主动|话痨|黏|热情/) ? 74 : has(/被动|寡言|慢热|社恐/) ? 28 : 46,
       humor: has(/幽默|嘴贱|搞笑|抽象|神经/) ? 82 : 38,
-      sharpness: has(/毒舌|嘴贱|刻薄|攻击/) ? 76 : has(/温柔|礼貌/) ? 22 : 30,
-      pride: has(/嘴硬|傲娇|高冷|自尊/) ? 78 : 34,
+      sharpness: has(/毒舌|嘴贱|刻薄|攻击/) ? 76 : has(/温柔|礼貌/) ? 22 : 42,
+      pride: has(/嘴硬|傲娇|高冷|自尊/) ? 78 : 43,
       jealousy: has(/吃醋|占有欲|病娇|黏/) ? 72 : 34,
-      patience: has(/成熟|耐心|稳重|理性/) ? 76 : has(/暴躁|急性子/) ? 28 : 62,
+      patience: has(/成熟|耐心|稳重|理性/) ? 76 : has(/暴躁|急性子/) ? 28 : 50,
       expressiveness: has(/话痨|直球|外向/) ? 78 : has(/寡言|内向|高冷/) ? 28 : 48,
       chaos: has(/抽象|神经|疯|发疯/) ? 78 : 26,
       softnessHidden: has(/嘴硬|傲娇|刀子嘴豆腐心/) ? 82 : 40,
@@ -5385,13 +5385,13 @@ ${memoryPrompt()}
     ["卧槽","真的假的","不是吧","笑死","我服了","啧","嗯？","干嘛","有病吧","滚","行吧","算了"]
       .forEach(x=>{if(raw.includes(x)&&!phrases.includes(x))phrases.push(x)});
     const dna={
-      warmth:has(/温柔|体贴|治愈|宠|暖/) ? 78 : has(/冷淡|高冷|疏离/) ? 23 : 55,
+      warmth:has(/温柔|体贴|治愈|宠|暖/) ? 78 : has(/冷淡|高冷|疏离/) ? 23 : 47,
       initiative:has(/主动|话痨|黏|热情/) ? 76 : has(/被动|寡言|慢热|社恐/) ? 25 : 45,
       humor:has(/幽默|嘴贱|搞笑|抽象|神经|会玩梗/) ? 84 : 37,
-      sharpness:has(/毒舌|嘴贱|刻薄|攻击|脾气差/) ? 79 : has(/温柔|礼貌/) ? 22 : 29,
-      pride:has(/嘴硬|傲娇|高冷|自尊/) ? 80 : 33,
+      sharpness:has(/毒舌|嘴贱|刻薄|攻击|脾气差/) ? 79 : has(/温柔|礼貌/) ? 22 : 41,
+      pride:has(/嘴硬|傲娇|高冷|自尊/) ? 80 : 42,
       jealousy:has(/吃醋|占有欲|病娇|黏/) ? 74 : 33,
-      patience:has(/成熟|耐心|稳重|理性/) ? 76 : has(/暴躁|急性子|没耐心/) ? 26 : 61,
+      patience:has(/成熟|耐心|稳重|理性/) ? 76 : has(/暴躁|急性子|没耐心/) ? 26 : 49,
       expressiveness:has(/话痨|直球|外向|表达欲/) ? 80 : has(/寡言|内向|高冷/) ? 27 : 47,
       chaos:has(/抽象|神经|疯|发疯|离谱/) ? 80 : 25,
       hiddenSoftness:has(/嘴硬|傲娇|刀子嘴豆腐心/) ? 84 : 39,
@@ -6668,12 +6668,6 @@ ${history||"暂无"}
   };
 
   // AI回复完成后自动刷新心声状态
-  // 说明：这里原本会在每次AI回复后额外调用一次旧版“心声3.0”的API生成（BaobaoInnerVoice3.generate），
-  // 但界面上真正显示给用户的心声面板早就是“心声4.0”，3.0这次调用完全是白跑一趟——
-  // 它会和这句回复本身的请求、以及4.0自己的心声请求同时抢网络/抢速率限制，
-  // 于是造成回复变慢、心声经常显示“API暂时不可用”。现在把这个多余调用去掉，
-  // 只保留本地状态刷新（不联网、不耗时），真正的心声生成统一交给下面的4.0，
-  // 并且改成“等这句回复彻底结束之后”才触发，绝不与主回复同时进行。
   function wrapReply(){
     if(typeof window.triggerAIReply!=="function" || window.triggerAIReply.__hseWrapped)return;
     const original=window.triggerAIReply;
@@ -6683,8 +6677,8 @@ ${history||"暂无"}
       finally{
         setTimeout(()=>{
           scanMessages();
-          if(userMessages().length>0 && window.BaobaoInnerVoice4 && typeof BaobaoInnerVoice4.refreshInBackground==="function"){
-            BaobaoInnerVoice4.refreshInBackground();
+          if(userMessages().length>0 && window.BaobaoInnerVoice3 && typeof BaobaoInnerVoice3.generate==="function"){
+            BaobaoInnerVoice3.generate(true);
           }
         },120);
       }
@@ -6864,12 +6858,9 @@ ${conversationText()}
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();open();
   },true);
 
-  // 消息变化后只负责点亮小红点，不再自己单独轮询调用API生成心声。
-  // 之前这里每650ms轮询一次消息，一旦变化就在2.4秒后强制调用一次API——
-  // 这个调用完全独立于AI正在生成回复的那次请求，经常两边同时打接口，
-  // 手感上就是“回复卡一下”。现在真正的生成统一交给AI回复彻底结束后的钩子
-  // （见 refreshInBackground 的调用处），这里只做本地、不联网的红点提示。
+  // 消息变化后自动生成新的心声。使用防抖，避免多条回复连续出现时重复调用接口。
   let lastSig="";
+  let autoVoiceTimer=0;
   setInterval(()=>{
     if(document.hidden)return;
     const list=msgs(),last=list[list.length-1];
@@ -6879,6 +6870,10 @@ ${conversationText()}
     if(userCount()>0){
       const heart=$("innerVoiceBtn");
       if(heart)heart.classList.add("has-new-voice");
+      clearTimeout(autoVoiceTimer);
+      autoVoiceTimer=setTimeout(()=>{
+        refresh(true).catch(()=>{});
+      },2400);
     }
   },650);
 
@@ -7285,6 +7280,108 @@ ${clean(reply)}
     return localStorage.getItem("bb_custom_bubble_css") || compactCss;
   }
 
+  const BUBBLE_PRESET_KEY = "bb_bubble_css_presets_v290";
+  const BUBBLE_ACTIVE_KEY = "bb_active_bubble_preset_v290";
+
+  function loadBubblePresets(){
+    try{
+      const arr = JSON.parse(localStorage.getItem(BUBBLE_PRESET_KEY) || "[]");
+      return Array.isArray(arr) ? arr.filter(x => x && x.id && typeof x.css === "string") : [];
+    }catch(e){ return []; }
+  }
+
+  function storeBubblePresets(arr){
+    localStorage.setItem(BUBBLE_PRESET_KEY, JSON.stringify(arr || []));
+  }
+
+  function bubblePresetListHtml(){
+    const arr = loadBubblePresets();
+    if(!arr.length){
+      return '<div class="bb-bubble-preset-empty-v290">还没有保存的预设</div>';
+    }
+    const active = localStorage.getItem(BUBBLE_ACTIVE_KEY) || "";
+    return arr.map(p => `
+      <div class="bb-bubble-preset-item-v290 ${active===p.id?"active":""}">
+        <button type="button" class="bb-bubble-preset-main-v290" onclick="useBubblePresetV290('${p.id}')">
+          <b>${escapeHtml(p.name || "未命名预设")}</b>
+          <span>${active===p.id?"正在使用":"点击使用"}</span>
+        </button>
+        <button type="button" class="bb-bubble-preset-delete-v290" onclick="deleteBubblePresetV290('${p.id}')">删除</button>
+      </div>`).join("");
+  }
+
+  function refreshBubblePresetList(){
+    const box = $("bbBubblePresetListV290");
+    if(box) box.innerHTML = bubblePresetListHtml();
+  }
+
+  function saveBubblePresetV290(){
+    const input = $("bbBubblePresetNameV290");
+    const name = String(input?.value || "").trim();
+    const css = String($("bbBubbleCss")?.value || "");
+    if(!name){ showToast("请先填写预设名称", true); return; }
+    if(!css.trim()){ showToast("CSS 不能为空", true); return; }
+    const arr = loadBubblePresets();
+    let item = arr.find(x => String(x.name).trim() === name);
+    if(item){
+      item.css = css;
+      item.updatedAt = Date.now();
+    }else{
+      item = {id:"bubble_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),name,css,updatedAt:Date.now()};
+      arr.unshift(item);
+    }
+    storeBubblePresets(arr.slice(0,30));
+    localStorage.setItem(BUBBLE_ACTIVE_KEY,item.id);
+    localStorage.setItem("bb_custom_bubble_css",css);
+    applyBubbleStyleText(css);
+    if(input) input.value = "";
+    refreshBubblePresetList();
+    updateBubbleBadge(name);
+    showToast("已保存并应用预设："+name);
+  }
+
+  function useBubblePresetV290(id){
+    const item = loadBubblePresets().find(x => x.id === id);
+    if(!item) return;
+    setBubbleTextarea(item.css);
+    localStorage.setItem("bb_custom_bubble_css",item.css);
+    localStorage.setItem(BUBBLE_ACTIVE_KEY,item.id);
+    applyBubbleStyleText(item.css);
+    refreshBubblePresetList();
+    updateBubbleBadge(item.name || "预设");
+    showToast("已应用预设："+(item.name||"未命名"));
+  }
+
+  function deleteBubblePresetV290(id){
+    const arr = loadBubblePresets();
+    const item = arr.find(x => x.id === id);
+    if(!item) return;
+    if(!confirm("删除预设「"+(item.name||"未命名")+"」？")) return;
+    storeBubblePresets(arr.filter(x => x.id !== id));
+    if(localStorage.getItem(BUBBLE_ACTIVE_KEY) === id){
+      localStorage.removeItem(BUBBLE_ACTIVE_KEY);
+    }
+    refreshBubblePresetList();
+    showToast("预设已删除");
+  }
+
+  function updateBubbleBadge(text){
+    const badge = document.querySelector('[onclick*="气泡样式设置"] span');
+    if(badge) badge.textContent = text || "自定义";
+  }
+
+  function applyBubbleStyleText(css){
+    let style = $("bbCustomBubbleStyle");
+    if(!style){
+      style = document.createElement("style");
+      style.id = "bbCustomBubbleStyle";
+    }
+    style.textContent = css;
+    document.head.appendChild(style);
+    if(typeof window.bbKeepCoreChatDockV290 === "function") window.bbKeepCoreChatDockV290();
+    if(typeof window.bbApplyChatAvatarShapesV290 === "function") window.bbApplyChatAvatarShapesV290();
+  }
+
   function setBubbleTextarea(css){
     const el = $("bbBubbleCss");
     if(el) el.value = css;
@@ -7292,26 +7389,21 @@ ${clean(reply)}
 
   function applyBubbleCss(){
     const css = $("bbBubbleCss")?.value || "";
-    let style = $("bbCustomBubbleStyle");
-    if(!style){
-      style = document.createElement("style");
-      style.id = "bbCustomBubbleStyle";
-      document.head.appendChild(style);
-    }
-    style.textContent = css;
+    applyBubbleStyleText(css);
     localStorage.setItem("bb_custom_bubble_css", css);
-    const badge = document.querySelector('[onclick*="气泡样式设置"] span');
-    if(badge) badge.textContent = "自定义";
-    alert("气泡 CSS 已应用");
+    localStorage.removeItem(BUBBLE_ACTIVE_KEY);
+    updateBubbleBadge("自定义");
+    refreshBubblePresetList();
+    showToast("气泡 CSS 已应用");
   }
 
   function resetBubbleCss(){
     localStorage.removeItem("bb_custom_bubble_css");
+    localStorage.removeItem(BUBBLE_ACTIVE_KEY);
     setBubbleTextarea(compactCss);
-    let style = $("bbCustomBubbleStyle");
-    if(style) style.textContent = compactCss;
-    const badge = document.querySelector('[onclick*="气泡样式设置"] span');
-    if(badge) badge.textContent = "紧凑样式";
+    applyBubbleStyleText(compactCss);
+    updateBubbleBadge("紧凑样式");
+    refreshBubblePresetList();
   }
 
   function openBubbleSettings(){
@@ -7326,16 +7418,28 @@ ${clean(reply)}
       <div class="bb-setting-field">
         <div class="bb-setting-label">自定义 CSS</div>
         <textarea class="bb-setting-textarea" id="bbBubbleCss"
-          placeholder="在这里填入聊天气泡 CSS">${escapeHtml(currentBubbleCss())}</textarea>
+          placeholder="在这里填入完整聊天 CSS">${escapeHtml(currentBubbleCss())}</textarea>
       </div>
 
       <div class="bb-setting-actions">
         <div class="option" onclick="applyBubbleCss()">应用 CSS</div>
         <div class="option secondary-option" onclick="resetBubbleCss()">恢复紧凑默认</div>
       </div>
+
+      <div class="bb-bubble-save-box-v290">
+        <div class="bb-setting-label">保存为预设</div>
+        <div class="bb-bubble-save-row-v290">
+          <input class="bb-setting-input" id="bbBubblePresetNameV290" maxlength="24" placeholder="例如：韩系备忘录">
+          <button type="button" onclick="saveBubblePresetV290()">保存</button>
+        </div>
+        <div class="bb-setting-tip">同名保存会直接更新。最多保留 30 个预设。</div>
+      </div>
+
+      <div class="bb-setting-label bb-bubble-list-title-v290">已保存预设</div>
+      <div class="bb-bubble-preset-list-v290" id="bbBubblePresetListV290">${bubblePresetListHtml()}</div>
+
       <div class="bb-setting-tip">
-        支持直接粘贴完整 CSS。建议选择器使用
-        #chatRoom .bubble、#chatRoom .bubble.me、#chatRoom .bubble.ai。
+        预设只保存在当前设备，不会写进安装包；导出豹豹机数据时会一起备份。
       </div>
     `;
     openPanel("modal");
@@ -7346,6 +7450,9 @@ ${clean(reply)}
   window.setBubbleTextarea = setBubbleTextarea;
   window.applyBubbleCss = applyBubbleCss;
   window.resetBubbleCss = resetBubbleCss;
+  window.saveBubblePresetV290 = saveBubblePresetV290;
+  window.useBubblePresetV290 = useBubblePresetV290;
+  window.deleteBubblePresetV290 = deleteBubblePresetV290;
   window.saveRemarkSettings = saveRemarkSettings;
 
   window.openAppModal = function(label){
@@ -7363,10 +7470,10 @@ ${clean(reply)}
   document.addEventListener("DOMContentLoaded", function(){
     const savedCss = localStorage.getItem("bb_custom_bubble_css");
     if(savedCss){
-      const style = document.createElement("style");
-      style.id = "bbCustomBubbleStyle";
-      style.textContent = savedCss;
-      document.head.appendChild(style);
+      applyBubbleStyleText(savedCss);
+      const activeId = localStorage.getItem(BUBBLE_ACTIVE_KEY) || "";
+      const active = loadBubblePresets().find(x => x.id === activeId);
+      updateBubbleBadge(active ? active.name : "自定义");
     }
 
     const saved = loadRemarks()[personaKey()];
@@ -32778,4 +32885,181 @@ ${offline}
   setInterval(scanUnread,650);
   window.addEventListener("pageshow",()=>setTimeout(init,0));
   window.BaobaoUnreadV289={clear:clearUnread,render:renderUnreadBadges,scan:scanUnread};
+})();
+
+
+/* baobao-v290-bottom-dock-css-presets-avatar-shapes */
+(function(){
+  "use strict";
+  const SHAPE_KEY="bb_chat_avatar_shapes_v290";
+  const $=id=>document.getElementById(id);
+
+  function persona(){
+    return window.currentChatPersona ||
+      ((window.state&&Array.isArray(state.personas))
+        ? state.personas.find(p=>String(p.id)===String(state.activeChatId))
+        : null) || null;
+  }
+  function chatKey(){
+    const p=persona();
+    return String((p&&(p.id||p.name)) || (window.state&&state.activeChatId) || "default");
+  }
+  function loadMap(){
+    try{return JSON.parse(localStorage.getItem(SHAPE_KEY)||"{}")||{};}catch(e){return {};}
+  }
+  function getShapes(){
+    const map=loadMap();
+    const item=map[chatKey()]||{};
+    return {
+      self:item.self==="square"?"square":"circle",
+      partner:item.partner==="square"?"square":"circle"
+    };
+  }
+  function saveShapes(next){
+    const map=loadMap();
+    map[chatKey()]={self:next.self,partner:next.partner};
+    localStorage.setItem(SHAPE_KEY,JSON.stringify(map));
+  }
+  function shapeRadius(shape){return shape==="square"?"10px":"50%";}
+
+  function ensureCoreStyles(){
+    let style=$("bbCoreChatDockAndAvatarShapeV290");
+    if(!style){
+      style=document.createElement("style");
+      style.id="bbCoreChatDockAndAvatarShapeV290";
+    }
+    style.textContent=`
+      html body #chatRoom .chat-input-bar{
+        position:absolute!important;
+        left:0!important;right:0!important;bottom:0!important;top:auto!important;
+        width:100%!important;margin:0!important;transform:none!important;
+        box-sizing:border-box!important;border-radius:0!important;
+        padding-bottom:max(8px,env(safe-area-inset-bottom))!important;
+        background-color:rgba(255,255,255,.97)!important;
+        border-top:1px solid rgba(60,60,67,.12)!important;
+      }
+      html body #chatRoom .chat-input-bar::after{content:none!important;display:none!important;height:0!important;}
+      html body #chatRoom[data-bb-self-avatar-shape="circle"] .msg-row.me .msg-avatar{border-radius:50%!important;}
+      html body #chatRoom[data-bb-self-avatar-shape="square"] .msg-row.me .msg-avatar{border-radius:10px!important;}
+      html body #chatRoom[data-bb-partner-avatar-shape="circle"] .msg-row:not(.me) .msg-avatar,
+      html body #chatRoom[data-bb-partner-avatar-shape="circle"] .chat-head-avatar{border-radius:50%!important;}
+      html body #chatRoom[data-bb-partner-avatar-shape="square"] .msg-row:not(.me) .msg-avatar,
+      html body #chatRoom[data-bb-partner-avatar-shape="square"] .chat-head-avatar{border-radius:10px!important;}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function renderAvatarShapePanel(){
+    const p=persona();
+    const selfPreview=$("bbSelfAvatarPreviewV290");
+    const partnerPreview=$("bbPartnerAvatarPreviewV290");
+    if(selfPreview){
+      selfPreview.innerHTML=(window.state&&state.charAvatar)?`<img src="${state.charAvatar}">`:'<span>我</span>';
+    }
+    if(partnerPreview){
+      partnerPreview.innerHTML=(p&&p.photo)?`<img src="${p.photo}">`:'<span>TA</span>';
+    }
+    const shapes=getShapes();
+    document.querySelectorAll('#dualAvatarPanel .bb-avatar-shape-picker-v290').forEach(group=>{
+      const side=group.getAttribute('data-side');
+      group.querySelectorAll('button[data-shape]').forEach(btn=>{
+        btn.classList.toggle('active',btn.getAttribute('data-shape')===shapes[side]);
+      });
+    });
+    if(selfPreview) selfPreview.style.borderRadius=shapeRadius(shapes.self);
+    if(partnerPreview) partnerPreview.style.borderRadius=shapeRadius(shapes.partner);
+  }
+
+  function applyShapes(){
+    ensureCoreStyles();
+    const room=$("chatRoom");
+    if(!room)return;
+    const shapes=getShapes();
+    room.setAttribute("data-bb-self-avatar-shape",shapes.self);
+    room.setAttribute("data-bb-partner-avatar-shape",shapes.partner);
+    renderAvatarShapePanel();
+  }
+
+  window.bbKeepCoreChatDockV290=function(){ensureCoreStyles();};
+  window.bbApplyChatAvatarShapesV290=applyShapes;
+  window.bbSetAvatarShapeV290=function(side,shape){
+    if(side!=="self"&&side!=="partner")return;
+    if(shape!=="circle"&&shape!=="square")return;
+    const next=getShapes();
+    next[side]=shape;
+    saveShapes(next);
+    applyShapes();
+    if(typeof window.renderChatMessages==="function")window.renderChatMessages();
+    if(typeof window.updateChatHead==="function")window.updateChatHead(persona());
+    setTimeout(applyShapes,0);
+    if(typeof showToast==="function")showToast((side==="self"?"我的":"对方")+"头像已改为"+(shape==="circle"?"圆形":"方形"));
+  };
+  window.bbTriggerSelfAvatarUploadV290=function(){
+    const input=$("wechatAvatarInput");
+    if(input)input.click();
+  };
+  window.bbTriggerPartnerAvatarUploadV290=function(){
+    if(!persona()){
+      if(typeof showToast==="function")showToast("请先进入一个角色聊天",true);
+      return;
+    }
+    const input=$("bbPartnerAvatarInputV290");
+    if(input)input.click();
+  };
+  window.bbPartnerAvatarChosenV290=function(input){
+    if(!input||!input.files||!input.files[0])return;
+    const p=persona();
+    if(!p)return;
+    const done=data=>{
+      p.photo=data;
+      if(window.state&&Array.isArray(state.personas)){
+        const found=state.personas.find(x=>String(x.id)===String(p.id));
+        if(found)found.photo=data;
+      }
+      if(typeof saveLocal==="function")saveLocal();
+      if(typeof updateChatHead==="function")updateChatHead(p);
+      if(typeof renderChatMessages==="function")renderChatMessages();
+      if(typeof renderChatList==="function")renderChatList();
+      if(typeof renderContactsQuickRow==="function")renderContactsQuickRow();
+      renderAvatarShapePanel();
+      applyShapes();
+      input.value="";
+      if(typeof showToast==="function")showToast("对方头像已更换");
+    };
+    if(typeof compressImage==="function"){
+      compressImage(input.files[0],420,.84).then(done).catch(()=>showToast("图片读取失败",true));
+    }else{
+      const r=new FileReader();r.onload=e=>done(e.target.result);r.readAsDataURL(input.files[0]);
+    }
+  };
+
+  const oldOpen=window.openChatAvatarSettings;
+  window.openChatAvatarSettings=function(){
+    if(typeof oldOpen==="function")oldOpen.apply(this,arguments);
+    else if(typeof openPanel==="function")openPanel("dualAvatarPanel");
+    setTimeout(()=>{applyShapes();renderAvatarShapePanel();},0);
+  };
+
+  const oldStart=window.startPersonaChat;
+  if(typeof oldStart==="function"){
+    window.startPersonaChat=function(){
+      const out=oldStart.apply(this,arguments);
+      setTimeout(applyShapes,0);
+      return out;
+    };
+  }
+
+  const oldSelfChosen=window.wechatAvatarChosen;
+  if(typeof oldSelfChosen==="function"){
+    window.wechatAvatarChosen=function(input){
+      const out=oldSelfChosen.apply(this,arguments);
+      [380,1000,1800].forEach(delay=>setTimeout(()=>{renderAvatarShapePanel();applyShapes();if(typeof renderChatMessages==="function")renderChatMessages();},delay));
+      return out;
+    };
+  }
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    setTimeout(applyShapes,0);
+    setTimeout(applyShapes,300);
+  });
 })();

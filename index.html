@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<!-- index(289)：角色表情包开关、实时心声、未读消息气泡恢复版。 -->
+<!-- index(290)：底部输入栏贴底、CSS 预设保存、双方头像圆形/方形自定义版。 -->
 <meta name="apple-mobile-web-app-title" content="斑斑豹">
 <script id="bb-early-start-v274">
 (function(){
@@ -19,18 +19,18 @@
   window.addEventListener("load",function(){tick();setTimeout(function(){clearInterval(timer);},15000);},{once:true});
 })();
 </script>
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=289">
-<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=289">
-<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=289">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=290">
+<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=290">
+<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=290">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=289">
-<script id="bb-pwa-cache-v289">
+<link rel="manifest" href="./baobao-manifest.json?v=290">
+<script id="bb-pwa-cache-v290">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=289",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=290",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 289 功能恢复版</title>
+<title>豹豹机4.9 · 290 美化预设与头像形状版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -150,8 +150,8 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
-<link rel="stylesheet" href="./app.css?v=289">
-<script defer src="./app.js?v=289"></script>
+<link rel="stylesheet" href="./app.css?v=290">
+<script defer src="./app.js?v=290"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -1125,16 +1125,39 @@ API Key<br>
 <div class="panel ios-settings" id="dualAvatarPanel">
 <span class="ios-back" onclick="closePanel('dualAvatarPanel')">‹</span>
 <h1>双方头像设置</h1>
-<div class="ios-group">
-<div class="ios-row" onclick="triggerWechatAvatarUpload(event)">
-<div class="ios-row-label">设置我的头像</div>
-<div class="ios-row-chevron">›</div>
+
+<div class="bb-avatar-shape-card-v290">
+  <div class="bb-avatar-shape-head-v290">
+    <div class="bb-avatar-shape-preview-v290" id="bbSelfAvatarPreviewV290"></div>
+    <div class="bb-avatar-shape-copy-v290">
+      <b>我的头像</b>
+      <span>只改变聊天里显示的形状</span>
+    </div>
+    <button type="button" class="bb-avatar-change-v290" onclick="bbTriggerSelfAvatarUploadV290()">更换</button>
+  </div>
+  <div class="bb-avatar-shape-picker-v290" data-side="self">
+    <button type="button" data-shape="circle" onclick="bbSetAvatarShapeV290('self','circle')">圆形</button>
+    <button type="button" data-shape="square" onclick="bbSetAvatarShapeV290('self','square')">方形</button>
+  </div>
 </div>
-<div class="ios-row" onclick="openPartnerAvatarEdit()">
-<div class="ios-row-label">设置对方头像</div>
-<div class="ios-row-chevron">›</div>
+
+<div class="bb-avatar-shape-card-v290">
+  <div class="bb-avatar-shape-head-v290">
+    <div class="bb-avatar-shape-preview-v290" id="bbPartnerAvatarPreviewV290"></div>
+    <div class="bb-avatar-shape-copy-v290">
+      <b>对方头像</b>
+      <span>当前角色单独保存</span>
+    </div>
+    <button type="button" class="bb-avatar-change-v290" onclick="bbTriggerPartnerAvatarUploadV290()">更换</button>
+  </div>
+  <div class="bb-avatar-shape-picker-v290" data-side="partner">
+    <button type="button" data-shape="circle" onclick="bbSetAvatarShapeV290('partner','circle')">圆形</button>
+    <button type="button" data-shape="square" onclick="bbSetAvatarShapeV290('partner','square')">方形</button>
+  </div>
 </div>
-</div>
+
+<input class="hidden-input" type="file" accept="image/*" id="bbPartnerAvatarInputV290" onchange="bbPartnerAvatarChosenV290(this)">
+<div class="bb-avatar-shape-tip-v290">头像图片和形状都保存在当前设备。对方头像形状会按角色分别记住。</div>
 </div>
 
 <div class="state-card-backdrop" id="stateCardBackdrop" onclick="closeState()"></div>

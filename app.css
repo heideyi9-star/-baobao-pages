@@ -9751,3 +9751,40 @@ body.bb-chat-closed-v277 #chatRoom *{
 #passcodeOverlay.show{
   pointer-events:auto !important;
 }
+
+
+/* ===== 豹豹机 290：CSS 预设 / 头像形状设置页 ===== */
+.bb-bubble-save-box-v290{
+  margin-top:18px;padding:14px;border-radius:16px;background:rgba(118,118,128,.08);
+}
+.bb-bubble-save-row-v290{display:flex;align-items:center;gap:9px;margin-top:8px}
+.bb-bubble-save-row-v290 .bb-setting-input{flex:1;min-width:0;margin:0!important;height:42px!important}
+.bb-bubble-save-row-v290 button{
+  height:42px;min-width:70px;padding:0 14px;border:0;border-radius:12px;background:#1c1c1e;color:#fff;font-size:14px;font-weight:750;
+}
+.bb-bubble-list-title-v290{margin-top:20px!important}
+.bb-bubble-preset-list-v290{display:flex;flex-direction:column;gap:9px;margin-top:9px}
+.bb-bubble-preset-empty-v290{padding:20px 12px;text-align:center;color:#a0a0a6;background:rgba(118,118,128,.06);border-radius:14px;font-size:13px}
+.bb-bubble-preset-item-v290{display:flex;align-items:stretch;gap:8px;padding:7px;background:#fff;border:1px solid rgba(60,60,67,.1);border-radius:15px}
+.bb-bubble-preset-item-v290.active{border-color:#1c1c1e;box-shadow:0 0 0 1px #1c1c1e inset}
+.bb-bubble-preset-main-v290{flex:1;min-width:0;border:0;background:transparent;text-align:left;padding:7px 8px;display:flex;flex-direction:column;gap:3px;color:#1c1c1e}
+.bb-bubble-preset-main-v290 b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bb-bubble-preset-main-v290 span{font-size:11px;color:#8e8e93}
+.bb-bubble-preset-delete-v290{border:0;border-radius:10px;background:#f2f2f7;color:#e0463c;padding:0 12px;font-weight:700}
+
+#dualAvatarPanel .bb-avatar-shape-card-v290{
+  background:#fff;border-radius:20px;padding:16px;margin:0 0 14px;box-shadow:0 1px 0 rgba(0,0,0,.02);
+}
+.bb-avatar-shape-head-v290{display:flex;align-items:center;gap:13px}
+.bb-avatar-shape-preview-v290{
+  width:62px;height:62px;min-width:62px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#eee;color:#888;font-size:16px;transition:border-radius .18s ease;
+}
+.bb-avatar-shape-preview-v290 img{width:100%;height:100%;display:block;object-fit:cover}
+.bb-avatar-shape-copy-v290{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.bb-avatar-shape-copy-v290 b{font-size:17px;color:#1c1c1e}
+.bb-avatar-shape-copy-v290 span{font-size:12px;color:#8e8e93}
+.bb-avatar-change-v290{border:0;border-radius:13px;background:#f2f2f7;color:#1c1c1e;padding:9px 13px;font-size:13px;font-weight:750}
+.bb-avatar-shape-picker-v290{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px;padding:4px;background:#f2f2f7;border-radius:14px}
+.bb-avatar-shape-picker-v290 button{height:38px;border:0;border-radius:11px;background:transparent;color:#6f6f75;font-size:14px;font-weight:750}
+.bb-avatar-shape-picker-v290 button.active{background:#fff;color:#1c1c1e;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.bb-avatar-shape-tip-v290{padding:2px 5px 24px;color:#8e8e93;font-size:12px;line-height:1.55}
