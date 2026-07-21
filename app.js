@@ -5090,13 +5090,13 @@ ${offlineMemory}
     const old=state.hceProfiles[key] || {};
     const has=(r)=>r.test(txt);
     const dna={
-      warmth: has(/温柔|体贴|治愈|宠|暖/) ? 78 : has(/冷淡|高冷|疏离/) ? 24 : 48,
+      warmth: has(/温柔|体贴|治愈|宠|暖/) ? 78 : has(/冷淡|高冷|疏离/) ? 24 : 56,
       initiative: has(/主动|话痨|黏|热情/) ? 74 : has(/被动|寡言|慢热|社恐/) ? 28 : 46,
       humor: has(/幽默|嘴贱|搞笑|抽象|神经/) ? 82 : 38,
-      sharpness: has(/毒舌|嘴贱|刻薄|攻击/) ? 76 : has(/温柔|礼貌/) ? 22 : 42,
-      pride: has(/嘴硬|傲娇|高冷|自尊/) ? 78 : 43,
+      sharpness: has(/毒舌|嘴贱|刻薄|攻击/) ? 76 : has(/温柔|礼貌/) ? 22 : 30,
+      pride: has(/嘴硬|傲娇|高冷|自尊/) ? 78 : 34,
       jealousy: has(/吃醋|占有欲|病娇|黏/) ? 72 : 34,
-      patience: has(/成熟|耐心|稳重|理性/) ? 76 : has(/暴躁|急性子/) ? 28 : 50,
+      patience: has(/成熟|耐心|稳重|理性/) ? 76 : has(/暴躁|急性子/) ? 28 : 62,
       expressiveness: has(/话痨|直球|外向/) ? 78 : has(/寡言|内向|高冷/) ? 28 : 48,
       chaos: has(/抽象|神经|疯|发疯/) ? 78 : 26,
       softnessHidden: has(/嘴硬|傲娇|刀子嘴豆腐心/) ? 82 : 40,
@@ -5385,13 +5385,13 @@ ${memoryPrompt()}
     ["卧槽","真的假的","不是吧","笑死","我服了","啧","嗯？","干嘛","有病吧","滚","行吧","算了"]
       .forEach(x=>{if(raw.includes(x)&&!phrases.includes(x))phrases.push(x)});
     const dna={
-      warmth:has(/温柔|体贴|治愈|宠|暖/) ? 78 : has(/冷淡|高冷|疏离/) ? 23 : 47,
+      warmth:has(/温柔|体贴|治愈|宠|暖/) ? 78 : has(/冷淡|高冷|疏离/) ? 23 : 55,
       initiative:has(/主动|话痨|黏|热情/) ? 76 : has(/被动|寡言|慢热|社恐/) ? 25 : 45,
       humor:has(/幽默|嘴贱|搞笑|抽象|神经|会玩梗/) ? 84 : 37,
-      sharpness:has(/毒舌|嘴贱|刻薄|攻击|脾气差/) ? 79 : has(/温柔|礼貌/) ? 22 : 41,
-      pride:has(/嘴硬|傲娇|高冷|自尊/) ? 80 : 42,
+      sharpness:has(/毒舌|嘴贱|刻薄|攻击|脾气差/) ? 79 : has(/温柔|礼貌/) ? 22 : 29,
+      pride:has(/嘴硬|傲娇|高冷|自尊/) ? 80 : 33,
       jealousy:has(/吃醋|占有欲|病娇|黏/) ? 74 : 33,
-      patience:has(/成熟|耐心|稳重|理性/) ? 76 : has(/暴躁|急性子|没耐心/) ? 26 : 49,
+      patience:has(/成熟|耐心|稳重|理性/) ? 76 : has(/暴躁|急性子|没耐心/) ? 26 : 61,
       expressiveness:has(/话痨|直球|外向|表达欲/) ? 80 : has(/寡言|内向|高冷/) ? 27 : 47,
       chaos:has(/抽象|神经|疯|发疯|离谱/) ? 80 : 25,
       hiddenSoftness:has(/嘴硬|傲娇|刀子嘴豆腐心/) ? 84 : 39,
@@ -6668,6 +6668,12 @@ ${history||"暂无"}
   };
 
   // AI回复完成后自动刷新心声状态
+  // 说明：这里原本会在每次AI回复后额外调用一次旧版“心声3.0”的API生成（BaobaoInnerVoice3.generate），
+  // 但界面上真正显示给用户的心声面板早就是“心声4.0”，3.0这次调用完全是白跑一趟——
+  // 它会和这句回复本身的请求、以及4.0自己的心声请求同时抢网络/抢速率限制，
+  // 于是造成回复变慢、心声经常显示“API暂时不可用”。现在把这个多余调用去掉，
+  // 只保留本地状态刷新（不联网、不耗时），真正的心声生成统一交给下面的4.0，
+  // 并且改成“等这句回复彻底结束之后”才触发，绝不与主回复同时进行。
   function wrapReply(){
     if(typeof window.triggerAIReply!=="function" || window.triggerAIReply.__hseWrapped)return;
     const original=window.triggerAIReply;
@@ -6677,8 +6683,8 @@ ${history||"暂无"}
       finally{
         setTimeout(()=>{
           scanMessages();
-          if(userMessages().length>0 && window.BaobaoInnerVoice3 && typeof BaobaoInnerVoice3.generate==="function"){
-            BaobaoInnerVoice3.generate(true);
+          if(userMessages().length>0 && window.BaobaoInnerVoice4 && typeof BaobaoInnerVoice4.refreshInBackground==="function"){
+            BaobaoInnerVoice4.refreshInBackground();
           }
         },120);
       }
@@ -6858,9 +6864,12 @@ ${conversationText()}
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();open();
   },true);
 
-  // 消息变化后自动生成新的心声。使用防抖，避免多条回复连续出现时重复调用接口。
+  // 消息变化后只负责点亮小红点，不再自己单独轮询调用API生成心声。
+  // 之前这里每650ms轮询一次消息，一旦变化就在2.4秒后强制调用一次API——
+  // 这个调用完全独立于AI正在生成回复的那次请求，经常两边同时打接口，
+  // 手感上就是“回复卡一下”。现在真正的生成统一交给AI回复彻底结束后的钩子
+  // （见 refreshInBackground 的调用处），这里只做本地、不联网的红点提示。
   let lastSig="";
-  let autoVoiceTimer=0;
   setInterval(()=>{
     if(document.hidden)return;
     const list=msgs(),last=list[list.length-1];
@@ -6870,10 +6879,6 @@ ${conversationText()}
     if(userCount()>0){
       const heart=$("innerVoiceBtn");
       if(heart)heart.classList.add("has-new-voice");
-      clearTimeout(autoVoiceTimer);
-      autoVoiceTimer=setTimeout(()=>{
-        refresh(true).catch(()=>{});
-      },2400);
     }
   },650);
 
