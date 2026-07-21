@@ -32929,16 +32929,47 @@ ${offline}
       style.id="bbCoreChatDockAndAvatarShapeV290";
     }
     style.textContent=`
+      /* 291：原 .chat-room 自带 55px 底部内边距，清零后输入栏才能贴到真实底边。 */
+      html body #chatRoom{
+        padding-bottom:0!important;
+      }
       html body #chatRoom .chat-input-bar{
         position:absolute!important;
-        left:0!important;right:0!important;bottom:0!important;top:auto!important;
-        width:100%!important;margin:0!important;transform:none!important;
-        box-sizing:border-box!important;border-radius:0!important;
-        padding-bottom:max(8px,env(safe-area-inset-bottom))!important;
+        left:0!important;
+        right:0!important;
+        bottom:0!important;
+        top:auto!important;
+        width:100%!important;
+        height:calc(58px + env(safe-area-inset-bottom))!important;
+        min-height:calc(58px + env(safe-area-inset-bottom))!important;
+        max-height:calc(58px + env(safe-area-inset-bottom))!important;
+        margin:0!important;
+        padding:6px 12px calc(6px + env(safe-area-inset-bottom))!important;
+        transform:none!important;
+        box-sizing:border-box!important;
+        border-radius:0!important;
+        display:flex!important;
+        align-items:flex-start!important;
+        overflow:hidden!important;
         background-color:rgba(255,255,255,.97)!important;
         border-top:1px solid rgba(60,60,67,.12)!important;
       }
-      html body #chatRoom .chat-input-bar::after{content:none!important;display:none!important;height:0!important;}
+      html body #chatRoom .chat-input-bar::after{
+        content:none!important;
+        display:none!important;
+        width:0!important;
+        height:0!important;
+      }
+      html body #chatRoom .chat-input-bar input,
+      html body #chatRoom .chat-tool-btn,
+      html body #chatRoom .chat-reply-btn,
+      html body #chatRoom .chat-send-btn{
+        transform:none!important;
+      }
+      html body #chatRoom .chat-msgs,
+      html body #chatRoom #chatMsgs{
+        bottom:calc(58px + env(safe-area-inset-bottom))!important;
+      }
       html body #chatRoom[data-bb-self-avatar-shape="circle"] .msg-row.me .msg-avatar{border-radius:50%!important;}
       html body #chatRoom[data-bb-self-avatar-shape="square"] .msg-row.me .msg-avatar{border-radius:10px!important;}
       html body #chatRoom[data-bb-partner-avatar-shape="circle"] .msg-row:not(.me) .msg-avatar,
@@ -32946,6 +32977,7 @@ ${offline}
       html body #chatRoom[data-bb-partner-avatar-shape="square"] .msg-row:not(.me) .msg-avatar,
       html body #chatRoom[data-bb-partner-avatar-shape="square"] .chat-head-avatar{border-radius:10px!important;}
     `;
+    /* 每次都把核心样式移到 head 最末尾，避免被自定义 CSS 再次盖回悬空状态。 */
     document.head.appendChild(style);
   }
 
@@ -33058,8 +33090,35 @@ ${offline}
     };
   }
 
+  function keepDockPinnedV291(){
+    ensureCoreStyles();
+    const room=$("chatRoom");
+    if(room)room.style.setProperty("padding-bottom","0","important");
+  }
+  let pinQueuedV291=false;
+  function queuePinV291(){
+    if(pinQueuedV291)return;
+    pinQueuedV291=true;
+    requestAnimationFrame(()=>{
+      pinQueuedV291=false;
+      keepDockPinnedV291();
+    });
+  }
+  const headObserverV291=new MutationObserver(muts=>{
+    if(muts.some(m=>m.target?.id==="bbCustomBubbleStyle" ||
+      Array.from(m.addedNodes||[]).some(n=>n&&n.id==="bbCustomBubbleStyle"))){
+      queuePinV291();
+    }
+  });
+  if(document.head)headObserverV291.observe(document.head,{childList:true,subtree:true,characterData:true});
+  window.addEventListener("pageshow",queuePinV291);
+  window.addEventListener("resize",queuePinV291);
+  window.addEventListener("orientationchange",queuePinV291);
+
   document.addEventListener("DOMContentLoaded",()=>{
-    setTimeout(applyShapes,0);
-    setTimeout(applyShapes,300);
+    [0,100,350,1200,3000].forEach(ms=>setTimeout(()=>{
+      applyShapes();
+      keepDockPinnedV291();
+    },ms));
   });
 })();

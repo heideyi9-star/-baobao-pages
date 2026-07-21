@@ -9788,3 +9788,8 @@ body.bb-chat-closed-v277 #chatRoom *{
 .bb-avatar-shape-picker-v290 button{height:38px;border:0;border-radius:11px;background:transparent;color:#6f6f75;font-size:14px;font-weight:750}
 .bb-avatar-shape-picker-v290 button.active{background:#fff;color:#1c1c1e;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .bb-avatar-shape-tip-v290{padding:2px 5px 24px;color:#8e8e93;font-size:12px;line-height:1.55}
+
+
+/* ===== 豹豹机 291：聊天输入栏真实贴底静态兜底 ===== */
+html body #chatRoom{padding-bottom:0!important;}
+html body #chatRoom .chat-input-bar{bottom:0!important;top:auto!important;}
