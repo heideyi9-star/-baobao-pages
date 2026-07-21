@@ -1,0 +1,25 @@
+{
+  "name": "豹豹机",
+  "short_name": "豹豹机",
+  "description": "豹豹机私人聊天空间",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f7f7",
+  "theme_color": "#f7f7f7",
+  "icons": [
+    {
+      "src": "https://backup.fukit.cn/autoupload/fr/iGgYitKii1zkn9PmwdfZLIyv8G0JWkfm9Q70rq-nj02yl5f0KlZfm6UsKj-HyTuv/20260720/jWrm/1206X1177/IMG_4158.jpeg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "https://backup.fukit.cn/autoupload/fr/iGgYitKii1zkn9PmwdfZLIyv8G0JWkfm9Q70rq-nj02yl5f0KlZfm6UsKj-HyTuv/20260720/jWrm/1206X1177/IMG_4158.jpeg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}
