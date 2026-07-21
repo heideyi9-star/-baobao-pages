@@ -6830,6 +6830,7 @@ ${conversationText()}
 
   let busy=false;
   async function refresh(force){
+    createHeartUI();
     if(userCount()===0){ if(typeof showToast==="function")showToast("先和他聊一句，才会产生心声",true); return; }
     const hash=await hashText(conversationText());
     const cached=readCache();
@@ -6857,17 +6858,30 @@ ${conversationText()}
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();open();
   },true);
 
-  // 消息变化时只标记“有新心声”；真正的 API 刷新留到用户打开面板时执行。
+  // 消息变化后自动生成新的心声。使用防抖，避免多条回复连续出现时重复调用接口。
   let lastSig="";
+  let autoVoiceTimer=0;
   setInterval(()=>{
     if(document.hidden)return;
     const list=msgs(),last=list[list.length-1];
     const sig=list.length+":"+(last?(last.id||last.time||"")+":"+String(last.content||"").length:"");
-    if(sig===lastSig)return;lastSig=sig;
-    if(userCount()>0){const heart=$("innerVoiceBtn");if(heart)heart.classList.add("has-new-voice")}
-  },3200);
+    if(sig===lastSig)return;
+    lastSig=sig;
+    if(userCount()>0){
+      const heart=$("innerVoiceBtn");
+      if(heart)heart.classList.add("has-new-voice");
+      clearTimeout(autoVoiceTimer);
+      autoVoiceTimer=setTimeout(()=>{
+        refresh(true).catch(()=>{});
+      },2400);
+    }
+  },650);
 
-  window.BaobaoInnerVoice4={open,refresh};
+  window.BaobaoInnerVoice4={
+    open,
+    refresh,
+    refreshInBackground:()=>refresh(true)
+  };
 
   /* ===== 数据与备份 ===== */
   function createBackupUI(){
@@ -32418,4 +32432,345 @@ ${offline}
 (function(){
   var m=document.getElementById("bbBootMarkV286");if(m)m.remove();
   try{document.documentElement.setAttribute("data-bb-ready","286");}catch(e){}
+})();
+
+
+/* bb-character-sticker-unread-v289 */
+(function(){
+  "use strict";
+  if(window.__bbCharacterStickerUnreadV289)return;
+  window.__bbCharacterStickerUnreadV289=true;
+
+  const $=id=>document.getElementById(id);
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+  function listPersonas(){
+    return window.state&&Array.isArray(state.personas)?state.personas:[];
+  }
+  function personaById(id){
+    return listPersonas().find(p=>p&&String(p.id)===String(id))||null;
+  }
+  function currentPersona(){
+    return window.currentChatPersona||personaById(window.state&&state.activeChatId)||null;
+  }
+  function stickerEnabled(person){
+    if(!person)return false;
+    if(typeof person.charStickerEnabled==="boolean")return person.charStickerEnabled;
+    if(typeof person.allowStickers==="boolean")return person.allowStickers;
+    if(typeof person.stickerEnabled==="boolean")return person.stickerEnabled;
+    return true;
+  }
+  function save(){
+    try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal();}catch(e){}
+  }
+  function setStickerEnabled(person,value){
+    if(!person)return;
+    person.charStickerEnabled=!!value;
+    save();
+  }
+  window.bbIsCharacterStickerEnabled=person=>stickerEnabled(person||currentPersona());
+
+  function injectStyle(){
+    if($("bbFeature289Style"))return;
+    const style=document.createElement("style");
+    style.id="bbFeature289Style";
+    style.textContent=`
+      .bb-char-sticker-setting-v289{display:flex;align-items:center;justify-content:space-between;gap:16px;background:#f7f7f9;border:1px solid rgba(60,60,67,.08);border-radius:16px;padding:14px 16px;margin:18px 0 4px}
+      .bb-char-sticker-setting-v289 b{display:block;font-size:15px;color:#1c1c1e}
+      .bb-char-sticker-setting-v289 small{display:block;margin-top:4px;color:#8e8e93;font-size:12px;line-height:1.45}
+      .bb-char-sticker-switch-v289{position:relative;width:48px;height:28px;flex:0 0 48px}
+      .bb-char-sticker-switch-v289 input{position:absolute;opacity:0;pointer-events:none}
+      .bb-char-sticker-switch-v289 span{position:absolute;inset:0;background:#d1d1d6;border-radius:16px;transition:.18s}
+      .bb-char-sticker-switch-v289 span:before{content:"";position:absolute;width:24px;height:24px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:.18s}
+      .bb-char-sticker-switch-v289 input:checked+span{background:#34c759}
+      .bb-char-sticker-switch-v289 input:checked+span:before{transform:translateX(20px)}
+      #chatRecentList .chat-recent-item{position:relative!important;padding-right:52px!important}
+      .bb-chat-unread-badge-v289{position:absolute;right:15px;top:50%;transform:translateY(-50%);min-width:22px;height:22px;padding:0 6px;border-radius:12px;background:#a9a9ae;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;line-height:1;box-sizing:border-box}
+      #appTabbar .app-tabbar-item[data-tab="tabChat"]{position:relative}
+      .bb-tab-unread-v289{position:absolute;top:3px;left:calc(50% + 16px);min-width:18px;height:18px;padding:0 5px;border-radius:10px;background:#a9a9ae;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;line-height:1;box-sizing:border-box}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function archiveEditingPersona(){
+    try{
+      if(typeof archiveEditingId!=="undefined"&&archiveEditingId)return personaById(archiveEditingId);
+    }catch(e){}
+    return null;
+  }
+  function ensureArchiveStickerSetting(){
+    const panel=$("personaArchive");
+    if(!panel)return;
+    let row=$("bbArchiveStickerSettingV289");
+    if(!row){
+      row=document.createElement("div");
+      row.id="bbArchiveStickerSettingV289";
+      row.className="bb-char-sticker-setting-v289";
+      row.innerHTML='<div><b>角色发表情包</b><small>关闭后，这个角色绝不会主动发表情包；开启后会按人设和语境决定是否发送。</small></div><label class="bb-char-sticker-switch-v289"><input id="bbArchiveStickerToggleV289" type="checkbox"><span></span></label>';
+      const saveRow=panel.querySelector(".archive-save-row");
+      if(saveRow)saveRow.parentNode.insertBefore(row,saveRow);
+      else panel.querySelector(".archive-card")?.appendChild(row);
+      $("bbArchiveStickerToggleV289")?.addEventListener("change",function(){
+        const p=archiveEditingPersona();
+        if(p)setStickerEnabled(p,this.checked);
+      });
+    }
+    const p=archiveEditingPersona();
+    const cb=$("bbArchiveStickerToggleV289");
+    if(cb)cb.checked=p?stickerEnabled(p):true;
+  }
+  function ensureChatStickerSetting(){
+    const panel=$("chatSettingsPanel");
+    if(!panel)return;
+    let group=$("bbChatStickerGroupV289");
+    if(!group){
+      group=document.createElement("div");
+      group.id="bbChatStickerGroupV289";
+      group.className="ios-group";
+      group.innerHTML='<div class="ios-row ios-row-toggle"><div class="ios-row-label">角色发表情包<div class="ios-row-desc">只控制当前角色；关闭后不会主动发表情包</div></div><label class="ios-switch"><input id="bbChatStickerToggleV289" type="checkbox"><span class="ios-switch-track"></span></label></div>';
+      const first=panel.querySelector(".ios-group");
+      if(first)first.insertAdjacentElement("afterend",group);
+      else panel.appendChild(group);
+      $("bbChatStickerToggleV289")?.addEventListener("change",function(){
+        const p=currentPersona();
+        if(!p)return;
+        setStickerEnabled(p,this.checked);
+        if(typeof window.showToast==="function")window.showToast(this.checked?"已允许角色按语境发表情包":"已关闭角色主动表情包");
+        syncStickerToggles();
+      });
+    }
+    const cb=$("bbChatStickerToggleV289");
+    const p=currentPersona();
+    if(cb){cb.checked=stickerEnabled(p);cb.disabled=!p;}
+  }
+  function syncStickerToggles(){
+    ensureArchiveStickerSetting();
+    ensureChatStickerSetting();
+  }
+
+  function wrapSimple(name,after){
+    const original=window[name];
+    if(typeof original!=="function"||original.__bbV289)return;
+    const wrapped=function(){
+      const result=original.apply(this,arguments);
+      setTimeout(()=>after.apply(this,arguments),0);
+      return result;
+    };
+    wrapped.__bbV289=true;
+    wrapped.__bbPrevious=original;
+    window[name]=wrapped;
+  }
+  function installUiHooks(){
+    wrapSimple("openCreatePersonaPanel",()=>{
+      ensureArchiveStickerSetting();
+      const cb=$("bbArchiveStickerToggleV289");if(cb)cb.checked=true;
+    });
+    wrapSimple("openEditPersonaPanel",syncStickerToggles);
+    wrapSimple("openChatSettings",syncStickerToggles);
+
+    const original=window.savePersonaArchive;
+    if(typeof original==="function"&&!original.__bbV289){
+      const wrapped=function(){
+        const checked=$("bbArchiveStickerToggleV289")?.checked!==false;
+        let editId=null;
+        try{if(typeof archiveEditingId!=="undefined")editId=archiveEditingId;}catch(e){}
+        const before=new Set(listPersonas().map(p=>String(p.id)));
+        const result=original.apply(this,arguments);
+        let person=editId?personaById(editId):listPersonas().find(p=>!before.has(String(p.id)))||listPersonas()[listPersonas().length-1];
+        if(person){person.charStickerEnabled=checked;save();}
+        return result;
+      };
+      wrapped.__bbV289=true;
+      wrapped.__bbPrevious=original;
+      window.savePersonaArchive=wrapped;
+    }
+  }
+
+  function stripStickerTokens(reply){
+    let text=String(reply||"")
+      .replace(/(?:\[\[|［［)\s*STICKER\s*[:：]\s*[\s\S]*?(?:\]\]|］］)/gi,"")
+      .replace(/\n{3,}/g,"\n\n")
+      .trim();
+    return text||"……";
+  }
+  function installRequestGuard(){
+    const original=window.requestChatReply;
+    if(typeof original!=="function"||original.__bbStickerGuardV289)return;
+    const wrapped=async function(){
+      const reply=await original.apply(this,arguments);
+      const activePerson=currentPersona();
+      return !activePerson||stickerEnabled(activePerson)?reply:stripStickerTokens(reply);
+    };
+    wrapped.__bbStickerGuardV289=true;
+    wrapped.__bbPrevious=original;
+    window.requestChatReply=wrapped;
+  }
+  function installCompletionPromptGuard(){
+    const original=window.sendChatCompletion;
+    if(typeof original!=="function"||original.__bbStickerPromptGuardV289)return;
+    const wrapped=async function(messages,apiOverride){
+      let list=Array.isArray(messages)?messages.slice():messages;
+      const activePerson=currentPersona();
+      if(activePerson&&!stickerEnabled(activePerson)&&Array.isArray(list)){
+        list=list.filter(m=>!(m&&m.role==="system"&&/(?:\[\[STICKER|可用表情包|发表情包|表情包库)/i.test(String(m.content||""))));
+        list=[{role:"system",content:"当前角色的表情包开关已关闭。只能回复普通文字或其他允许的消息类型，绝对不要输出任何 STICKER 标记。"},...list];
+      }
+      return original.call(this,list,apiOverride);
+    };
+    wrapped.__bbStickerPromptGuardV289=true;
+    wrapped.__bbPrevious=original;
+    window.sendChatCompletion=wrapped;
+  }
+  function installReplyCleanup(){
+    const original=window.triggerAIReply;
+    if(typeof original!=="function"||original.__bbStickerCleanupV289)return;
+    const wrapped=async function(){
+      const arr=window.state&&Array.isArray(state.chatMessages)?state.chatMessages:null;
+      const before=arr?arr.length:0;
+      const result=await original.apply(this,arguments);
+      const person=currentPersona();
+      if(arr&&!stickerEnabled(person)){
+        let changed=false;
+        for(let i=arr.length-1;i>=before;i--){
+          const m=arr[i];
+          if(m&&m.role==="assistant"&&String(m.type||"").toLowerCase()==="sticker"){
+            arr.splice(i,1);changed=true;
+          }
+        }
+        if(changed){
+          if(state.activeChatId&&state.chatRecords)state.chatRecords[state.activeChatId]=arr;
+          save();
+          try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();}catch(e){}
+          try{if(typeof window.renderChatList==="function")window.renderChatList();}catch(e){}
+        }
+      }
+      return result;
+    };
+    wrapped.__bbStickerCleanupV289=true;
+    wrapped.__bbPrevious=original;
+    window.triggerAIReply=wrapped;
+  }
+  function installStickerGuards(){
+    installRequestGuard();
+    installCompletionPromptGuard();
+    installReplyCleanup();
+  }
+
+  function unreadStore(){
+    if(!window.state)return {};
+    if(!state.chatUnreadCounts||typeof state.chatUnreadCounts!=="object"||Array.isArray(state.chatUnreadCounts))state.chatUnreadCounts={};
+    return state.chatUnreadCounts;
+  }
+  function chatVisibleFor(id){
+    const room=$("chatRoom");
+    if(!room||String(state.activeChatId||"")!==String(id))return false;
+    const style=getComputedStyle(room);
+    return style.display!=="none"&&style.visibility!=="hidden"&&!room.classList.contains("hidden");
+  }
+  function clearUnread(id){
+    if(!id)return;
+    const store=unreadStore();
+    if(Number(store[id]||0)>0){delete store[id];save();}
+    renderUnreadBadges();
+  }
+  function renderUnreadBadges(){
+    const store=unreadStore();
+    document.querySelectorAll("#chatRecentList .chat-recent-item").forEach(row=>{
+      const code=row.getAttribute("onclick")||"";
+      const match=code.match(/startPersonaChat\(['\"]([^'\"]+)/);
+      const id=match?match[1]:"";
+      const count=Math.max(0,Number(store[id]||0));
+      let badge=row.querySelector(".bb-chat-unread-badge-v289");
+      if(count>0){
+        if(!badge){badge=document.createElement("span");badge.className="bb-chat-unread-badge-v289";row.appendChild(badge);}
+        badge.textContent=count>99?"99+":String(count);
+      }else if(badge)badge.remove();
+    });
+    const total=Object.values(store).reduce((sum,n)=>sum+Math.max(0,Number(n||0)),0);
+    const tab=document.querySelector('#appTabbar .app-tabbar-item[data-tab="tabChat"]');
+    if(tab){
+      let badge=tab.querySelector(".bb-tab-unread-v289");
+      if(total>0){
+        if(!badge){badge=document.createElement("span");badge.className="bb-tab-unread-v289";tab.appendChild(badge);}
+        badge.textContent=total>99?"99+":String(total);
+      }else if(badge)badge.remove();
+    }
+  }
+  function installListHook(){
+    const original=window.renderChatList;
+    if(typeof original!=="function"||original.__bbUnreadV289)return;
+    const wrapped=function(){
+      const result=original.apply(this,arguments);
+      requestAnimationFrame(renderUnreadBadges);
+      return result;
+    };
+    wrapped.__bbUnreadV289=true;
+    wrapped.__bbPrevious=original;
+    window.renderChatList=wrapped;
+  }
+  function installOpenHooks(){
+    ["startPersonaChat","openChatRoom","openRoom"].forEach(name=>{
+      const original=window[name];
+      if(typeof original!=="function"||original.__bbUnreadOpenV289)return;
+      const wrapped=function(){
+        const result=original.apply(this,arguments);
+        const id=(arguments[0]&&arguments[0].id)||arguments[0]||(window.state&&state.activeChatId);
+        setTimeout(()=>clearUnread(id||state.activeChatId),0);
+        return result;
+      };
+      wrapped.__bbUnreadOpenV289=true;
+      wrapped.__bbPrevious=original;
+      window[name]=wrapped;
+    });
+  }
+
+  let knownLengths={};
+  let unreadReady=false;
+  function scanUnread(){
+    if(!window.state||!state.chatRecords||typeof state.chatRecords!=="object")return;
+    const records=state.chatRecords;
+    if(!unreadReady){
+      Object.keys(records).forEach(id=>knownLengths[id]=Array.isArray(records[id])?records[id].length:0);
+      unreadReady=true;
+      renderUnreadBadges();
+      return;
+    }
+    let changed=false;
+    Object.keys(records).forEach(id=>{
+      const arr=Array.isArray(records[id])?records[id]:[];
+      const previous=Number(knownLengths[id]||0);
+      const length=arr.length;
+      if(length>previous){
+        const delta=length-previous;
+        if(delta<=8){
+          const incoming=arr.slice(previous).filter(m=>m&&m.role==="assistant"&&!m.hiddenSystem).length;
+          if(incoming&&!chatVisibleFor(id)){
+            const store=unreadStore();
+            store[id]=Number(store[id]||0)+incoming;
+            changed=true;
+          }
+        }
+      }
+      knownLengths[id]=length;
+      if(chatVisibleFor(id)&&Number(unreadStore()[id]||0)>0){delete unreadStore()[id];changed=true;}
+    });
+    Object.keys(knownLengths).forEach(id=>{if(!(id in records))delete knownLengths[id];});
+    if(changed){save();renderUnreadBadges();}
+  }
+
+  function init(){
+    injectStyle();
+    ensureArchiveStickerSetting();
+    ensureChatStickerSetting();
+    installUiHooks();
+    installStickerGuards();
+    installListHook();
+    installOpenHooks();
+    renderUnreadBadges();
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+  [500,1800,7600].forEach(ms=>setTimeout(()=>{installUiHooks();installStickerGuards();installListHook();installOpenHooks();syncStickerToggles();},ms));
+  setInterval(scanUnread,650);
+  window.addEventListener("pageshow",()=>setTimeout(init,0));
+  window.BaobaoUnreadV289={clear:clearUnread,render:renderUnreadBadges,scan:scanUnread};
 })();
