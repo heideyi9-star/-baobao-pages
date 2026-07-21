@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<!-- index(283)：GitHub Pages 主屏幕图标更新；使用用户选定的豹豹机图标。 -->
+<!-- index(284)：修复 GitHub Pages 桌面版锁屏无法上划/点击解锁；保留用户选定图标。 -->
 <meta name="apple-mobile-web-app-title" content="斑斑豹">
 <script id="bb-early-start-v274">
 (function(){
@@ -19,17 +19,17 @@
   window.addEventListener("load",function(){tick();setTimeout(function(){clearInterval(timer);},15000);},{once:true});
 })();
 </script>
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=283">
-<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=283">
-<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=283">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=284">
+<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=284">
+<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=284">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=283">
+<link rel="manifest" href="./baobao-manifest.json?v=284">
 <meta name="theme-color" content="#f7f7f7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 283 新图标版</title>
+<title>豹豹机4.9 · 284 锁屏解锁修复版</title>
 <style>
 *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif}
 body{margin:0;width:100vw;height:100vh;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none}
@@ -43803,5 +43803,131 @@ body.bb-chat-closed-v277 #chatRoom *{
     setTimeout(install, 50);
   }
   setTimeout(install, 2200);
+})();
+</script>
+
+
+<!-- index(284)：锁屏解锁兜底。即使主初始化中途报错，锁屏仍可上划或点击进入密码页。 -->
+<style id="bb-lock-unlock-v284-style">
+#lock{
+  pointer-events:auto !important;
+  touch-action:pan-y !important;
+  -webkit-user-select:none !important;
+  user-select:none !important;
+}
+#lock .unlock{
+  pointer-events:auto !important;
+  touch-action:manipulation !important;
+  cursor:pointer !important;
+  z-index:12 !important;
+}
+#passcodeOverlay{
+  pointer-events:none;
+}
+#passcodeOverlay.show{
+  pointer-events:auto !important;
+}
+</style>
+<script id="bb-lock-unlock-v284-script">
+(function(){
+  "use strict";
+  if(window.__bbLockUnlockV284)return;
+  window.__bbLockUnlockV284=true;
+
+  var startY=0;
+  var startX=0;
+  var pointerStartY=0;
+  var pointerStartX=0;
+  var lastOpen=0;
+  var installed=false;
+
+  function byId(id){return document.getElementById(id);}
+
+  function updateMiniTime(){
+    var el=byId("miniStatusTime");
+    if(!el)return;
+    var d=new Date();
+    el.textContent=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  }
+
+  function openPasscode(){
+    var now=Date.now();
+    if(now-lastOpen<350)return;
+    lastOpen=now;
+    var overlay=byId("passcodeOverlay");
+    if(overlay&&overlay.classList.contains("show"))return;
+    try{
+      if(typeof window.showPasscodePad==="function"){
+        window.showPasscodePad();
+        return;
+      }
+    }catch(e){}
+    if(overlay){
+      overlay.classList.add("show");
+      overlay.style.display="flex";
+    }
+  }
+
+  function isInsidePasscode(target){
+    return !!(target&&target.closest&&target.closest("#passcodeOverlay"));
+  }
+
+  function install(){
+    updateMiniTime();
+    var lock=byId("lock");
+    if(!lock||installed)return;
+    installed=true;
+
+    lock.style.pointerEvents="auto";
+    lock.style.touchAction="pan-y";
+
+    lock.addEventListener("touchstart",function(e){
+      if(!e.touches||!e.touches[0])return;
+      startY=e.touches[0].clientY;
+      startX=e.touches[0].clientX;
+    },{passive:true,capture:true});
+
+    lock.addEventListener("touchend",function(e){
+      if(isInsidePasscode(e.target))return;
+      var t=e.changedTouches&&e.changedTouches[0];
+      if(!t)return;
+      var dy=startY-t.clientY;
+      var dx=Math.abs(startX-t.clientX);
+      if(dy>28&&dy>dx*.7)openPasscode();
+    },{passive:true,capture:true});
+
+    lock.addEventListener("pointerdown",function(e){
+      if(isInsidePasscode(e.target))return;
+      pointerStartY=e.clientY;
+      pointerStartX=e.clientX;
+    },true);
+
+    lock.addEventListener("pointerup",function(e){
+      if(isInsidePasscode(e.target))return;
+      var dy=pointerStartY-e.clientY;
+      var dx=Math.abs(pointerStartX-e.clientX);
+      if(dy>28&&dy>dx*.7)openPasscode();
+    },true);
+
+    lock.addEventListener("click",function(e){
+      if(isInsidePasscode(e.target))return;
+      openPasscode();
+    },true);
+
+    var tip=lock.querySelector(".unlock");
+    if(tip){
+      tip.setAttribute("role","button");
+      tip.setAttribute("tabindex","0");
+      tip.addEventListener("click",function(e){e.stopPropagation();openPasscode();},true);
+    }
+  }
+
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",install,{once:true});
+  }else install();
+  window.addEventListener("pageshow",install);
+  setTimeout(install,80);
+  setTimeout(install,600);
+  setInterval(updateMiniTime,1000);
 })();
 </script>
