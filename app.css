@@ -9793,3 +9793,117 @@ body.bb-chat-closed-v277 #chatRoom *{
 /* ===== 豹豹机 291：聊天输入栏真实贴底静态兜底 ===== */
 html body #chatRoom{padding-bottom:0!important;}
 html body #chatRoom .chat-input-bar{bottom:0!important;top:auto!important;}
+
+/* ===== 豹豹机 292：顺滑回复 + 三点输入气泡 ===== */
+#chatRoom #chatMsgs{
+  overflow-anchor:none !important;
+  contain:layout paint style;
+}
+
+/* 取消整条消息的位移/缩放弹跳，只保留很轻的淡入。 */
+#chatRoom .msg-row,
+#chatRoom .msg-content-wrap,
+#chatRoom .bubble,
+#chatRoom .bb-transfer-card,
+#chatRoom .bb-sticker-bubble{
+  transition:none !important;
+  will-change:auto !important;
+}
+#chatRoom .msg-row.baobao-arrive,
+#chatRoom .msg-row.baobao-send-pop{
+  animation:none !important;
+}
+#chatRoom .msg-row.bb-fresh-message{
+  animation:bbFreshMessageV292 .17s ease-out both !important;
+}
+@keyframes bbFreshMessageV292{
+  from{opacity:.12}
+  to{opacity:1}
+}
+
+/* 点击回复后，在消息区底部显示真正的三点输入气泡。 */
+html body #chatRoom .baobao-typing-row,
+html body #chatRoom #chatMsgs .baobao-typing-row{
+  display:flex !important;
+  align-items:flex-end !important;
+  gap:8px !important;
+  width:100% !important;
+  margin:8px 0 11px !important;
+  padding:0 !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  transform:none !important;
+  animation:bbTypingRowInV292 .14s ease-out both !important;
+  pointer-events:none !important;
+  contain:layout paint;
+}
+html body #chatRoom .baobao-typing-row.bb-typing-leave-v292{
+  opacity:0 !important;
+  animation:none !important;
+}
+@keyframes bbTypingRowInV292{
+  from{opacity:0}
+  to{opacity:1}
+}
+
+html body #chatRoom .baobao-typing-avatar{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:36px !important;
+  height:36px !important;
+  min-width:36px !important;
+  max-width:36px !important;
+  overflow:hidden !important;
+  border-radius:50% !important;
+  background:#eee !important;
+  box-shadow:none !important;
+}
+html body #chatRoom[data-bb-partner-avatar-shape="square"] .baobao-typing-avatar{
+  border-radius:10px !important;
+}
+html body #chatRoom .baobao-typing-avatar img{
+  display:block !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+}
+html body #chatRoom .baobao-typing-bubble{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:5px !important;
+  width:54px !important;
+  min-width:54px !important;
+  height:35px !important;
+  min-height:35px !important;
+  padding:0 13px !important;
+  margin:0 !important;
+  border:0 !important;
+  border-radius:18px !important;
+  background:#f1f1f3 !important;
+  box-shadow:none !important;
+  transform:none !important;
+}
+html body #chatRoom .baobao-typing-dot{
+  display:block !important;
+  width:5px !important;
+  height:5px !important;
+  min-width:5px !important;
+  border-radius:50% !important;
+  background:#8f8f94 !important;
+  opacity:.34;
+  animation:bbTypingDotV292 .92s infinite ease-in-out !important;
+}
+html body #chatRoom .baobao-typing-dot:nth-child(2){animation-delay:.13s !important}
+html body #chatRoom .baobao-typing-dot:nth-child(3){animation-delay:.26s !important}
+@keyframes bbTypingDotV292{
+  0%,62%,100%{opacity:.28;transform:translateY(0)}
+  31%{opacity:1;transform:translateY(-3px)}
+}
+
+@media (prefers-reduced-motion:reduce){
+  #chatRoom .msg-row.bb-fresh-message{animation:none !important}
+  #chatRoom .baobao-typing-row{animation:none !important}
+  #chatRoom .baobao-typing-dot{animation-duration:1.25s !important}
+}

@@ -30424,14 +30424,20 @@ ${offline}
 
   function setTyping(active){
     const el=statusElement();
-    if(!el)return;
-    if(active){
-      el.textContent="正在输入中…";
-      el.className="chat-head-live-status typing bb-show-typing";
-    }else{
-      el.textContent="";
-      el.className="chat-head-live-status";
+    if(el){
+      if(active){
+        el.textContent="正在输入中…";
+        el.className="chat-head-live-status typing bb-show-typing";
+      }else{
+        el.textContent="";
+        el.className="chat-head-live-status";
+      }
     }
+    try{
+      if(typeof window.bbTypingBubbleV292==="function"){
+        window.bbTypingBubbleV292(!!active);
+      }
+    }catch(error){}
   }
   window.bbSetNaturalTypingV250=setTyping;
 
@@ -30513,6 +30519,15 @@ ${offline}
       );
     }
 
+    const person=currentPersona();
+    const pool=stickerPoolV292();
+    if(charStickerEnabledV292(person)&&pool.length){
+      lines.push(
+        "当前角色已开启主动表情包。遇到明显的开心、撒娇、疑问、震惊、委屈、生气、无语、想念、早晚安等语境时，可以自然地发送表情包。",
+        "需要发送时，在回复中单独写 [[STICKER:表情包名称]]；名称必须从这份列表原样选择："+pool.slice(0,48).map(item=>clean(item.name)).filter(Boolean).join("｜")+"。",
+        "不要每轮都发，但也不要长期完全不发；通常三到五轮里遇到合适语境可出现一次。"
+      );
+    }
     return lines.join("\n");
   }
 
@@ -30659,28 +30674,42 @@ ${offline}
     };
   }
 
+  let conversationSyncTimerV292=0;
   function syncConversation(){
     if(state.activeChatId&&state.chatRecords&&typeof state.chatRecords==="object"){
       state.chatRecords[state.activeChatId]=state.chatMessages;
     }
-    try{if(typeof saveLocal==="function")saveLocal();}catch(e){}
-    try{if(typeof renderChatList==="function")renderChatList();}catch(e){}
-    try{if(typeof renderWeChatApp==="function")renderWeChatApp();}catch(e){}
+    clearTimeout(conversationSyncTimerV292);
+    conversationSyncTimerV292=setTimeout(()=>{
+      const persist=()=>{
+        try{if(typeof saveLocal==="function")saveLocal();}catch(e){}
+        try{if(typeof renderChatList==="function")renderChatList();}catch(e){}
+        try{if(typeof renderWeChatApp==="function")renderWeChatApp();}catch(e){}
+      };
+      if("requestIdleCallback" in window){
+        requestIdleCallback(persist,{timeout:420});
+      }else{
+        setTimeout(persist,0);
+      }
+    },90);
   }
 
   function nearBottom(wrap){
     return !wrap||wrap.scrollHeight-wrap.scrollTop-wrap.clientHeight<150;
   }
 
+  let smoothScrollRunV292=0;
   function smoothToBottom(wrap){
     if(!wrap)return;
+    const run=++smoothScrollRunV292;
     const target=Math.max(0,wrap.scrollHeight-wrap.clientHeight);
     const start=wrap.scrollTop;
     const delta=target-start;
     if(Math.abs(delta)<3){wrap.scrollTop=target;return;}
     const startTime=performance.now();
-    const duration=Math.min(260,Math.max(130,Math.abs(delta)*.35));
+    const duration=Math.min(190,Math.max(95,Math.abs(delta)*.22));
     function frame(now){
+      if(run!==smoothScrollRunV292)return;
       const p=Math.min(1,(now-startTime)/duration);
       const eased=1-Math.pow(1-p,3);
       wrap.scrollTop=start+delta*eased;
@@ -30696,9 +30725,10 @@ ${offline}
     const row=rows[rows.length-1];
     if(!row)return;
     row.classList.remove("baobao-arrive","baobao-send-pop","bb-fresh-message");
-    void row.offsetWidth;
-    row.classList.add("bb-fresh-message");
-    setTimeout(()=>row.classList.remove("bb-fresh-message"),320);
+    requestAnimationFrame(()=>{
+      row.classList.add("bb-fresh-message");
+      setTimeout(()=>row.classList.remove("bb-fresh-message"),190);
+    });
   }
 
   function appendMessage(message){
@@ -30723,8 +30753,89 @@ ${offline}
 
   function naturalDelay(chunk){
     const len=chunk.type==="text"?clean(chunk.content).length:8;
-    /* 每一条之间真正留出可见间隔，避免三条像同时蹦出来。 */
-    return 1050+Math.min(850,len*30)+Math.random()*380;
+    /* 仍然逐条出现，但缩短等待并保持稳定，避免像卡住后突然连弹。 */
+    return 560+Math.min(520,len*18)+Math.random()*180;
+  }
+
+  function charStickerEnabledV292(person){
+    return !person||person.charStickerEnabled!==false;
+  }
+
+  function stickerPoolV292(){
+    return window.state&&Array.isArray(state.stickers)
+      ?state.stickers.filter(item=>item&&item.url&&item.name)
+      :[];
+  }
+
+  function recentAssistantStickerV292(){
+    const list=activeMessages();
+    let checked=0;
+    for(let i=list.length-1;i>=0&&checked<7;i--){
+      const message=list[i];
+      if(!message||message.hiddenSystem)continue;
+      checked++;
+      if(message.role==="assistant"&&String(message.type||"").toLowerCase()==="sticker")return true;
+    }
+    return false;
+  }
+
+  function stickerTermsV292(sticker){
+    return clean([
+      sticker&&sticker.name,
+      sticker&&sticker.visionDesc,
+      sticker&&sticker.visionDescription,
+      sticker&&sticker.description
+    ].filter(Boolean).join(" ")).toLowerCase();
+  }
+
+  function stickerScoreV292(sticker,context){
+    const source=stickerTermsV292(sticker);
+    let score=Math.random()*1.8;
+    const groups=[
+      [/哈哈|笑|开心|乐|可爱|嘿嘿|嘻嘻|夸|棒|好耶|牛/,/笑|哈哈|开心|可爱|得意|鼓掌|好耶|喜欢/],
+      [/爱|喜欢|想你|亲|抱|老婆|宝宝|宝贝|乖|贴贴/,/爱|喜欢|亲|抱|贴贴|撒娇|害羞|心|想你/],
+      [/哭|难过|委屈|呜|伤心|不理|生气|气死|烦/,/哭|难过|委屈|生气|气|无语|烦|安慰/],
+      [/？|\?|干嘛|什么|怎么|为啥|真的假的|震惊|啊？/,/疑问|问号|震惊|什么|啊|懵|惊讶/],
+      [/晚安|睡|困|早安|醒了|起床/,/晚安|睡觉|困|早安|起床/],
+      [/无语|服了|呵|啧|行吧|随便|离谱/,/无语|白眼|嫌弃|呵|啧|离谱/]
+    ];
+    for(const [contextRe,stickerRe] of groups){
+      if(contextRe.test(context)&&stickerRe.test(source))score+=6;
+    }
+    const words=context.match(/[\u4e00-\u9fa5]{1,4}/g)||[];
+    for(const word of words.slice(-14)){
+      if(word.length>1&&source.includes(word))score+=1.3;
+    }
+    return score;
+  }
+
+  function chooseStickerV292(context){
+    const pool=stickerPoolV292();
+    if(!pool.length)return null;
+    return pool.slice().sort((a,b)=>stickerScoreV292(b,context)-stickerScoreV292(a,context))[0]||null;
+  }
+
+  function maybeAddStickerChunkV292(chunks,replyText){
+    const person=currentPersona();
+    if(!charStickerEnabledV292(person))return chunks;
+    const pool=stickerPoolV292();
+    if(!pool.length||chunks.some(item=>item.type==="sticker")||recentAssistantStickerV292())return chunks;
+
+    const last=latestUserMessage();
+    const context=clean([
+      last&&last.content,
+      last&&last.name,
+      replyText
+    ].filter(Boolean).join(" "));
+
+    const strong=/哈哈|笑|开心|可爱|爱|喜欢|想你|亲|抱|宝宝|宝贝|哭|委屈|生气|烦|无语|震惊|晚安|早安|困|？|\?|！|!|呜|啧|呵/.test(context);
+    const medium=context.length<=88||/[～~…\.。]/.test(context);
+    const chance=strong?.68:medium?.30:.14;
+    if(Math.random()>chance)return chunks;
+
+    const picked=chooseStickerV292(context);
+    if(!picked)return chunks;
+    return chunks.concat([{type:"sticker",sticker:picked,autoV292:true}]);
   }
 
   async function naturalTrigger(){
@@ -30754,7 +30865,8 @@ ${offline}
         if(!displayText)displayText=action==="returned"?"退回去了":"收了";
       }
 
-      const chunks=responseChunks(displayText);
+      let chunks=responseChunks(displayText);
+      chunks=maybeAddStickerChunkV292(chunks,displayText);
       if(!chunks.length)return;
 
       const textOnly=chunks.filter(x=>x.type==="text").map(x=>x.content).join("\n").trim();
@@ -33121,4 +33233,140 @@ ${offline}
       keepDockPinnedV291();
     },ms));
   });
+})();
+
+
+/* baobao-v292-smooth-chat-typing-sticker-final */
+(function(){
+  "use strict";
+  if(window.__bbSmoothChatV292)return;
+  window.__bbSmoothChatV292=true;
+
+  const $=id=>document.getElementById(id);
+  let typingWanted=false;
+  let typingRemoveTimer=0;
+  let messageObserver=null;
+
+  function roomVisible(){
+    const room=$("chatRoom");
+    if(!room)return false;
+    const style=getComputedStyle(room);
+    return style.display!=="none"&&style.visibility!=="hidden"&&!room.classList.contains("hidden");
+  }
+  function persona(){
+    return window.currentChatPersona||(
+      window.state&&Array.isArray(state.personas)
+        ?state.personas.find(p=>String(p.id)===String(state.activeChatId||""))
+        :null
+    )||null;
+  }
+  function avatarHtml(){
+    const p=persona();
+    return p&&p.photo?'<img src="'+String(p.photo).replace(/"/g,"&quot;")+'" alt="">':'';
+  }
+  function nearBottom(wrap){
+    return !wrap||wrap.scrollHeight-wrap.scrollTop-wrap.clientHeight<170;
+  }
+  function ensureTypingBubble(){
+    if(!typingWanted||!roomVisible())return;
+    const wrap=$("chatMsgs");
+    if(!wrap)return;
+    let row=$("baobaoTypingRow");
+    const follow=nearBottom(wrap);
+    if(!row){
+      row=document.createElement("div");
+      row.id="baobaoTypingRow";
+      row.className="baobao-typing-row bb-typing-v292";
+      row.setAttribute("aria-label","对方正在输入");
+      row.innerHTML='<div class="baobao-typing-avatar">'+avatarHtml()+'</div><div class="baobao-typing-bubble"><span class="baobao-typing-dot"></span><span class="baobao-typing-dot"></span><span class="baobao-typing-dot"></span></div>';
+      wrap.appendChild(row);
+    }else{
+      const avatar=row.querySelector(".baobao-typing-avatar");
+      if(avatar&&!avatar.querySelector("img")&&avatarHtml())avatar.innerHTML=avatarHtml();
+      row.classList.remove("bb-typing-leave-v292");
+    }
+    if(follow)requestAnimationFrame(()=>{wrap.scrollTop=wrap.scrollHeight;});
+  }
+  function removeTypingBubble(immediate){
+    const row=$("baobaoTypingRow");
+    if(!row)return;
+    clearTimeout(typingRemoveTimer);
+    if(immediate){row.remove();return;}
+    row.classList.add("bb-typing-leave-v292");
+    typingRemoveTimer=setTimeout(()=>row.remove(),120);
+  }
+  window.bbTypingBubbleV292=function(active){
+    typingWanted=!!active;
+    clearTimeout(typingRemoveTimer);
+    if(typingWanted){
+      requestAnimationFrame(ensureTypingBubble);
+    }else{
+      removeTypingBubble(false);
+    }
+  };
+
+  function syncFromStatus(){
+    const status=$("chatHeadLiveStatus");
+    const active=!!(status&&status.classList.contains("bb-show-typing"));
+    window.bbTypingBubbleV292(active);
+  }
+  function observe(){
+    const status=$("chatHeadLiveStatus");
+    if(status&&!status.__bbObservedV292){
+      status.__bbObservedV292=true;
+      new MutationObserver(syncFromStatus).observe(status,{attributes:true,childList:true,characterData:true,subtree:true});
+    }
+    const wrap=$("chatMsgs");
+    if(wrap&&wrap!==messageObserver?.target){
+      if(messageObserver&&messageObserver.observer)messageObserver.observer.disconnect();
+      const observer=new MutationObserver(()=>{
+        if(typingWanted&&!$("baobaoTypingRow"))requestAnimationFrame(ensureTypingBubble);
+      });
+      observer.observe(wrap,{childList:true});
+      messageObserver={target:wrap,observer};
+    }
+    syncFromStatus();
+  }
+
+  function installAppendStabilizer(){
+    const original=window.appendChatMessageRow;
+    if(typeof original!=="function"||original.__bbSmoothV292)return;
+    const wrapped=function(){
+      const wrap=$("chatMsgs");
+      const follow=nearBottom(wrap);
+      const oldTop=wrap?wrap.scrollTop:0;
+      removeTypingBubble(true);
+      const result=original.apply(this,arguments);
+      if(wrap){
+        if(follow){
+          requestAnimationFrame(()=>{wrap.scrollTop=wrap.scrollHeight;});
+        }else{
+          wrap.scrollTop=oldTop;
+          requestAnimationFrame(()=>{wrap.scrollTop=oldTop;});
+        }
+      }
+      if(typingWanted)requestAnimationFrame(ensureTypingBubble);
+      return result;
+    };
+    wrapped.__bbSmoothV292=true;
+    wrapped.__bbPrevious=original;
+    window.appendChatMessageRow=wrapped;
+  }
+
+  function installScrollSettle(){
+    window.baobaoSettleScroll=function(){
+      const wrap=$("chatMsgs");
+      if(!wrap||!nearBottom(wrap))return;
+      requestAnimationFrame(()=>{wrap.scrollTop=wrap.scrollHeight;});
+    };
+  }
+
+  function boot(){
+    observe();
+    installAppendStabilizer();
+    installScrollSettle();
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  [120,700,2200,5200,8200].forEach(ms=>setTimeout(boot,ms));
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
 })();

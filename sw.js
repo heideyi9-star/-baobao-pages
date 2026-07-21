@@ -1,12 +1,13 @@
-/* 豹豹机 291：结构分离缓存。HTML 先返回，CSS/JS 独立缓存，后续桌面启动无需重复解析内联大文件。 */
-const CACHE_NAME = "baobao-shell-v291";
+/* 豹豹机 292：结构分离缓存。HTML 先返回，CSS/JS 独立缓存，后续桌面启动无需重复解析内联大文件。 */
+const CACHE_NAME = "baobao-shell-v292";
 const SHELL = [
   "./",
   "./index.html",
   "./app.css",
   "./app.js",
   "./apple-touch-icon.png",
-  "./baobao-manifest.json"
+  "./baobao-manifest.json",
+  "./sw.js"
 ];
 
 self.addEventListener("install", event => {
@@ -69,7 +70,7 @@ self.addEventListener("fetch", event => {
 });
 
 
-/* 291：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
+/* 292：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
 function bbParsePush(event){
   if(!event.data)return {};
   try{return event.data.json()||{};}catch(error){
