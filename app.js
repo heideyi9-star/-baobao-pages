@@ -33370,3 +33370,329 @@ ${offline}
   [120,700,2200,5200,8200].forEach(ms=>setTimeout(boot,ms));
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
 })();
+
+/* baobao-v293-character-avatar-self-choice */
+(function(){
+  "use strict";
+  if(window.__bbCharacterAvatarChoiceV293)return;
+  window.__bbCharacterAvatarChoiceV293=true;
+
+  const $=id=>document.getElementById(id);
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const AVATAR_COMMAND_RE=/(?:头像|换头|换上|当头像|设成头像|做头像|用作头像|选一张|选一个|挑一张|挑一个|你自己选|你来选|你自己挑|哪张好|用哪张|情侣头像)/i;
+
+  function persona(){
+    return window.currentChatPersona||(
+      window.state&&Array.isArray(state.personas)
+        ?state.personas.find(p=>String(p.id)===String(state.activeChatId||""))
+        :null
+    )||null;
+  }
+  function messages(){
+    return window.state&&Array.isArray(state.chatMessages)?state.chatMessages:[];
+  }
+  function mediaSource(msg){
+    if(!msg)return "";
+    const src=String(msg.originalMedia||msg.mediaSource||msg.url||msg.imageUrl||msg.image||msg.content||"");
+    return /^(?:data:image\/|blob:|https?:\/\/)/i.test(src)?src:"";
+  }
+  function isUserImage(msg){
+    return !!(msg&&msg.role==="user"&&["image","textphoto"].includes(String(msg.type||"").toLowerCase())&&mediaSource(msg));
+  }
+  function isAvatarCommand(msg){
+    return !!(msg&&msg.role==="user"&&String(msg.type||"text")==="text"&&!msg.avatarChoiceHandledV293&&AVATAR_COMMAND_RE.test(String(msg.content||"")));
+  }
+  function findRequest(){
+    const arr=messages();
+    if(!arr.length)return null;
+    let commandIndex=-1;
+    for(let i=arr.length-1;i>=Math.max(0,arr.length-18);i--){
+      if(isAvatarCommand(arr[i])){commandIndex=i;break;}
+    }
+    if(commandIndex<0)return null;
+    let segmentStart=0;
+    for(let i=commandIndex-1;i>=0;i--){
+      if(arr[i]&&arr[i].role==="assistant"){segmentStart=i+1;break;}
+    }
+    const candidates=[];
+    for(let i=segmentStart;i<arr.length;i++){
+      const msg=arr[i];
+      if(isUserImage(msg))candidates.push({msg,index:i,src:mediaSource(msg)});
+    }
+    return {arr,command:arr[commandIndex],commandIndex,candidates:candidates.slice(-6)};
+  }
+  function personaText(p){
+    if(!p)return "";
+    return [p.name,p.persona,p.personality,p.brief,p.setting,p.description,p.prompt,Array.isArray(p.tags)?p.tags.join("、"):p.tags]
+      .filter(Boolean).join("\n").slice(0,5000);
+  }
+  function hashText(value){
+    let h=2166136261;
+    const s=String(value||"");
+    for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}
+    return h>>>0;
+  }
+  function loadImage(src,timeout=3500){
+    return new Promise((resolve,reject)=>{
+      const img=new Image();
+      const timer=setTimeout(()=>{img.onload=img.onerror=null;reject(new Error("图片读取超时"));},timeout);
+      img.onload=()=>{clearTimeout(timer);resolve(img);};
+      img.onerror=()=>{clearTimeout(timer);reject(new Error("图片读取失败"));};
+      img.src=src;
+    });
+  }
+  async function imageStats(src){
+    try{
+      const img=await loadImage(src);
+      const canvas=document.createElement("canvas");
+      canvas.width=40;canvas.height=40;
+      const ctx=canvas.getContext("2d",{willReadFrequently:true});
+      ctx.drawImage(img,0,0,40,40);
+      const data=ctx.getImageData(0,0,40,40).data;
+      let lum=0,sat=0,warm=0,contrast=0,count=0;
+      const samples=[];
+      for(let i=0;i<data.length;i+=16){
+        const r=data[i]/255,g=data[i+1]/255,b=data[i+2]/255,a=data[i+3]/255;
+        if(a<.15)continue;
+        const max=Math.max(r,g,b),min=Math.min(r,g,b);
+        const l=.2126*r+.7152*g+.0722*b;
+        lum+=l;sat+=max-min;warm+=(r-b);samples.push(l);count++;
+      }
+      if(!count)return null;
+      const avg=lum/count;
+      for(const l of samples)contrast+=Math.abs(l-avg);
+      return {
+        brightness:+avg.toFixed(3),
+        saturation:+(sat/count).toFixed(3),
+        warmth:+(warm/count).toFixed(3),
+        contrast:+(contrast/count).toFixed(3),
+        ratio:+((img.naturalWidth||1)/(img.naturalHeight||1)).toFixed(3)
+      };
+    }catch(e){return null;}
+  }
+  async function recognize(candidate){
+    const msg=candidate.msg;
+    if(String(msg.visionDesc||msg.visionDescription||"").trim()){
+      return String(msg.visionDesc||msg.visionDescription).replace(/\s+/g," ").trim().slice(0,360);
+    }
+    if(typeof window.baobaoRecognizeImage!=="function")return "";
+    try{
+      const result=await Promise.race([
+        Promise.resolve(window.baobaoRecognizeImage(msg)),
+        new Promise(resolve=>setTimeout(()=>resolve(""),6000))
+      ]);
+      return String(result||msg.visionDesc||msg.visionDescription||"").replace(/\s+/g," ").trim().slice(0,360);
+    }catch(e){return "";}
+  }
+  function localChoice(candidates,p,command){
+    const profile=personaText(p).toLowerCase();
+    const seed=hashText(String(p&&p.id||p&&p.name||"")+String(command||""));
+    let best=0,bestScore=-Infinity;
+    candidates.forEach((item,i)=>{
+      const s=item.stats||{};
+      const b=Number.isFinite(s.brightness)?s.brightness:.55;
+      const sat=Number.isFinite(s.saturation)?s.saturation:.22;
+      const warm=Number.isFinite(s.warmth)?s.warmth:0;
+      const con=Number.isFinite(s.contrast)?s.contrast:.16;
+      let score=25-Math.abs(b-.55)*18+con*9;
+      if(/高冷|清冷|冷淡|阴郁|暗黑|酷|克制|沉稳|黑色|冷色/.test(profile))score+=(1-b)*28+con*12-sat*5;
+      if(/阳光|开朗|温柔|治愈|可爱|活泼|甜|暖|元气/.test(profile))score+=b*18+sat*15+warm*12;
+      if(/成熟|理性|禁欲|稳重/.test(profile))score+=con*8-Math.abs(sat-.18)*10;
+      score+=((hashText(seed+":"+i)%1000)/1000)*2.5;
+      if(score>bestScore){bestScore=score;best=i;}
+    });
+    return best;
+  }
+  function parseChoice(raw,max){
+    const text=String(raw||"").trim();
+    let obj=null;
+    try{
+      const hit=text.match(/\{[\s\S]*\}/);
+      if(hit)obj=JSON.parse(hit[0]);
+    }catch(e){}
+    let choice=Number(obj&&obj.choice);
+    if(!Number.isInteger(choice)){
+      const hit=text.match(/(?:choice|选择|第)\s*[：:=]?\s*(\d+)/i);
+      if(hit)choice=Number(hit[1]);
+    }
+    if(!Number.isInteger(choice)||choice<1||choice>max)return null;
+    let reply=String(obj&&obj.reply||"").replace(/\[\[STICKER:[^\]]+\]\]/gi,"").trim();
+    if(reply.length>70)reply=reply.slice(0,70);
+    return {index:choice-1,reply};
+  }
+  async function chooseByPersona(request,p){
+    const details=await Promise.all(request.candidates.map(async(candidate,i)=>{
+      const [description,stats]=await Promise.all([recognize(candidate),imageStats(candidate.src)]);
+      candidate.description=description;
+      candidate.stats=stats;
+      return `${i+1}. ${description||"未配置视觉识别，只能根据画面色调与角色审美选择"}；画面参数：${stats?`亮度${stats.brightness}、饱和度${stats.saturation}、冷暖${stats.warmth}、对比度${stats.contrast}`:"未知"}`;
+    }));
+    const fallbackIndex=localChoice(request.candidates,p,request.command.content);
+    if(typeof window.sendChatCompletion!=="function")return {index:fallbackIndex,reply:""};
+    const prompt=[
+      `角色姓名：${String(p&&p.name||"对方")}`,
+      `角色完整人设：${personaText(p)||"未填写，按自然审美选择"}`,
+      `用户说：${String(request.command.content||"")}`,
+      `候选头像：\n${details.join("\n")}`,
+      "请站在角色本人角度选择最想用的一张，不要迎合用户，也不要把用户自己的头像选成你的头像。",
+      `只返回合法JSON：{"choice":1到${request.candidates.length}的整数,"reply":"角色会发出的1到2句短消息，不超过35字"}`
+    ].join("\n\n");
+    try{
+      const raw=await Promise.race([
+        window.sendChatCompletion([
+          {role:"system",content:"你正在替聊天角色自主挑选自己的头像。严格服从人设审美，只输出JSON，不要解释。"},
+          {role:"user",content:prompt}
+        ]),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("选择超时")),10000))
+      ]);
+      return parseChoice(raw,request.candidates.length)||{index:fallbackIndex,reply:""};
+    }catch(e){return {index:fallbackIndex,reply:""};}
+  }
+  function setStatus(text,cls){
+    try{
+      if(window.BaobaoHumanChat&&typeof window.BaobaoHumanChat.setStatus==="function"){
+        window.BaobaoHumanChat.setStatus(text,cls||"");return;
+      }
+      const el=$("chatHeadLiveStatus");
+      if(el){el.textContent=text||"";el.className="chat-head-live-status"+(cls?" "+cls:"");}
+    }catch(e){}
+  }
+  function updateAvatar(p,src){
+    if(!p||!src)return;
+    p.photo=src;
+    if(window.state&&Array.isArray(state.personas)){
+      const saved=state.personas.find(x=>String(x.id)===String(p.id));
+      if(saved)saved.photo=src;
+    }
+    const header=$("chatHeadAvatar");
+    if(header)header.innerHTML=`<img src="${String(src).replace(/"/g,"&quot;")}">`;
+    document.querySelectorAll("#chatRoom .msg-row:not(.me) .msg-avatar").forEach(box=>{
+      let img=box.querySelector("img");
+      if(!img){img=document.createElement("img");box.textContent="";box.appendChild(img);}
+      img.src=src;
+    });
+    const preview=$("bbPartnerAvatarPreviewV290");
+    if(preview)preview.innerHTML=`<img src="${String(src).replace(/"/g,"&quot;")}">`;
+    try{if(typeof window.updateChatHead==="function")window.updateChatHead(p);}catch(e){}
+    try{if(typeof window.renderChatList==="function")window.renderChatList();}catch(e){}
+    try{if(typeof window.renderContactsQuickRow==="function")window.renderContactsQuickRow();}catch(e){}
+    try{if(typeof window.bbApplyChatAvatarShapesV290==="function")window.bbApplyChatAvatarShapesV290();}catch(e){}
+  }
+  function appendReply(text,p){
+    const parts=(window.BaobaoPersonaEngine&&typeof window.BaobaoPersonaEngine.splitHumanMessages==="function")
+      ?window.BaobaoPersonaEngine.splitHumanMessages(text)
+      :[text];
+    return (parts||[]).map(x=>String(x||"").trim()).filter(Boolean).slice(0,2);
+  }
+  async function pushAssistantParts(parts){
+    for(let i=0;i<parts.length;i++){
+      if(i>0)await sleep(260);
+      const msg={role:"assistant",type:"text",content:parts[i],time:Date.now(),id:"msg_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),avatarChoiceV293:true};
+      state.chatMessages.push(msg);
+      if(typeof window.appendChatMessageRow==="function")window.appendChatMessageRow();
+      else if(typeof window.renderChatMessages==="function")window.renderChatMessages();
+    }
+  }
+  async function handleAvatarChoice(request){
+    const p=persona();
+    if(!p)return false;
+    request.command.avatarChoiceHandledV293=true;
+    if(!request.candidates.length){
+      await pushAssistantParts(["你先把头像图发给我。"]);
+      return true;
+    }
+    const selected=request.candidates.length===1
+      ?{index:0,reply:""}
+      :await chooseByPersona(request,p);
+    const index=Math.max(0,Math.min(request.candidates.length-1,Number(selected.index)||0));
+    const chosen=request.candidates[index];
+    request.command.avatarChoiceIndexV293=index+1;
+    request.command.avatarChoicePersonaIdV293=String(p.id||"");
+    chosen.msg.chosenAsAvatarV293=true;
+    updateAvatar(p,chosen.src);
+    const fallback=request.candidates.length===1
+      ?"那我换这张。"
+      :`我选第${index+1}张。这个更像我。`;
+    await pushAssistantParts(appendReply(selected.reply||fallback,p));
+    if(window.state&&state.activeChatId&&state.chatRecords)state.chatRecords[state.activeChatId]=state.chatMessages;
+    try{if(typeof saveLocal==="function")saveLocal();}catch(e){}
+    try{if(typeof renderChatList==="function")renderChatList();}catch(e){}
+    try{if(typeof window.generateInnerVoiceForCurrentPersona==="function")window.generateInnerVoiceForCurrentPersona();}catch(e){}
+    if(typeof showToast==="function")showToast(`TA自己选了第${index+1}张头像并换上了`);
+    return true;
+  }
+
+  function installTrigger(){
+    const original=window.triggerAIReply;
+    if(typeof original!=="function"||original.__bbAvatarChoiceV293)return;
+    const wrapped=async function(){
+      const request=findRequest();
+      if(!request)return original.apply(this,arguments);
+      if(window.__baobaoReplyPending)return;
+      window.__baobaoReplyPending=true;
+      const btn=$("chatReplyBtn");if(btn)btn.classList.add("loading");
+      try{
+        setStatus("正在输入…","typing");
+        if(typeof window.bbTypingBubbleV292==="function")window.bbTypingBubbleV292(true);
+        await sleep(220);
+        await handleAvatarChoice(request);
+        if(typeof window.baobaoNotifyIncomingReply==="function")window.baobaoNotifyIncomingReply("[已更换头像]");
+      }catch(err){
+        request.command.avatarChoiceHandledV293=false;
+        if(typeof showToast==="function")showToast(err&&err.message?err.message:"头像选择失败",true);
+      }finally{
+        if(typeof window.bbTypingBubbleV292==="function")window.bbTypingBubbleV292(false);
+        setStatus("","");
+        window.__baobaoReplyPending=false;
+        if(btn)btn.classList.remove("loading");
+      }
+    };
+    wrapped.__bbAvatarChoiceV293=true;
+    wrapped.__bbPrevious=original;
+    window.triggerAIReply=wrapped;
+  }
+
+  function addUserImages(sources){
+    if(!sources.length)return;
+    state.chatMessages=state.chatMessages||[];
+    const now=Date.now();
+    sources.forEach((src,i)=>{
+      const msg={role:"user",type:"image",content:src,url:src,mediaSource:src,originalMedia:src,caption:"[头像候选图片]",time:now+i,id:"msg_"+(now+i)+"_"+Math.random().toString(36).slice(2,7),delivery:"sent"};
+      state.chatMessages.push(msg);
+      if(typeof window.baobaoRecognizeImage==="function")setTimeout(()=>window.baobaoRecognizeImage(msg),20+i*60);
+    });
+    if(window.state&&state.activeChatId&&state.chatRecords)state.chatRecords[state.activeChatId]=state.chatMessages;
+    try{if(typeof saveLocal==="function")saveLocal();}catch(e){}
+    try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();}catch(e){}
+    try{if(typeof renderChatList==="function")renderChatList();}catch(e){}
+  }
+  function fileToData(file){
+    if(typeof window.compressImage==="function"){
+      return Promise.resolve(window.compressImage(file,1100,.86)).catch(()=>null);
+    }
+    return new Promise(resolve=>{
+      const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>resolve(null);r.readAsDataURL(file);
+    });
+  }
+  function enableMultipleAvatarCandidates(){
+    const input=$("bbAlbumInput");
+    if(!input||input.__bbMultiAvatarV293)return;
+    input.__bbMultiAvatarV293=true;
+    input.setAttribute("multiple","");
+    input.addEventListener("change",async event=>{
+      const files=Array.from(event.target.files||[]).slice(0,6);
+      if(files.length<=1)return;
+      event.stopImmediatePropagation();
+      const valid=files.filter(file=>file&&file.size<=12*1024*1024);
+      if(valid.length!==files.length&&typeof showToast==="function")showToast("已跳过超过12MB的图片",true);
+      const results=(await Promise.all(valid.map(fileToData))).filter(Boolean);
+      addUserImages(results);
+      event.target.value="";
+      if(typeof showToast==="function")showToast(`已发送${results.length}张头像候选图，可以告诉TA自己选一张`);
+    },true);
+  }
+  function boot(){installTrigger();enableMultipleAvatarCandidates();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  [100,700,1800,4200].forEach(ms=>setTimeout(boot,ms));
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+})();
