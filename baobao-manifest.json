@@ -10,15 +10,9 @@
   "theme_color": "#f7f7f7",
   "icons": [
     {
-      "src": "https://backup.fukit.cn/autoupload/fr/iGgYitKii1zkn9PmwdfZLIyv8G0JWkfm9Q70rq-nj02yl5f0KlZfm6UsKj-HyTuv/20260720/jWrm/1206X1177/IMG_4158.jpeg",
-      "sizes": "192x192",
-      "type": "image/jpeg",
-      "purpose": "any"
-    },
-    {
-      "src": "https://backup.fukit.cn/autoupload/fr/iGgYitKii1zkn9PmwdfZLIyv8G0JWkfm9Q70rq-nj02yl5f0KlZfm6UsKj-HyTuv/20260720/jWrm/1206X1177/IMG_4158.jpeg",
+      "src": "./apple-touch-icon.png",
       "sizes": "512x512",
-      "type": "image/jpeg",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

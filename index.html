@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<!-- index(284)：修复 GitHub Pages 桌面版锁屏无法上划/点击解锁；保留用户选定图标。 -->
+<!-- index(285)：免加速器启动加速版；锁屏先显示，聊天/朋友圈/查手机按需渲染，并加入本地壳缓存。 -->
 <meta name="apple-mobile-web-app-title" content="斑斑豹">
 <script id="bb-early-start-v274">
 (function(){
@@ -19,17 +19,32 @@
   window.addEventListener("load",function(){tick();setTimeout(function(){clearInterval(timer);},15000);},{once:true});
 })();
 </script>
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=284">
-<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=284">
-<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=284">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=285">
+<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=285">
+<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=285">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=284">
+<link rel="manifest" href="./baobao-manifest.json?v=285">
+<script id="bb-pwa-cache-v285">
+(function(){
+  "use strict";
+  if(!("serviceWorker" in navigator))return;
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("./sw.js?v=285",{scope:"./"}).then(function(reg){
+      try{reg.update();}catch(e){}
+    }).catch(function(){});
+  },{once:true});
+})();
+</script>
 <meta name="theme-color" content="#f7f7f7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 284 锁屏解锁修复版</title>
+<title>豹豹机4.9 · 285 免加速器启动加速版</title>
+<style id="bb-startup-v285-style">
+img{content-visibility:auto;}
+.panel:not(.show),#chatDemo[style*="display: none"],#chatRoom[style*="display: none"]{contain:layout paint style;}
+</style>
 <style>
 *{box-sizing:border-box;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif}
 body{margin:0;width:100vw;height:100vh;background:#000;overflow:hidden;display:flex;align-items:center;justify-content:center;touch-action:none}
@@ -3691,6 +3706,7 @@ function handleAppAction(app){
     return;
   }
   if (app.action === "chat"){
+    try{ if(typeof renderWeChatApp === "function") renderWeChatApp(); }catch(error){}
     document.getElementById("chatDemo").style.display="block";
   } else if (app.action === "settings"){
     syncFullScreenToggle();
@@ -5859,24 +5875,43 @@ function restoreScreenMode(){
   syncFullScreenToggle();
 }
 
+let bbStartupDoneV285 = false;
+function bbSafeStartupCallV285(fn){
+  try{ if(typeof fn === "function") fn(); }catch(error){ console.warn("豹豹机启动步骤已跳过", error); }
+}
+function bbIdleV285(fn, timeout){
+  if(typeof requestIdleCallback === "function"){
+    requestIdleCallback(function(){ bbSafeStartupCallV285(fn); },{timeout:timeout||900});
+  }else{
+    setTimeout(function(){ bbSafeStartupCallV285(fn); },Math.min(timeout||350,500));
+  }
+}
 function init(){
-  restoreScreenMode();
-  updateTime();
-  setInterval(updateTime, 1000);
-  renderAvatar();
-  renderProfile();
-  renderIns();
-  renderWallpaper();
-  applyChatBackground();
-  renderPages();
-  renderChatMessages();
-  renderWeChatApp();
-  syncTimeAwareToggle();
-  initSwipe();
-  initLockSwipe();
+  if(bbStartupDoneV285)return;
+  bbStartupDoneV285 = true;
+
+  // 第一阶段：只做锁屏和解锁真正需要的内容，让桌面版尽快可操作。
+  bbSafeStartupCallV285(restoreScreenMode);
+  bbSafeStartupCallV285(updateTime);
+  setInterval(function(){ bbSafeStartupCallV285(updateTime); },1000);
+  bbSafeStartupCallV285(renderWallpaper);
+  bbSafeStartupCallV285(renderAvatar);
+  bbSafeStartupCallV285(initLockSwipe);
+  bbSafeStartupCallV285(initSwipe);
+
+  // 第二阶段：下一帧补齐桌面，避免和锁屏首帧争抢。
+  requestAnimationFrame(function(){
+    bbSafeStartupCallV285(renderIns);
+    bbSafeStartupCallV285(renderPages);
+    bbSafeStartupCallV285(syncTimeAwareToggle);
+    requestAnimationFrame(function(){ bbSafeStartupCallV285(renderProfile); });
+  });
+
+  // 第三阶段：隐藏页面按空闲时间准备。聊天记录不再在启动时全部绘制。
+  bbIdleV285(applyChatBackground,700);
 }
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", init,{once:true});
 
 
 function openChatPlusMenu(){
