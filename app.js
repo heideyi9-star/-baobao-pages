@@ -33623,7 +33623,7 @@ ${offline}
     try{if(typeof saveLocal==="function")saveLocal();}catch(e){}
     try{if(typeof renderChatList==="function")renderChatList();}catch(e){}
     try{if(typeof window.generateInnerVoiceForCurrentPersona==="function")window.generateInnerVoiceForCurrentPersona();}catch(e){}
-    if(typeof showToast==="function")showToast(`TA自己选了第${index+1}张头像并换上了`);
+    
     return true;
   }
 
@@ -33912,6 +33912,48 @@ ${offline}
     }catch(_){ }
     return true;
   }
+  function cleanNaturalAvatarReply(raw){
+    const banned=/(?:我选第\d+张|这张更像我|头像(?:设置|更换|选择)(?:成功|完成)|遵命|求之不得|马上就换好|角色会自己选头像|系统|程序|功能)/i;
+    const parts=String(raw||"")
+      .replace(/```[\s\S]*?```/g,"")
+      .replace(/^[\s\-•]+|[\s]+$/g,"")
+      .split(/\n+|\|\|+/)
+      .map(x=>x.replace(/^[“”"']+|[“”"']+$/g,"").trim())
+      .filter(Boolean)
+      .filter(x=>!banned.test(x))
+      .map(x=>x.slice(0,28))
+      .slice(0,2);
+    return parts;
+  }
+  async function naturalAvatarReply(request,p,index){
+    const command=String(request&&request.command&&request.command.content||"").trim();
+    const recent=activeMessages().slice(-10).map(m=>{
+      if(!m)return "";
+      const role=m.role==="assistant"?"TA":"用户";
+      const type=String(m.type||"text").toLowerCase();
+      if(type==="image"||type==="textphoto"||type==="photo")return role+"：[图片]";
+      return role+"："+String(m.content||"").slice(0,80);
+    }).filter(Boolean).join("\n");
+    if(typeof window.sendChatCompletion==="function"){
+      try{
+        const raw=await Promise.race([
+          window.sendChatCompletion([
+            {role:"system",content:"你正在扮演真实手机聊天中的角色。头像已经按角色自己的选择换好了。结合人设和上下文，自然回用户1到2条短消息，每条2到18个汉字。可以嘴硬、随意、调侃，但必须像真人。不要说第几张、这张更像我、设置成功、遵命、求之不得、马上换好、系统、程序或功能，不要解释执行过程，不加标题和引号。多条用换行分开。"},
+            {role:"user",content:`角色人设：${personaDescription(p)||"自然真实"}\n用户刚说：${command}\n最近聊天：\n${recent}\n请直接输出角色会发出的消息。`}
+          ]),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error("reply timeout")),7000))
+        ]);
+        const parts=cleanNaturalAvatarReply(raw);
+        if(parts.length)return parts;
+      }catch(_){ }
+    }
+    const one=request.candidates.length<=1;
+    const fallbacks=one
+      ? [["行","换了"],["那就这个吧"],["好吧 用这个"],["嗯 换上了"]]
+      : [["就这个吧"],["这张顺眼"],["行 我挑好了"],["我就要这个"]];
+    return fallbacks[Math.floor(Math.random()*fallbacks.length)];
+  }
+
   async function processRequest(request){
     if(handling)return true;
     handling=true;
@@ -33932,10 +33974,13 @@ ${offline}
       const compressed=await avatarSource(chosen.src);
       chosen.msg.chosenAsAvatarV294=true;
       updateAvatarDisplays(p,compressed);
-      const reply=request.candidates.length===1?"行，那我用这张。":"我选第"+(index+1)+"张，这张更像我。";
-      await pushReply(reply);
+      const replies=await naturalAvatarReply(request,p,index);
+      for(let i=0;i<replies.length;i++){
+        if(i)await sleep(260+Math.random()*240);
+        await pushReply(replies[i]);
+      }
       const ok=await forceSave();
-      if(typeof window.showToast==="function")window.showToast(ok?"TA已经自己选好并换上头像":"头像已换上，但本地空间仍然不足",!ok);
+      if(!ok&&typeof window.showToast==="function")window.showToast("头像已换上，但本地空间仍然不足",true);
       try{if(typeof window.generateInnerVoiceForCurrentPersona==="function")window.generateInnerVoiceForCurrentPersona();}catch(_){ }
       return true;
     }catch(error){
@@ -34229,5 +34274,100 @@ ${offline}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});
   else boot();
   [80,300,900,2200,5000,9000].forEach(ms=>setTimeout(boot,ms));
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+})();
+
+
+/* baobao-v296-natural-avatar-and-strict-sticker-gate */
+(function(){
+  "use strict";
+  if(window.__bbNaturalAvatarStrictStickerV296)return;
+  window.__bbNaturalAvatarStrictStickerV296=true;
+
+  const $=id=>document.getElementById(id);
+  let permitUntil=0;
+  let permitPointer=-1;
+
+  function explicitStickerToolEvent(event){
+    const target=event&&event.target;
+    if(!target||!target.closest)return null;
+    const item=target.closest("#bbToolSheet.show .bb-sticker-tool-v238,#bbToolSheet.show .bb-sticker-tool");
+    if(!item)return null;
+    const sheet=item.closest("#bbToolSheet");
+    if(!sheet||!sheet.classList.contains("show"))return null;
+    const ss=getComputedStyle(sheet),is=getComputedStyle(item);
+    if(ss.display==="none"||ss.visibility==="hidden"||Number(ss.opacity||1)<.2||ss.pointerEvents==="none")return null;
+    if(is.display==="none"||is.visibility==="hidden"||Number(is.opacity||1)<.2||is.pointerEvents==="none")return null;
+    const r=item.getBoundingClientRect(),sr=sheet.getBoundingClientRect();
+    const x=Number(event.clientX),y=Number(event.clientY);
+    if(!Number.isFinite(x)||!Number.isFinite(y))return null;
+    if(r.width<28||r.height<28||r.width>150||r.height>150)return null;
+    if(x<r.left||x>r.right||y<r.top||y>r.bottom)return null;
+    if(x<sr.left||x>sr.right||y<sr.top||y>sr.bottom)return null;
+    if(r.top<innerHeight*.48)return null;
+    const top=document.elementFromPoint(x,y);
+    if(!top||!(top===item||item.contains(top)))return null;
+    return item;
+  }
+
+  function arm(event){
+    const item=explicitStickerToolEvent(event);
+    if(item){
+      permitUntil=Date.now()+650;
+      permitPointer=Number.isFinite(event.pointerId)?event.pointerId:-1;
+    }else{
+      permitUntil=0;
+      permitPointer=-1;
+    }
+  }
+
+  function installGate(){
+    const original=window.openBaobaoStickerPicker;
+    if(typeof original!=="function"||original.__bbStrictGateV296)return;
+    const wrapped=function(){
+      const picker=$("bbStickerPicker");
+      if(picker&&picker.classList.contains("show"))return true;
+      if(Date.now()>permitUntil)return false;
+      permitUntil=0;
+      permitPointer=-1;
+      return original.apply(this,arguments);
+    };
+    wrapped.__bbStrictGateV296=true;
+    wrapped.__bbPrevious=original;
+    window.openBaobaoStickerPicker=wrapped;
+  }
+
+  function closeAccidentalPicker(event){
+    if(explicitStickerToolEvent(event))return;
+    permitUntil=0;
+    const picker=$("bbStickerPicker");
+    if(!picker||!picker.classList.contains("show"))return;
+    const inside=event&&event.target&&event.target.closest&&event.target.closest("#bbStickerPicker .bb-sticker-picker-card");
+    if(!inside&&typeof window.closeBaobaoStickerPicker==="function")window.closeBaobaoStickerPicker();
+  }
+
+  function installVoiceReset(){
+    if($("bbVoiceResetV296"))return;
+    const style=document.createElement("style");
+    style.id="bbVoiceResetV296";
+    style.textContent=`
+      html body #chatRoom #chatMsgs .bb-mm243-voice .bb-mm243-play{
+        all:unset!important;box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;
+        width:18px!important;height:20px!important;min-width:18px!important;max-width:18px!important;flex:0 0 18px!important;
+        color:#606064!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;
+        font:700 14px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif!important;transform:none!important;
+      }
+      html body #chatRoom #chatMsgs .bb-mm243-voice.playing .bb-mm243-play{font-size:13px!important;}
+      html body #chatRoom #chatMsgs .bb-mm243-voice.loading .bb-mm243-play{font-size:0!important;width:15px!important;height:15px!important;min-width:15px!important;border:2px solid rgba(96,96,100,.25)!important;border-top-color:#606064!important;border-radius:50%!important;animation:bbMM243Spin .8s linear infinite!important;}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function boot(){installGate();installVoiceReset();}
+  window.addEventListener("pointerdown",arm,true);
+  window.addEventListener("touchstart",arm,{capture:true,passive:true});
+  window.addEventListener("click",event=>{installGate();setTimeout(()=>closeAccidentalPicker(event),0);},true);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  [50,180,500,1200,2600,5200,9000].forEach(ms=>setTimeout(boot,ms));
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
 })();
