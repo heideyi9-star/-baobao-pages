@@ -33566,6 +33566,11 @@ ${offline}
     }
     const header=$("chatHeadAvatar");
     if(header)header.innerHTML=`<img src="${String(src).replace(/"/g,"&quot;")}">`;
+    const room=$("chatRoom");
+    if(room){
+      const safeCss=String(src).replace(/"/g,"%22");
+      room.style.setProperty("--bb-memo-avatar-url",`url("${safeCss}")`);
+    }
     document.querySelectorAll("#chatRoom .msg-row:not(.me) .msg-avatar").forEach(box=>{
       let img=box.querySelector("img");
       if(!img){img=document.createElement("img");box.textContent="";box.appendChild(img);}
@@ -33694,5 +33699,535 @@ ${offline}
   function boot(){installTrigger();enableMultipleAvatarCandidates();}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
   [100,700,1800,4200].forEach(ms=>setTimeout(boot,ms));
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+})();
+
+/* baobao-v294-avatar-choice-storage-fix */
+(function(){
+  "use strict";
+  if(window.__bbAvatarChoiceStorageV294)return;
+  window.__bbAvatarChoiceStorageV294=true;
+
+  const $=id=>document.getElementById(id);
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const COMMAND_RE=/(?:换头像|换个头像|换上|当头像|设成头像|做头像|用作头像|选一张|选一个|挑一张|挑一个|你自己选|你来选|你自己挑|哪张好|用哪张|情侣头像|我们换头像)/i;
+  let handling=false;
+
+  function currentPersona(){
+    return window.currentChatPersona||(
+      window.state&&Array.isArray(state.personas)
+        ?state.personas.find(p=>String(p.id)===String(state.activeChatId||""))
+        :null
+    )||null;
+  }
+  function activeMessages(){
+    return window.state&&Array.isArray(state.chatMessages)?state.chatMessages:[];
+  }
+  function sourceOf(msg){
+    if(!msg)return "";
+    const values=[msg.content,msg.originalMedia,msg.mediaSource,msg.url,msg.imageUrl,msg.image];
+    for(const value of values){
+      const src=String(value||"");
+      if(/^(?:data:image\/|blob:|https?:\/\/)/i.test(src))return src;
+    }
+    return "";
+  }
+  function isImage(msg){
+    const type=String(msg&&msg.type||"").toLowerCase();
+    return !!(msg&&msg.role==="user"&&["image","textphoto","photo","generated-image"].includes(type)&&sourceOf(msg));
+  }
+  function isCommand(msg){
+    return !!(msg&&msg.role==="user"&&String(msg.type||"text").toLowerCase()==="text"&&!msg.avatarChoiceHandledV294&&COMMAND_RE.test(String(msg.content||"")));
+  }
+  function findRequest(){
+    const arr=activeMessages();
+    let commandIndex=-1;
+    for(let i=arr.length-1;i>=Math.max(0,arr.length-24);i--){
+      if(isCommand(arr[i])){commandIndex=i;break;}
+    }
+    if(commandIndex<0)return null;
+
+    let start=0;
+    for(let i=commandIndex-1;i>=0;i--){
+      if(arr[i]&&arr[i].role==="assistant"){start=i+1;break;}
+    }
+    const candidates=[];
+    for(let i=start;i<=commandIndex;i++){
+      if(isImage(arr[i]))candidates.push({msg:arr[i],index:i,src:sourceOf(arr[i])});
+    }
+    return {arr,command:arr[commandIndex],commandIndex,candidates:candidates.slice(-6)};
+  }
+
+  function compactMessage(msg){
+    if(!msg||typeof msg!=="object")return false;
+    const type=String(msg.type||"").toLowerCase();
+    if(!["image","textphoto","photo","generated-image","sticker"].includes(type))return false;
+    const src=sourceOf(msg);
+    if(!src)return false;
+    let changed=false;
+    if(msg.content!==src){msg.content=src;changed=true;}
+    ["url","mediaSource","originalMedia","imageUrl","image"].forEach(key=>{
+      if(msg[key]===src){delete msg[key];changed=true;}
+    });
+    return changed;
+  }
+  function compactAllMessageMedia(){
+    if(!window.state)return false;
+    let changed=false;
+    const seen=new Set();
+    const groups=[];
+    if(Array.isArray(state.chatMessages))groups.push(state.chatMessages);
+    if(state.chatRecords&&typeof state.chatRecords==="object"){
+      Object.values(state.chatRecords).forEach(arr=>{if(Array.isArray(arr))groups.push(arr);});
+    }
+    groups.forEach(arr=>{
+      if(seen.has(arr))return;
+      seen.add(arr);
+      arr.forEach(msg=>{if(compactMessage(msg))changed=true;});
+    });
+    return changed;
+  }
+
+  const previousSnapshot=typeof window.baobaoStorageSnapshot==="function"?window.baobaoStorageSnapshot:null;
+  if(previousSnapshot&&!previousSnapshot.__bbCompactV294){
+    const wrappedSnapshot=function(){
+      const snapshot=previousSnapshot.apply(this,arguments);
+      const cloneMessages=arr=>Array.isArray(arr)?arr.map(msg=>{
+        if(!msg||typeof msg!=="object")return msg;
+        const copy={...msg};
+        compactMessage(copy);
+        return copy;
+      }):arr;
+      if(Array.isArray(snapshot.chatMessages))snapshot.chatMessages=cloneMessages(snapshot.chatMessages);
+      if(snapshot.chatRecords&&typeof snapshot.chatRecords==="object"){
+        snapshot.chatRecords=Object.fromEntries(Object.entries(snapshot.chatRecords).map(([key,arr])=>[key,cloneMessages(arr)]));
+      }
+      return snapshot;
+    };
+    wrappedSnapshot.__bbCompactV294=true;
+    wrappedSnapshot.__bbPrevious=previousSnapshot;
+    window.baobaoStorageSnapshot=wrappedSnapshot;
+    try{baobaoStorageSnapshot=wrappedSnapshot;}catch(_){ }
+  }
+
+  function loadImage(src,timeout=5000){
+    return new Promise((resolve,reject)=>{
+      const img=new Image();
+      const timer=setTimeout(()=>{img.onload=img.onerror=null;reject(new Error("图片读取超时"));},timeout);
+      img.onload=()=>{clearTimeout(timer);resolve(img);};
+      img.onerror=()=>{clearTimeout(timer);reject(new Error("图片读取失败"));};
+      img.src=src;
+    });
+  }
+  async function compressSource(src,options){
+    if(typeof window.compressImageToBudget==="function"){
+      try{return await window.compressImageToBudget(src,options);}catch(_){ }
+    }
+    const img=await loadImage(src);
+    const maxDim=Number(options&&options.maxDim)||720;
+    const quality=Number(options&&options.quality)||.72;
+    const scale=Math.min(1,maxDim/Math.max(img.naturalWidth||1,img.naturalHeight||1));
+    const width=Math.max(1,Math.round((img.naturalWidth||1)*scale));
+    const height=Math.max(1,Math.round((img.naturalHeight||1)*scale));
+    const canvas=document.createElement("canvas");
+    canvas.width=width;canvas.height=height;
+    const ctx=canvas.getContext("2d",{alpha:false});
+    ctx.fillStyle="#fff";ctx.fillRect(0,0,width,height);ctx.drawImage(img,0,0,width,height);
+    return canvas.toDataURL("image/jpeg",quality);
+  }
+  async function avatarSource(src){
+    return compressSource(src,{maxDim:480,quality:.72,maxChars:78000,minDim:260,minQuality:.42,mime:"image/webp"});
+  }
+  async function chatImageSource(file){
+    if(typeof window.compressImageToBudget==="function"){
+      return window.compressImageToBudget(file,{maxDim:900,quality:.70,maxChars:180000,minDim:420,minQuality:.42,mime:"image/webp"});
+    }
+    if(typeof window.compressImage==="function")return window.compressImage(file,900,.72);
+    return new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>resolve(null);r.readAsDataURL(file);});
+  }
+
+  function personaDescription(p){
+    return [p&&p.name,p&&p.persona,p&&p.personality,p&&p.brief,p&&p.setting,p&&p.description,p&&p.prompt]
+      .filter(Boolean).join("\n").slice(0,4500);
+  }
+  async function chooseIndex(request,p){
+    if(request.candidates.length<=1)return 0;
+    if(typeof window.sendChatCompletion!=="function")return Math.floor(Math.random()*request.candidates.length);
+    const details=request.candidates.map((candidate,i)=>`${i+1}. ${String(candidate.msg.visionDesc||candidate.msg.visionDescription||"候选头像").slice(0,180)}`);
+    try{
+      const raw=await Promise.race([
+        window.sendChatCompletion([
+          {role:"system",content:"你正在替聊天角色按照自己的人设和审美挑选头像。必须选择一张，不许拒绝，只输出数字。"},
+          {role:"user",content:`角色：${p&&p.name||"对方"}\n人设：${personaDescription(p)||"自然审美"}\n候选：\n${details.join("\n")}\n只回复1到${request.candidates.length}之间的一个数字。`}
+        ]),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("选择超时")),8000))
+      ]);
+      const hit=String(raw||"").match(/\d+/);
+      const value=hit?Number(hit[0])-1:-1;
+      if(value>=0&&value<request.candidates.length)return value;
+    }catch(_){ }
+    return Math.floor(Math.random()*request.candidates.length);
+  }
+
+  function updateAvatarDisplays(p,src){
+    p.photo=src;
+    if(window.state&&Array.isArray(state.personas)){
+      const saved=state.personas.find(item=>String(item.id)===String(p.id));
+      if(saved)saved.photo=src;
+    }
+    const header=$("chatHeadAvatar");
+    if(header)header.innerHTML=`<img src="${String(src).replace(/"/g,"&quot;")}">`;
+    document.querySelectorAll("#chatRoom .msg-row:not(.me) .msg-avatar").forEach(box=>{
+      let img=box.querySelector("img");
+      if(!img){img=document.createElement("img");box.textContent="";box.appendChild(img);}
+      img.src=src;
+    });
+    try{if(typeof window.updateChatHead==="function")window.updateChatHead(p);}catch(_){ }
+    try{if(typeof window.renderChatList==="function")window.renderChatList();}catch(_){ }
+    try{if(typeof window.renderContactsQuickRow==="function")window.renderContactsQuickRow();}catch(_){ }
+    try{if(typeof window.bbApplyChatAvatarShapesV290==="function")window.bbApplyChatAvatarShapesV290();}catch(_){ }
+  }
+  async function pushReply(text){
+    const msg={role:"assistant",type:"text",content:String(text||""),time:Date.now(),id:"msg_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),avatarChoiceV294:true};
+    state.chatMessages.push(msg);
+    if(typeof window.appendChatMessageRow==="function")window.appendChatMessageRow();
+    else if(typeof window.renderChatMessages==="function")window.renderChatMessages();
+    try{if(typeof window.baobaoNotifyIncomingReply==="function")window.baobaoNotifyIncomingReply(text);}catch(_){ }
+  }
+  function setTyping(active){
+    try{if(typeof window.bbTypingBubbleV292==="function")window.bbTypingBubbleV292(active);}catch(_){ }
+    try{
+      const status=$("chatHeadLiveStatus");
+      if(status){status.textContent=active?"正在输入…":"";status.classList.toggle("bb-show-typing",active);}
+    }catch(_){ }
+  }
+  async function forceSave(){
+    compactAllMessageMedia();
+    if(window.state&&state.activeChatId&&state.chatRecords)state.chatRecords[state.activeChatId]=state.chatMessages;
+    try{
+      if(typeof window.saveLocal==="function"){
+        window.saveLocal();
+        if(typeof window.saveLocal.flush==="function")return window.saveLocal.flush()!==false;
+      }
+    }catch(_){ }
+    return true;
+  }
+  async function processRequest(request){
+    if(handling)return true;
+    handling=true;
+    const p=currentPersona();
+    if(!p){handling=false;return false;}
+    request.command.avatarChoiceHandledV294=true;
+    request.command.avatarChoiceHandledV293=true;
+    setTyping(true);
+    try{
+      await sleep(260);
+      if(!request.candidates.length){
+        await pushReply("你先把头像图发给我。 ");
+        await forceSave();
+        return true;
+      }
+      const index=await chooseIndex(request,p);
+      const chosen=request.candidates[Math.max(0,Math.min(request.candidates.length-1,index))];
+      const compressed=await avatarSource(chosen.src);
+      chosen.msg.chosenAsAvatarV294=true;
+      updateAvatarDisplays(p,compressed);
+      const reply=request.candidates.length===1?"行，那我用这张。":"我选第"+(index+1)+"张，这张更像我。";
+      await pushReply(reply);
+      const ok=await forceSave();
+      if(typeof window.showToast==="function")window.showToast(ok?"TA已经自己选好并换上头像":"头像已换上，但本地空间仍然不足",!ok);
+      try{if(typeof window.generateInnerVoiceForCurrentPersona==="function")window.generateInnerVoiceForCurrentPersona();}catch(_){ }
+      return true;
+    }catch(error){
+      request.command.avatarChoiceHandledV294=false;
+      if(typeof window.showToast==="function")window.showToast(error&&error.message?error.message:"头像更换失败",true);
+      return true;
+    }finally{
+      setTyping(false);
+      handling=false;
+      window.__baobaoReplyPending=false;
+      const btn=$("chatReplyBtn");if(btn)btn.classList.remove("loading");
+    }
+  }
+
+  function installTriggerWrapper(){
+    const original=window.triggerAIReply;
+    if(typeof original!=="function"||original.__bbAvatarChoiceV294)return;
+    const wrapped=async function(){
+      const request=findRequest();
+      if(request)return processRequest(request);
+      return original.apply(this,arguments);
+    };
+    wrapped.__bbAvatarChoiceV294=true;
+    wrapped.__bbPrevious=original;
+    window.triggerAIReply=wrapped;
+    try{triggerAIReply=wrapped;}catch(_){ }
+  }
+  function installReplyCapture(){
+    const btn=$("chatReplyBtn");
+    if(!btn||btn.__bbAvatarCaptureV294)return;
+    btn.__bbAvatarCaptureV294=true;
+    btn.addEventListener("click",event=>{
+      const request=findRequest();
+      if(!request)return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      processRequest(request);
+    },true);
+  }
+
+  function addCompressedImages(sources){
+    if(!sources.length)return;
+    state.chatMessages=state.chatMessages||[];
+    const now=Date.now();
+    sources.forEach((src,i)=>{
+      const msg={role:"user",type:"image",content:src,caption:"[图片]",time:now+i,id:"msg_"+(now+i)+"_"+Math.random().toString(36).slice(2,7),delivery:"sent"};
+      state.chatMessages.push(msg);
+      if(typeof window.baobaoRecognizeImage==="function")setTimeout(()=>window.baobaoRecognizeImage(msg),30+i*80);
+    });
+    if(window.state&&state.activeChatId&&state.chatRecords)state.chatRecords[state.activeChatId]=state.chatMessages;
+    try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();}catch(_){ }
+    try{if(typeof window.renderChatList==="function")window.renderChatList();}catch(_){ }
+    forceSave();
+  }
+  function installAlbumCapture(){
+    const input=$("bbAlbumInput");
+    if(!input||input.__bbCompressedUploadV294)return;
+    input.__bbCompressedUploadV294=true;
+    input.setAttribute("multiple","");
+    input.addEventListener("change",async event=>{
+      const files=Array.from(event.target.files||[]).slice(0,6);
+      if(!files.length)return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      const valid=files.filter(file=>file&&file.size<=12*1024*1024);
+      if(valid.length!==files.length&&typeof window.showToast==="function")window.showToast("已跳过超过12MB的图片",true);
+      const results=[];
+      for(const file of valid){
+        try{const data=await chatImageSource(file);if(data)results.push(data);}catch(_){ }
+      }
+      event.target.value="";
+      addCompressedImages(results);
+      if(typeof window.showToast==="function"&&results.length>1)window.showToast(`已发送${results.length}张图片`);
+    },true);
+  }
+
+  function boot(){
+    installTriggerWrapper();
+    installReplyCapture();
+    installAlbumCapture();
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  [80,300,900,2200,5000,9000].forEach(ms=>setTimeout(boot,ms));
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+
+  setTimeout(()=>{
+    if(compactAllMessageMedia())forceSave();
+  },1600);
+})();
+
+/* baobao-v295-quote-voice-sticker-interaction-fix */
+(function(){
+  "use strict";
+  if(window.__bbQuoteVoiceStickerFixV295)return;
+  window.__bbQuoteVoiceStickerFixV295=true;
+
+  const $=id=>document.getElementById(id);
+
+  /* 1. 引用消息只保留一份，修复追加消息时同一引用块出现两次。 */
+  function dedupeQuoteBlocks(root){
+    const scope=root||$("chatMsgs");
+    if(!scope||!scope.querySelectorAll)return;
+    scope.querySelectorAll(".bubble").forEach(bubble=>{
+      const quotes=Array.from(bubble.querySelectorAll(".bb-msg-quote"));
+      if(quotes.length<2)return;
+      const first=quotes[0];
+      const firstKey=(first.textContent||"").replace(/\s+/g," ").trim();
+      quotes.slice(1).forEach(quote=>{
+        const key=(quote.textContent||"").replace(/\s+/g," ").trim();
+        if(!key||key===firstKey||quotes.length>1)quote.remove();
+      });
+    });
+  }
+
+  function dedupeQuoteHtml(html){
+    const text=String(html==null?"":html);
+    if(!text.includes("bb-msg-quote"))return text;
+    try{
+      const template=document.createElement("template");
+      template.innerHTML=text;
+      const quotes=Array.from(template.content.querySelectorAll(".bb-msg-quote"));
+      quotes.slice(1).forEach(node=>node.remove());
+      return template.innerHTML;
+    }catch(_){
+      return text;
+    }
+  }
+
+  function wrapCustomBubble(){
+    const original=window.customBubble;
+    if(typeof original!=="function"||original.__bbDedupeQuoteV295)return;
+    const wrapped=function(){
+      return dedupeQuoteHtml(original.apply(this,arguments));
+    };
+    wrapped.__bbDedupeQuoteV295=true;
+    wrapped.__bbPrevious=original;
+    window.customBubble=wrapped;
+  }
+
+  function wrapRenderer(name){
+    const original=window[name];
+    if(typeof original!=="function"||original.__bbDedupeQuoteV295)return;
+    const wrapped=function(){
+      const result=original.apply(this,arguments);
+      requestAnimationFrame(()=>dedupeQuoteBlocks($("chatMsgs")));
+      return result;
+    };
+    wrapped.__bbDedupeQuoteV295=true;
+    wrapped.__bbPrevious=original;
+    window[name]=wrapped;
+  }
+
+  let quoteObserver=null;
+  function observeQuotes(){
+    const wrap=$("chatMsgs");
+    if(!wrap||wrap.__bbQuoteObservedV295)return;
+    wrap.__bbQuoteObservedV295=true;
+    quoteObserver=new MutationObserver(()=>dedupeQuoteBlocks(wrap));
+    quoteObserver.observe(wrap,{childList:true,subtree:true});
+    dedupeQuoteBlocks(wrap);
+  }
+
+  /* 2. 语音气泡只保留一个小播放符号，去掉重复的大三角。 */
+  function installVoiceStyle(){
+    if($("bbVoiceSinglePlayV295"))return;
+    const style=document.createElement("style");
+    style.id="bbVoiceSinglePlayV295";
+    style.textContent=`
+      #chatRoom .bb-mm243-play{
+        -webkit-appearance:none!important;
+        appearance:none!important;
+        box-sizing:border-box!important;
+        width:18px!important;
+        height:20px!important;
+        min-width:18px!important;
+        padding:0!important;
+        margin:0!important;
+        border:0!important;
+        border-radius:0!important;
+        background:transparent!important;
+        color:#606064!important;
+        font:700 15px/20px -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif!important;
+        text-align:center!important;
+        text-indent:0!important;
+        box-shadow:none!important;
+        overflow:visible!important;
+      }
+      #chatRoom .bb-mm243-voice.playing .bb-mm243-play{
+        width:18px!important;
+        height:20px!important;
+        border:0!important;
+        background:transparent!important;
+        color:#606064!important;
+        font-size:14px!important;
+      }
+      #chatRoom .bb-mm243-voice.loading .bb-mm243-play{
+        width:15px!important;
+        height:15px!important;
+        min-width:15px!important;
+        color:transparent!important;
+        font-size:0!important;
+        border:2px solid rgba(96,96,100,.25)!important;
+        border-top-color:#606064!important;
+        border-radius:50%!important;
+        background:transparent!important;
+      }
+      #chatRoom .bb-voice-bubble>span:first-child{
+        display:none!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  /* 3. 表情包面板只允许从工具箱里真正点“表情包”时打开。 */
+  let stickerArmedUntil=0;
+  let lastStickerOpenAt=0;
+
+  function stickerToolFromTarget(target){
+    const item=target&&target.closest
+      ?target.closest("#bbToolSheet .bb-sticker-tool-v238,#bbToolSheet .bb-sticker-tool")
+      :null;
+    if(!item)return null;
+    const rect=item.getBoundingClientRect();
+    const style=getComputedStyle(item);
+    const visible=style.display!=="none"&&style.visibility!=="hidden"&&style.pointerEvents!=="none"&&rect.width>=28&&rect.height>=28;
+    const saneSize=rect.width<=150&&rect.height<=150;
+    return visible&&saneSize?item:null;
+  }
+
+  function armSticker(event){
+    const item=stickerToolFromTarget(event.target);
+    stickerArmedUntil=item?Date.now()+900:0;
+  }
+
+  function wrapStickerOpen(){
+    const original=window.openBaobaoStickerPicker;
+    if(typeof original!=="function"||original.__bbExplicitOnlyV295)return;
+    const wrapped=function(){
+      const picker=$("bbStickerPicker");
+      if(picker&&picker.classList.contains("show"))return true;
+      const now=Date.now();
+      if(now>stickerArmedUntil)return false;
+      if(now-lastStickerOpenAt<280)return true;
+      stickerArmedUntil=0;
+      lastStickerOpenAt=now;
+      return original.apply(this,arguments);
+    };
+    wrapped.__bbExplicitOnlyV295=true;
+    wrapped.__bbPrevious=original;
+    window.openBaobaoStickerPicker=wrapped;
+  }
+
+  function hardenStickerTool(){
+    document.querySelectorAll("#bbToolSheet .bb-sticker-tool-v238,#bbToolSheet .bb-sticker-tool").forEach(item=>{
+      if(item.__bbExplicitV295)return;
+      item.__bbExplicitV295=true;
+      item.addEventListener("pointerdown",event=>{
+        if(stickerToolFromTarget(event.target))stickerArmedUntil=Date.now()+900;
+      },true);
+      item.addEventListener("touchstart",event=>{
+        if(stickerToolFromTarget(event.target))stickerArmedUntil=Date.now()+900;
+      },{capture:true,passive:true});
+    });
+  }
+
+  function closeGhostStickerPicker(event){
+    const picker=$("bbStickerPicker");
+    if(!picker||!picker.classList.contains("show"))return;
+    if(event&&event.target===picker&&typeof window.closeBaobaoStickerPicker==="function"){
+      window.closeBaobaoStickerPicker();
+    }
+  }
+
+  function boot(){
+    installVoiceStyle();
+    wrapCustomBubble();
+    wrapRenderer("renderChatMessages");
+    wrapRenderer("appendChatMessageRow");
+    observeQuotes();
+    wrapStickerOpen();
+    hardenStickerTool();
+    dedupeQuoteBlocks($("chatMsgs"));
+  }
+
+  document.addEventListener("pointerdown",armSticker,true);
+  document.addEventListener("touchstart",armSticker,{capture:true,passive:true});
+  document.addEventListener("click",closeGhostStickerPicker,true);
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});
+  else boot();
+  [80,300,900,2200,5000,9000].forEach(ms=>setTimeout(boot,ms));
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
 })();
