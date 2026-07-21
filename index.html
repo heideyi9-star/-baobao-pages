@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<!-- index(286)：免加速器结构加速版；HTML、样式、脚本分离缓存，锁屏先显示，功能与数据保持不变。 -->
+<!-- index(288)：免加速器通知冲突修复版；统一使用一个 Service Worker，避免 baobao-sw.js 缺失弹窗。 -->
 <meta name="apple-mobile-web-app-title" content="斑斑豹">
 <script id="bb-early-start-v274">
 (function(){
@@ -19,18 +19,18 @@
   window.addEventListener("load",function(){tick();setTimeout(function(){clearInterval(timer);},15000);},{once:true});
 })();
 </script>
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=286">
-<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=286">
-<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=286">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=288">
+<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=288">
+<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=288">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=286">
-<script id="bb-pwa-cache-v286">
+<link rel="manifest" href="./baobao-manifest.json?v=288">
+<script id="bb-pwa-cache-v288">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=286",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=288",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 286 免加速器结构加速版</title>
+<title>豹豹机4.9 · 288 免加速器稳定版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -150,11 +150,11 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
-<link rel="stylesheet" href="./app.css?v=287">
-<script defer src="./app.js?v=287"></script>
+<link rel="stylesheet" href="./app.css?v=288">
+<script defer src="./app.js?v=288"></script>
 
 </head>
-<body><div id="bbBootMarkV287" style="position:fixed;left:-9999px" aria-hidden="true">287</div>
+<body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
 
 <div class="baobao-message-banner" id="baobaoMessageBanner" aria-live="polite">

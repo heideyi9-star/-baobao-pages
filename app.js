@@ -28126,7 +28126,25 @@ async function baobaoVision(payload){
   }
 
   function swUrl(){
-    return new URL("./baobao-sw.js",location.href).href;
+    /* 288：缓存与通知统一使用同一个 Service Worker，避免同作用域互相覆盖。 */
+    return new URL("./sw.js",location.href).href;
+  }
+
+  function isStaticGithubPages(){
+    return /(^|\.)github\.io$/i.test(location.hostname);
+  }
+
+  function hasCustomNotificationBackend(){
+    const values=[
+      window.state&&state.backendUrl,
+      window.state&&state.music&&state.music.backendUrl,
+      localStorage.getItem("bb_backend_url_v235"),
+      window.BAOBAO_BACKEND
+    ];
+    return values.some(function(item){
+      const value=String(item||"").trim();
+      return value&&!value.includes("localhost")&&!value.includes("8-209-237-116.sslip.io");
+    });
   }
 
   function manifestUrl(){
@@ -28224,7 +28242,11 @@ async function baobaoVision(payload){
         status("通知权限还没有允许","error");
       }
     }else{
-      status("关闭时仍使用原来的手动回复");
+      if(isStaticGithubPages()&&!hasCustomNotificationBackend()){
+        status("免加速器版暂未配置后台通知；前台聊天不受影响");
+      }else{
+        status("关闭时仍使用原来的手动回复");
+      }
     }
   }
 
@@ -28303,6 +28325,10 @@ async function baobaoVision(payload){
         !("PushManager" in window)
       ){
         throw new Error("这台设备当前不支持网页推送");
+      }
+
+      if(isStaticGithubPages()&&!hasCustomNotificationBackend()){
+        throw new Error("当前免加速器版还没有后台通知服务器，请先关闭“后台消息通知”。聊天功能不受影响。");
       }
 
       status("正在连接 iPhone 通知…");
@@ -29267,6 +29293,9 @@ ${offline}
   }
 
   function boot(){
+    if(isStaticGithubPages()&&!hasCustomNotificationBackend()&&enabled()){
+      localStorage.removeItem(ENABLE_KEY);
+    }
     installSettingsRow();
     wrapSend();
     wrapManualReply();

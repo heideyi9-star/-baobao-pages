@@ -1,5 +1,5 @@
-/* 豹豹机 287：结构分离缓存。HTML 先返回，CSS/JS 独立缓存，后续桌面启动无需重复解析内联大文件。 */
-const CACHE_NAME = "baobao-shell-v287";
+/* 豹豹机 288：结构分离缓存。HTML 先返回，CSS/JS 独立缓存，后续桌面启动无需重复解析内联大文件。 */
+const CACHE_NAME = "baobao-shell-v288";
 const SHELL = [
   "./",
   "./index.html",
@@ -66,4 +66,57 @@ self.addEventListener("fetch", event => {
       catch (_) { return Response.error(); }
     })());
   }
+});
+
+
+/* 288：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
+function bbParsePush(event){
+  if(!event.data)return {};
+  try{return event.data.json()||{};}catch(error){
+    try{return {body:event.data.text()};}catch(inner){return {};}
+  }
+}
+
+self.addEventListener("push",event=>{
+  const data=bbParsePush(event);
+  const title=String(data.title||data.personaName||"豹豹机");
+  const body=String(data.body||data.message||data.text||"收到一条新消息");
+  const chatId=String(data.chatId||data.personaId||"");
+  const target=String(data.url||data.appUrl||"./");
+  const icon=new URL("./apple-touch-icon.png",self.registration.scope).href;
+  const options={
+    body,
+    icon:data.icon||icon,
+    badge:data.badge||icon,
+    tag:String(data.tag||("baobao-chat-"+(chatId||"message"))),
+    renotify:true,
+    data:{url:target,chatId},
+    silent:false
+  };
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title,options),
+    self.clients.matchAll({type:"window",includeUncontrolled:true}).then(list=>{
+      list.forEach(client=>client.postMessage({type:"BAOBAO_PUSH_RECEIVED",chatId}));
+    })
+  ]));
+});
+
+self.addEventListener("notificationclick",event=>{
+  event.notification.close();
+  const data=event.notification.data||{};
+  const url=new URL(data.url||"./",self.location.origin);
+  if(data.chatId)url.searchParams.set("bbPushChat",String(data.chatId));
+  event.waitUntil(self.clients.matchAll({type:"window",includeUncontrolled:true}).then(async list=>{
+    for(const client of list){
+      try{
+        const current=new URL(client.url);
+        if(current.origin===url.origin){
+          await client.focus();
+          client.postMessage({type:"BAOBAO_PUSH_RECEIVED",chatId:String(data.chatId||"")});
+          return;
+        }
+      }catch(error){}
+    }
+    return self.clients.openWindow(url.href);
+  }));
 });
