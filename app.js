@@ -1,3 +1,67 @@
+/* 豹豹机 287：把大量 DOMContentLoaded 初始化拆成小批次，先让锁屏可操作，再在后台补齐隐藏页面。 */
+(function(){
+  "use strict";
+  var nativeAdd=document.addEventListener.bind(document);
+  var queued=[];
+  var ready=false;
+  var readyEvent=null;
+
+  function invoke(item){
+    try{
+      var listener=item.listener;
+      if(typeof listener==="function") listener.call(document,readyEvent);
+      else if(listener&&typeof listener.handleEvent==="function") listener.handleEvent(readyEvent);
+    }catch(error){
+      console.warn("豹豹机延迟初始化步骤已跳过",error);
+    }
+  }
+
+  function drainBatch(){
+    if(!queued.length){
+      window.__bbBackgroundInitDoneV287=true;
+      try{document.documentElement.dataset.bbReady="287";}catch(_){}
+      return;
+    }
+    var started=performance.now();
+    var count=0;
+    while(queued.length && count<5 && performance.now()-started<8){
+      invoke(queued.shift());
+      count++;
+    }
+    setTimeout(drainBatch,16);
+  }
+
+  function startDrain(){
+    if(!queued.length)return;
+    // 第一项是主 init，立即执行，确保时钟、锁屏、上划解锁先可用。
+    invoke(queued.shift());
+    // 连续让出两帧给首屏绘制，再分批初始化联系人、朋友圈、查手机等隐藏页面。
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ setTimeout(drainBatch,24); });
+    });
+  }
+
+  document.addEventListener=function(type,listener,options){
+    if(type==="DOMContentLoaded" && listener){
+      if(ready || document.readyState!=="loading"){
+        queued.push({listener:listener,options:options});
+        if(ready && queued.length===1) setTimeout(drainBatch,0);
+      }else{
+        queued.push({listener:listener,options:options});
+      }
+      return;
+    }
+    return nativeAdd(type,listener,options);
+  };
+
+  nativeAdd("DOMContentLoaded",function(event){
+    ready=true;
+    readyEvent=event;
+    window.__bbDomReadyAtV287=performance.now();
+    startDrain();
+  },{once:true});
+})();
+
 /* 豹豹机 286：从主 HTML 拆出的完整脚本，顺序保持不变。 */
 window.beautySettings = (function(){
   try{ return JSON.parse(localStorage.getItem("beautySettings") || "{}"); }
