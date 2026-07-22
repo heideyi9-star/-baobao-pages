@@ -41093,10 +41093,10 @@ window.updateArchiveChatStyleHintV324=function(){
 /* baobao-page1-single-layout-v342 */
 (function(){
   "use strict";
-  if(window.__bbPage1SingleLayoutV346)return;
-  window.__bbPage1SingleLayoutV346=true;
+  if(window.__bbPage1SingleLayoutV347)return;
+  window.__bbPage1SingleLayoutV347=true;
 
-  var STYLE_ID='bbPage1SingleLayoutV346Style';
+  var STYLE_ID='bbPage1SingleLayoutV347Style';
   var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
   var scheduled=false;
 
@@ -41260,7 +41260,7 @@ window.updateArchiveChatStyleHintV324=function(){
       column-gap:8px!important;
       row-gap:18px!important;
       align-content:start!important;
-      padding:14px 20px 0!important;
+      padding:19px 20px 0!important;
       margin:0!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page > .app{
@@ -41292,7 +41292,7 @@ window.updateArchiveChatStyleHintV324=function(){
       margin:2px 0 0!important;
     }
 
-    /* 按用户要求：底栏再往上 5px */
+    /* 维持底栏不变；本次仅下移中间八个图标 5px */
     html body #desktop:not(.page-two-mode) > .dock,
     html body #desktop:not(.page-two-mode) .dock{
       position:absolute!important;
@@ -41336,7 +41336,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
 
     /* 设置/美化打开后不与桌面叠加 */
-    html body.bb-v346-panel-open #desktop{
+    html body.bb-v347-panel-open #desktop{
       visibility:hidden!important;
       opacity:0!important;
       pointer-events:none!important;
@@ -41377,7 +41377,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function syncPanelState(){
     var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
-    document.body.classList.toggle('bb-v346-panel-open',open);
+    document.body.classList.toggle('bb-v347-panel-open',open);
   }
 
   function applyInline(){
@@ -41409,7 +41409,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     desktop.querySelectorAll('.apps-page').forEach(function(page){
       page.style.setProperty('height','244px','important');
-      page.style.setProperty('padding','14px 20px 0','important');
+      page.style.setProperty('padding','19px 20px 0','important');
       page.style.setProperty('row-gap','18px','important');
     });
     desktop.querySelectorAll('.apps-page > .app').forEach(function(item){
@@ -41446,7 +41446,7 @@ window.updateArchiveChatStyleHintV324=function(){
     var oldOpen=window.openPanel;
     if(typeof oldOpen==='function'&&!oldOpen.__bbV344){
       var wrappedOpen=function(){
-        document.body.classList.add('bb-v346-panel-open');
+        document.body.classList.add('bb-v347-panel-open');
         var result=oldOpen.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,30);
