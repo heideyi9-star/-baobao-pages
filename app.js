@@ -41375,3 +41375,92 @@ window.updateArchiveChatStyleHintV324=function(){
   }
   observe();
 })();
+
+/* baobao-page1-showcase-bigger-v327 */
+(function(){
+  "use strict";
+  if(window.__bbPage1ShowcaseBiggerV327)return;
+  window.__bbPage1ShowcaseBiggerV327=true;
+
+  function injectStyle(){
+    var old=document.getElementById("bbPage1ShowcaseBiggerV327Style");
+    if(old)old.remove();
+    var style=document.createElement("style");
+    style.id="bbPage1ShowcaseBiggerV327Style";
+    style.textContent=`
+      html body #desktop:not(.page-two-mode) .desk-scroll{
+        padding-top:68px!important;
+        padding-bottom:118px!important;
+      }
+      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+        width:calc(100% - 12px)!important;
+        margin:0 auto 18px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
+        padding:18px 18px 16px!important;
+        border-radius:30px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-head{
+        grid-template-columns:72px minmax(0,1fr) auto!important;
+        gap:13px!important;
+        min-height:72px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-left,
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
+        width:72px!important;
+        height:72px!important;
+        min-width:72px!important;
+        min-height:72px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
+        width:23px!important;
+        height:23px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
+        min-width:60px!important;
+        padding:9px 12px!important;
+        font-size:14px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-title{
+        font-size:17px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
+        margin-top:9px!important;
+        font-size:12px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-date{
+        font-size:12px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
+        gap:10px!important;
+        margin-top:15px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
+        height:96px!important;
+        min-height:96px!important;
+        border-radius:10px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
+        height:50px!important;
+        margin-top:15px!important;
+        padding:0 16px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
+        gap:20px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-action{
+        width:22px!important;
+        height:22px!important;
+        font-size:22px!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function install(){ injectStyle(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",function(){setTimeout(install,0)});
+  [80,300,900,2200].forEach(function(ms){setTimeout(install,ms)});
+})();
