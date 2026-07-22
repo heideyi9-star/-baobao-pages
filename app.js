@@ -37392,10 +37392,10 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
 
   function stylePrompt(prompt,style){
     const map={
-      photo:"写实手机随手拍风格，自然光线，真实材质和生活感，不要文字水印。",
-      portrait:"精致人物头像构图，主体清晰，适合作为社交头像，不要文字水印。",
+      photo:"写实手机随手拍风格：photorealistic, realistic skin texture with visible pores, candid unedited iPhone snapshot, subtle film grain, slight motion blur, imperfect natural focus, soft natural light or single warm ambient source, natural asymmetry, slightly messy hair, realistic fabric wrinkles；背景带日常生活痕迹（吃了一半的饭菜、外卖盒、随手放的餐具、桌上散落的手机充电线等），不刻意摆拍。避免：过度磨皮、塑料感皮肤、doll-like symmetrical face、CGI/3D渲染感、过饱和影棚光、多余或畸形手指、模糊、文字、水印、边框。",
+      portrait:"精致人物头像构图，主体清晰，适合作为社交头像，保留自然皮肤质感与轻微不对称，不要文字水印，避免磨皮过度和塑料感。",
       anime:"高质量二次元插画，画面干净，人物细节完整，不要文字水印。",
-      cinema:"电影感摄影，氛围光影，构图有故事感，不要文字水印。",
+      cinema:"电影感摄影，氛围光影，构图有故事感，保留胶片颗粒与自然光影层次，不要文字水印。",
       none:""
     };
     const extra=map[style]||"";
@@ -38110,10 +38110,10 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   }
   function stylePrompt(prompt,style){
     const map={
-      photo:"写实的 iPhone 随手拍照片，自然光线、真实皮肤和生活环境，不要文字、水印或边框。",
-      portrait:"真实人物头像照片，适合作为社交头像，自然皮肤，不要文字或水印。",
+      photo:"写实的 iPhone 随手拍照片：photorealistic, realistic skin texture with visible pores, candid unedited snapshot, subtle film grain, slight motion blur, imperfect natural focus, soft natural or single warm ambient light, natural asymmetry, slightly messy hair, realistic fabric wrinkles；背景带真实日常生活痕迹（吃了一半的饭菜、外卖盒、随手放的餐具、桌面散落的手机充电线小票等），非摆拍感。避免：过度磨皮、塑料感/蜡质皮肤、doll-like对称脸、CGI或3D渲染感、过饱和的影棚闪光灯、多余或畸形手指、模糊、文字、水印、边框。",
+      portrait:"真实人物头像照片，适合作为社交头像，保留自然皮肤质感和轻微不对称，不要文字或水印，避免磨皮过度和塑料感。",
       anime:"高质量二次元插画，人物细节完整，不要文字或水印。",
-      cinema:"电影感真实摄影，氛围光影和自然构图，不要文字或水印。",
+      cinema:"电影感真实摄影，氛围光影和自然构图，保留胶片颗粒感，不要文字或水印。",
       none:""
     };
     const extra=map[clean(style)]||map.photo;
