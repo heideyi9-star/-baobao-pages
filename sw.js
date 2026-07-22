@@ -1,5 +1,5 @@
-/* 豹豹机 326：年下黏糊 / 年上简洁双极人设版。 */
-const CACHE_NAME = "baobao-shell-v326";
+/* 豹豹机 331：首页大组件稳定防回弹版。 */
+const CACHE_NAME = "baobao-shell-v331";
 const SHELL = [
   "./",
   "./index.html",

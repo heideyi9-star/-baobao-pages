@@ -41790,3 +41790,155 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("pageshow",function(){ setTimeout(install,0); });
   [80,260,700,1600,3200].forEach(function(ms){ setTimeout(install,ms); });
 })();
+
+/* baobao-page1-layout-stable-lock-v331 */
+(function(){
+  "use strict";
+  if(window.__bbPage1StableLockV331)return;
+  window.__bbPage1StableLockV331=true;
+
+  var STYLE_ID="bbPage1StableLockV331Style";
+  var scheduled=false;
+
+  function cssText(){return `
+    html body #desktop:not(.page-two-mode) .desk-scroll{
+      padding-top:96px!important;
+      padding-bottom:88px!important;
+    }
+    html body #desktop:not(.page-two-mode) .desk-scroll > #clock,
+    html body #desktop:not(.page-two-mode) .desk-scroll > #desktopNote,
+    html body #desktop:not(.page-two-mode) .desk-scroll > .avatar-box,
+    html body #desktop:not(.page-two-mode) .desk-scroll > #deskIns{
+      display:none!important;
+      visibility:hidden!important;
+      opacity:0!important;
+      height:0!important;
+      min-height:0!important;
+      margin:0!important;
+      padding:0!important;
+      overflow:hidden!important;
+      pointer-events:none!important;
+    }
+    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+      display:block!important;
+      position:relative!important;
+      width:calc(100% + 36px)!important;
+      max-width:none!important;
+      min-width:0!important;
+      height:auto!important;
+      margin:16px 0 26px -18px!important;
+      padding:0!important;
+      inset:auto!important;
+      transform:none!important;
+      opacity:1!important;
+      visibility:visible!important;
+      overflow:visible!important;
+      z-index:15!important;
+    }
+    html body #desktop.page-two-mode .desk-scroll > #photoWidget.bb-page1-showcase{display:none!important}
+    html body #desktop:not(.page-two-mode) .bb-showcase-shell{
+      width:100%!important;
+      height:auto!important;
+      padding:24px 24px 22px!important;
+      border-radius:38px!important;
+      background:rgba(255,255,255,.67)!important;
+      border:1px solid rgba(255,255,255,.78)!important;
+      box-shadow:0 12px 30px rgba(0,0,0,.055)!important;
+      -webkit-backdrop-filter:blur(18px)!important;
+      backdrop-filter:blur(18px)!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-head{
+      display:grid!important;
+      grid-template-columns:88px minmax(0,1fr) auto!important;
+      align-items:center!important;
+      gap:16px!important;
+      min-height:88px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-left,
+    html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
+      width:88px!important;
+      height:88px!important;
+      min-width:88px!important;
+      min-height:88px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
+      width:28px!important;height:28px!important;right:-4px!important;bottom:-4px!important;font-size:12px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-temp{
+      min-width:72px!important;padding:12px 14px!important;font-size:16px!important;border-radius:18px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-title{font-size:20px!important;letter-spacing:.6px!important}
+    html body #desktop:not(.page-two-mode) .bb-showcase-sub{margin-top:12px!important;font-size:13px!important;line-height:1.5!important}
+    html body #desktop:not(.page-two-mode) .bb-showcase-date{padding-top:56px!important;font-size:13px!important}
+    html body #desktop:not(.page-two-mode) .bb-showcase-grid{
+      display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;margin-top:20px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
+      width:100%!important;height:136px!important;min-height:136px!important;margin:0!important;padding:0!important;
+      transform:none!important;rotate:none!important;clip-path:none!important;border-radius:13px!important;overflow:hidden!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo img{
+      width:100%!important;height:100%!important;object-fit:cover!important;transform:none!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-footer,
+    html body #desktop:not(.page-two-mode) .bb-showcase-pill{height:66px!important}
+    html body #desktop:not(.page-two-mode) .bb-showcase-footer{margin-top:20px!important;padding:0 22px!important}
+    html body #desktop:not(.page-two-mode) .bb-showcase-actions{gap:26px!important}
+    html body #desktop:not(.page-two-mode) .bb-showcase-action{width:27px!important;height:27px!important;font-size:27px!important}
+    html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
+      display:block!important;width:100%!important;margin:20px 0 0!important;padding:0!important;overflow:hidden!important;
+    }
+    html body #desktop:not(.page-two-mode) .apps-page{padding-top:18px!important;row-gap:30px!important}
+    html body #desktop:not(.page-two-mode) .apps-page > .app{transform:scale(1.03)!important;transform-origin:center top!important}
+    html body #desktop:not(.page-two-mode) .dots{margin-top:22px!important}
+    html body #desktop:not(.page-two-mode) .dock{top:auto!important;bottom:24px!important}
+  `}
+
+  function putLast(){
+    var style=document.getElementById(STYLE_ID);
+    if(!style){
+      style=document.createElement("style");
+      style.id=STYLE_ID;
+      style.textContent=cssText();
+    }
+    if(style.parentNode!==document.head || style!==document.head.lastElementChild){
+      document.head.appendChild(style);
+    }
+  }
+
+  function enforceOrder(){
+    var desktop=document.getElementById("desktop");
+    var scroll=desktop&&desktop.querySelector(".desk-scroll");
+    var widget=document.getElementById("photoWidget");
+    var viewport=scroll&&scroll.querySelector(":scope > .pages-viewport");
+    if(scroll&&widget&&viewport&&widget.nextElementSibling!==viewport){
+      scroll.insertBefore(widget,viewport);
+    }
+    putLast();
+  }
+
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(function(){scheduled=false;enforceOrder()});
+  }
+
+  function install(){
+    enforceOrder();
+    if(!document.head.__bbV331Observer){
+      document.head.__bbV331Observer=new MutationObserver(schedule);
+      document.head.__bbV331Observer.observe(document.head,{childList:true});
+    }
+    var desktop=document.getElementById("desktop");
+    if(desktop&&!desktop.__bbV331Observer){
+      desktop.__bbV331Observer=new MutationObserver(schedule);
+      desktop.__bbV331Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:["class","style"]});
+    }
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",install);
+  [0,50,150,400,900,1800,3500,6000,10000].forEach(function(ms){setTimeout(install,ms)});
+})();
