@@ -37356,3 +37356,330 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   window.BaobaoSingleChatCoreV307={request:cleanRequest,buildPrompt:()=>coreSystemPrompt(recentMessages(24)),split:splitReply};
   console.log("豹豹机 307：单一自然聊天核心已启用");
 })();
+
+
+/* baobao-image-generation-v308-script */
+(function(){
+  "use strict";
+  if(window.__bbImageGenerationV308)return;
+  window.__bbImageGenerationV308=true;
+
+  const $=id=>document.getElementById(id);
+  const clean=v=>String(v==null?"":v).trim();
+  const esc=v=>String(v==null?"":v)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+  function injectStyle(){
+    if($("bbImageGenerationV308Style"))return;
+    const style=document.createElement("style");
+    style.id="bbImageGenerationV308Style";
+    style.textContent=`
+      .bb-gen-v308-presets{display:flex;flex-wrap:wrap;gap:7px;margin:10px 0 12px}
+      .bb-gen-v308-chip{border:0;background:#f1f1f3;color:#333;border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700}
+      .bb-gen-v308-chip.is-on{background:#222;color:#fff}
+      .bb-gen-v308-row{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+      .bb-gen-v308-select{width:100%;height:43px;border:1px solid rgba(0,0,0,.09);background:#f7f7f8;border-radius:12px;padding:0 11px;font-size:13px;color:#222;outline:none}
+      .bb-gen-v308-note{font-size:11px;color:#999;line-height:1.55;margin-top:9px}
+      .bb-gen-v308-tool .bb-tool-icon{position:relative}
+      .bb-gen-v308-tool .bb-tool-icon:after{content:"✦";position:absolute;right:4px;top:2px;font-size:9px;line-height:1;color:#111}
+      .bb-gen-v308-loading{opacity:.62;pointer-events:none}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function apiConfig(override){
+    let api={};
+    try{
+      api=override||((typeof window.getImageAPI==="function"&&window.getImageAPI())||JSON.parse(localStorage.getItem("imageAPI")||"{}"));
+    }catch(_){api=override||{}}
+    return {
+      provider:clean(api.provider),
+      endpoint:clean(api.endpoint),
+      key:clean(api.key),
+      model:clean(api.model)
+    };
+  }
+
+  function endpointFor(value){
+    let endpoint=clean(value).replace(/\/+$/g,"");
+    if(!endpoint)return "";
+    if(/\/images\/generations(?:\?|$)/i.test(endpoint))return endpoint;
+    if(/\/v\d+(?:beta\d+)?$/i.test(endpoint)||/\/openai$/i.test(endpoint))return endpoint+"/images/generations";
+    return endpoint+"/v1/images/generations";
+  }
+
+  function parseError(data,raw,status){
+    return clean(
+      data?.error?.message||data?.error||data?.message||data?.msg||data?.detail||raw||("生图接口错误 "+status)
+    ).slice(0,240);
+  }
+
+  function collectImages(data){
+    const out=[];
+    const add=item=>{
+      if(!item)return;
+      if(typeof item==="string"){
+        const value=clean(item);
+        if(/^https?:\/\//i.test(value)||/^data:image\//i.test(value))out.push(value);
+        else if(/^[A-Za-z0-9+/=\r\n]{200,}$/.test(value))out.push("data:image/png;base64,"+value.replace(/\s+/g,""));
+        return;
+      }
+      if(Array.isArray(item)){item.forEach(add);return;}
+      if(typeof item!=="object")return;
+      const direct=item.url||item.image_url||item.output_url||item.file_url||item.src;
+      if(direct)add(direct);
+      const b64=item.b64_json||item.base64||item.image_base64||item.b64||item.image;
+      if(typeof b64==="string")add(b64);
+      [item.data,item.images,item.output,item.outputs,item.result,item.results,item.artifacts].forEach(add);
+    };
+    add(data?.data);
+    add(data?.images);
+    add(data?.output);
+    add(data?.result);
+    add(data?.results);
+    add(data?.artifacts);
+    add(data?.image);
+    return [...new Set(out)].filter(Boolean);
+  }
+
+  async function postImage(api,prompt,size,includeResponseFormat){
+    const url=endpointFor(api.endpoint);
+    const body={model:api.model,prompt,n:1,size};
+    if(includeResponseFormat)body.response_format="b64_json";
+    let response;
+    try{
+      response=await fetch(url,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Accept":"application/json",
+          "Authorization":"Bearer "+api.key
+        },
+        body:JSON.stringify(body)
+      });
+    }catch(_){
+      throw new Error("无法连接生图站点，请检查网络、接口地址或浏览器跨域权限");
+    }
+    const raw=await response.text();
+    let data={};
+    try{data=raw?JSON.parse(raw):{}}catch(_){data={raw}}
+    if(!response.ok){
+      const error=new Error(parseError(data,raw,response.status));
+      error.status=response.status;
+      throw error;
+    }
+    const images=collectImages(data);
+    if(!images.length)throw new Error("接口返回成功，但没有找到图片数据");
+    return images;
+  }
+
+  async function generate(prompt,options){
+    const api=apiConfig(options&&options.api);
+    if(!api.endpoint||!api.key||!api.model)throw new Error("请先在设置 → API 设置 → 生图 API 中填写地址、Key 和模型");
+    const size=clean(options&&options.size)||"1024x1024";
+    try{
+      return await postImage(api,prompt,size,true);
+    }catch(error){
+      if([400,404,415,422].includes(Number(error&&error.status))){
+        return postImage(api,prompt,size,false);
+      }
+      throw error;
+    }
+  }
+
+  function imageToCompressedDataUrl(source){
+    if(!/^data:image\//i.test(source))return Promise.resolve(source);
+    return new Promise(resolve=>{
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          const max=1280;
+          const scale=Math.min(1,max/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
+          const width=Math.max(1,Math.round((img.naturalWidth||img.width)*scale));
+          const height=Math.max(1,Math.round((img.naturalHeight||img.height)*scale));
+          const canvas=document.createElement("canvas");
+          canvas.width=width;canvas.height=height;
+          const ctx=canvas.getContext("2d",{alpha:false});
+          ctx.fillStyle="#fff";ctx.fillRect(0,0,width,height);ctx.drawImage(img,0,0,width,height);
+          resolve(canvas.toDataURL("image/jpeg",.82));
+        }catch(_){resolve(source)}
+      };
+      img.onerror=()=>resolve(source);
+      img.src=source;
+    });
+  }
+
+  function persona(){
+    return window.currentChatPersona||(
+      window.state&&Array.isArray(state.personas)
+        ?state.personas.find(p=>String(p.id)===String(state.activeChatId||""))
+        :null
+    )||{};
+  }
+
+  function stylePrompt(prompt,style){
+    const map={
+      photo:"写实手机随手拍风格，自然光线，真实材质和生活感，不要文字水印。",
+      portrait:"精致人物头像构图，主体清晰，适合作为社交头像，不要文字水印。",
+      anime:"高质量二次元插画，画面干净，人物细节完整，不要文字水印。",
+      cinema:"电影感摄影，氛围光影，构图有故事感，不要文字水印。",
+      none:""
+    };
+    const extra=map[style]||"";
+    return clean(prompt)+(extra?"\n\n画面要求："+extra:"");
+  }
+
+  function pushImageMessage(source,sender,prompt){
+    if(!window.state)return;
+    if(!Array.isArray(state.chatMessages))state.chatMessages=[];
+    state.chatMessages.push({
+      id:"bb_gen_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+      role:sender==="user"?"user":"assistant",
+      type:"image",
+      content:source,
+      generated:true,
+      generatedPrompt:prompt,
+      time:Date.now(),
+      delivery:sender==="user"?"sent":"received"
+    });
+    try{
+      const key=String(state.activeChatId||"");
+      if(!state.chatRecords||typeof state.chatRecords!=="object")state.chatRecords={};
+      if(key)state.chatRecords[key]=state.chatMessages;
+      if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal();
+    }catch(_){}
+    try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();else if(typeof renderChatMessages==="function")renderChatMessages();}catch(_){}
+    try{if(typeof window.renderChatList==="function")window.renderChatList();else if(typeof renderChatList==="function")renderChatList();}catch(_){}
+  }
+
+  function setTyping(active){
+    try{if(typeof window.bbTypingBubbleV292==="function")window.bbTypingBubbleV292(!!active);}catch(_){}
+    try{if(typeof window.bbSetNaturalTypingV250==="function")window.bbSetNaturalTypingV250(!!active);}catch(_){}
+  }
+
+  window.baobaoGenerateImageV308=async function(){
+    const prompt=clean($("bbImagePromptV308")?.value);
+    if(!prompt){if(typeof showToast==="function")showToast("请输入画面描述",true);return;}
+    const style=clean($("bbImageStyleV308")?.value)||"photo";
+    const size=clean($("bbImageSizeV308")?.value)||"1024x1024";
+    const sender=clean($("bbImageSenderV308")?.value)||"assistant";
+    const button=$("bbImageGenerateButtonV308");
+    if(button){button.classList.add("bb-gen-v308-loading");button.textContent="生成中…";}
+    if(sender!=="user")setTyping(true);
+    try{
+      const finalPrompt=stylePrompt(prompt,style);
+      const images=await generate(finalPrompt,{size});
+      const stable=await imageToCompressedDataUrl(images[0]);
+      pushImageMessage(stable,sender,prompt);
+      if(typeof window.closeBaobaoToolModal==="function")window.closeBaobaoToolModal();
+      if(typeof showToast==="function")showToast(" 图片已生成，已保存到聊天相册");
+    }catch(error){
+      if(typeof showToast==="function")showToast(" "+clean(error&&error.message||error||"生成失败"),true);
+    }finally{
+      setTyping(false);
+      if(button){button.classList.remove("bb-gen-v308-loading");button.textContent="生成并发送";}
+    }
+  };
+
+  window.openBaobaoImageGeneratorV308=function(){
+    injectStyle();
+    try{if(typeof window.closeBaobaoTools==="function")window.closeBaobaoTools();}catch(_){}
+    const box=$("bbToolModalContent");
+    const modal=$("bbToolModal");
+    if(!box||!modal){if(typeof showToast==="function")showToast("生图面板加载失败",true);return;}
+    const p=persona();
+    box.innerHTML=`
+      <div class="bb-tool-title">生成图片</div>
+      <div class="bb-tool-sub">使用“设置 → API 设置 → 生图 API”。生成后会直接发进当前聊天，并出现在查手机相册里。</div>
+      <textarea class="bb-tool-textarea" id="bbImagePromptV308" maxlength="1200" placeholder="描述你想生成的画面…"></textarea>
+      <div class="bb-gen-v308-presets">
+        <button class="bb-gen-v308-chip is-on" type="button" data-style="photo">生活照</button>
+        <button class="bb-gen-v308-chip" type="button" data-style="portrait">头像</button>
+        <button class="bb-gen-v308-chip" type="button" data-style="anime">插画</button>
+        <button class="bb-gen-v308-chip" type="button" data-style="cinema">电影感</button>
+        <button class="bb-gen-v308-chip" type="button" data-style="none">不加风格</button>
+      </div>
+      <input type="hidden" id="bbImageStyleV308" value="photo">
+      <div class="bb-gen-v308-row">
+        <select class="bb-gen-v308-select" id="bbImageSizeV308">
+          <option value="1024x1024">正方形 1:1</option>
+          <option value="1024x1536">竖图 2:3</option>
+          <option value="1536x1024">横图 3:2</option>
+        </select>
+        <select class="bb-gen-v308-select" id="bbImageSenderV308">
+          <option value="assistant">${esc(p.name||"角色")}发给我</option>
+          <option value="user">我自己生成</option>
+        </select>
+      </div>
+      <div class="bb-gen-v308-note">接口必须兼容 OpenAI 的 <b>/images/generations</b>。接口不允许浏览器跨域时会直接提示失败，不使用本地假图。</div>
+      <div class="bb-tool-actions">
+        <button class="bb-tool-cancel" onclick="closeBaobaoToolModal()">取消</button>
+        <button class="bb-tool-send" id="bbImageGenerateButtonV308" onclick="baobaoGenerateImageV308()">生成并发送</button>
+      </div>`;
+    box.querySelectorAll(".bb-gen-v308-chip").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        box.querySelectorAll(".bb-gen-v308-chip").forEach(x=>x.classList.remove("is-on"));
+        btn.classList.add("is-on");
+        const input=$("bbImageStyleV308");if(input)input.value=btn.dataset.style||"photo";
+      });
+    });
+    modal.classList.add("show");
+    setTimeout(()=>$("bbImagePromptV308")?.focus(),80);
+  };
+
+  window.openImagePromptEdit=window.openBaobaoImageGeneratorV308;
+  window.generateImageFromAPI=function(prompt,apiOverride){return generate(prompt,{api:apiOverride,size:"1024x1024"}).then(list=>list[0]);};
+  window.runImageGeneration=async function(prompt){
+    const images=await generate(prompt,{size:"1024x1024"});
+    const stable=await imageToCompressedDataUrl(images[0]);
+    pushImageMessage(stable,"assistant",prompt);
+    return stable;
+  };
+  window.testImageAPI=async function(){
+    const api={
+      endpoint:clean($("imageEndpoint")?.value),
+      key:clean($("imageApiKey")?.value),
+      model:clean($("imageModel")?.value),
+      provider:clean($("imageProvider")?.value)
+    };
+    if(typeof showToast==="function")showToast(" 正在测试生图接口…");
+    try{
+      await generate("一只可爱的橘猫，简洁插画风，不要文字",{api,size:"1024x1024"});
+      if(typeof showToast==="function")showToast(" 生图接口连接成功");
+    }catch(error){if(typeof showToast==="function")showToast(" "+clean(error&&error.message||error),true);}
+  };
+
+  const icon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="1.5"/><path d="m5 18 5-5 3 3 2-2 4 4M17 3v4M15 5h4"/></svg>';
+  function ensureToolEntry(){
+    injectStyle();
+    const grid=document.querySelector("#bbToolSheet .bb-tool-grid");
+    if(!grid)return;
+    let item=grid.querySelector(".bb-gen-v308-tool");
+    if(!item){
+      item=document.createElement("div");
+      item.className="bb-tool-item bb-gen-v308-tool";
+      item.innerHTML='<div class="bb-tool-icon">'+icon+'</div>生图';
+      item.onclick=window.openBaobaoImageGeneratorV308;
+      const imageItem=[...grid.querySelectorAll(".bb-tool-item")].find(x=>clean(x.textContent)==="图片");
+      if(imageItem&&imageItem.nextSibling)grid.insertBefore(item,imageItem.nextSibling);else grid.appendChild(item);
+    }else item.onclick=window.openBaobaoImageGeneratorV308;
+  }
+
+  function updateSettingHint(){
+    const panel=$("imageAPI");
+    if(!panel)return;
+    const hint=panel.querySelector("h1 + div");
+    if(hint)hint.textContent="用于聊天生图，直接调用兼容 OpenAI /images/generations 的接口。生成图片与视觉识别完全分开。";
+    const endpoint=$("imageEndpoint");
+    if(endpoint)endpoint.placeholder="https://你的生图站点/v1";
+  }
+
+  function install(){ensureToolEntry();updateSettingHint();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+  [300,900,1800,3500,7000,12000,17000].forEach(delay=>setTimeout(install,delay));
+  const grid=document.querySelector("#bbToolSheet .bb-tool-grid");
+  if(grid)new MutationObserver(()=>requestAnimationFrame(ensureToolEntry)).observe(grid,{childList:true});
+  window.BaobaoImageGenerationV308={generate,open:window.openBaobaoImageGeneratorV308,endpointFor};
+  console.log("豹豹机 308：生图 API 已接入聊天工具箱");
+})();

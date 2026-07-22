@@ -1,5 +1,5 @@
-/* 豹豹机 307：单一自然聊天核心，并保留此前全部功能。 */
-const CACHE_NAME = "baobao-shell-v307";
+/* 豹豹机 308：接入聊天生图 API，并保留此前全部功能。 */
+const CACHE_NAME = "baobao-shell-v308";
 const SHELL = [
   "./",
   "./index.html",

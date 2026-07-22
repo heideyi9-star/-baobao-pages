@@ -24,7 +24,7 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=307">
+<link rel="manifest" href="./baobao-manifest.json?v=308">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
@@ -150,8 +150,8 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
-<link rel="stylesheet" href="./app.css?v=307">
-<script defer src="./app.js?v=307"></script>
+<link rel="stylesheet" href="./app.css?v=308">
+<script defer src="./app.js?v=308"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -574,7 +574,7 @@ API Key<br>
 <div class="panel ios-settings" id="imageAPI">
 <span class="ios-back" onclick="closePanel('imageAPI')">‹</span>
 <h1>生图 API</h1>
-<div style="font-size:14px;color:#888;margin:10px 0;line-height:1.6">这一套只用于生成图片，与视觉识别完全分开，可以填写另一个站点。</div>
+<div style="font-size:14px;color:#888;margin:10px 0;line-height:1.6">用于聊天生图，直接调用兼容 OpenAI /images/generations 的接口；与视觉识别完全分开。</div>
 <div class="card">服务商备注<br><input type="text" id="imageProvider" placeholder="生图站点 / OpenAI / 自定义"></div>
 <div class="card">生图 API Key<br><input type="text" id="imageApiKey" placeholder="sk-xxxx"></div>
 <div class="card">生图接口地址<br><input type="text" id="imageEndpoint" placeholder="https://image.example.com/v1"></div>
@@ -2192,3 +2192,5 @@ API Key<br>
 <!-- index(284)：锁屏解锁兜底。即使主初始化中途报错，锁屏仍可上划或点击进入密码页。 -->
 <style id="bb-lock-unlock-v284-style"></style>
 <template id="bb-lock-unlock-v284-script"></template>
+
+<!-- index(308)：生图 API 直接接入聊天工具箱，可选择由角色发送或自己生成，并保存到聊天相册。 -->
