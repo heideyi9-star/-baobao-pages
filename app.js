@@ -8877,7 +8877,7 @@ ${clean(reply)}
   }
   function moments(){
     const posts=safeParse(localStorage.getItem("baobao_moments_posts_v3"),[]);
-    return (Array.isArray(posts)?posts:[]).slice(0,10).map(p=>({
+    return (Array.isArray(posts)?posts:[]).slice(0,20).map(p=>({
       id:p.id||"",text:clean(p.text||"",120),
       images:Array.isArray(p.images)?p.images.filter(Boolean):[],
       location:clean(p.location||"",35),
@@ -8886,6 +8886,9 @@ ${clean(reply)}
       comments:Array.isArray(p.comments)?p.comments.map(x=>({
         name:x.name||"",text:clean(x.text||"",45),replyTo:x.replyTo||""
       })):[],
+      authorType:p.authorType==="persona"?"persona":"user",
+      personaId:String(p.personaId||""),
+      authorName:clean(p.authorName||"",40),
       createdAt:Number(p.createdAt||0)
     }));
   }
@@ -8942,10 +8945,10 @@ ${clean(reply)}
       return snap.contacts.length?"联系人共"+snap.contacts.length+"个："+snap.contacts.slice(0,6).map(x=>x.name).join("、"):"没有联系人";
     }
     if(key==="moments"){
-      const p=snap.moments[0];
-      if(!p)return "没有朋友圈动态";
+      const p=(snap.moments||[]).find(item=>item&&item.authorType!=="persona");
+      if(!p)return "没有发现用户本人发布的朋友圈动态；角色自己或其他角色发布的动态不属于用户。";
       const social=(p.likes.length||p.comments.length)?"，"+p.likes.length+"个赞、"+p.comments.length+"条评论":"";
-      return "最近动态：“"+clean(p.text||"[图片动态]",55)+"”"+social+(p.location?"，位置："+p.location:"");
+      return "用户本人最近发布的动态：“"+clean(p.text||"[图片动态]",55)+"”"+social+(p.location?"，位置："+p.location:"");
     }
     if(key==="album"){
       if(!snap.album.length)return "相册和照片组件里没有图片";
@@ -9265,6 +9268,7 @@ ${clean(reply)}
       "你是"+name+"。",
       situation,
       "内部已知结果："+detail,
+      "朋友圈归属必须严格判断：authorType 为 persona 的动态是角色本人或其他角色发的，绝不能说成用户发的；如果结果写着没有发现用户本人发布的动态，就禁止围绕朋友圈质问用户。",
       secrecy,
       "现在必须主动给用户发一到三句自然微信消息。",
       "不要等待用户先开口，不要解释任务，不要输出任何括号说明或记忆标签。",
@@ -9492,12 +9496,19 @@ ${clean(reply)}
       }
 
       if(!reply){
-        reply=fallbackText(event,role);
+        event.antiReconConsumed=true;
+        event.antiReconConsumedAt=Date.now();
+        save();
+        if(typeof window.showToast==="function")window.showToast("消息生成失败",true);
+        return;
       }
 
       appendMessages(reply,event,role);
     }catch(err){
-      appendMessages(fallbackText(event,role),event,role);
+      event.antiReconConsumed=true;
+      event.antiReconConsumedAt=Date.now();
+      save();
+      if(typeof window.showToast==="function")window.showToast("消息生成失败",true);
     }finally{
       window.__baobaoAntiReconReplyPending=false;
       if(btn)btn.classList.remove("loading");
@@ -9524,8 +9535,8 @@ ${clean(reply)}
       antiReconDetail:String(opts.detail||"")
     };
 
-    const card=makeMemoryCard(opts,role);
-    state.chatMessages.push(card,event);
+    // 310：事件仍写入角色记忆，但不再往聊天里塞一张巨大的可点击系统卡片。
+    state.chatMessages.push(event);
     syncConversation(role);
     save();
 
@@ -34356,150 +34367,11 @@ ${offline}
 })();
 
 /* ===================================================================
-   bb-anti-stuck-panel-guard（296 新增）
-   问题背景：这个项目里"设置""美化""聊天设置""图标编辑"等几十个页面
-   都是用同一种写法做的——整块 <div class="panel"> 铺满全屏，
-   要显示就把它的 style.display 设成 "block"，要关就设成 "none"。
-   这些面板大多数没有单独指定层级（z-index），大家挤在同一层，
-   谁在最后面的 HTML 位置谁就盖在上面。
-
-   一旦某一次"关闭"没有真正执行到（比如某个功能里报了错、
-   或者两个操作前后脚触发、没等上一个关完下一个又开了），
-   就会有一块本该关掉的页面卡在屏幕最上层、但你却看不出来，
-   于是出现这几种现象：
-   　1）明明点的是语音气泡，跳转打开的却是设置里的某一行（因为
-   　   那一整块设置页其实一直卡在最上面，接收了你的点击）；
-   　2）整个页面看起来"卡住不动"（其实是有一层看不见的东西
-   　   挡在最上面，点哪都没反应）；
-   　3）偶尔闪一下黑框（卡住的面板背景没盖满或者过渡到一半）。
-
-   下面这段不去改各个功能各自的开关逻辑（那样的话要挨个改几十处，
-   还是会漏），而是加一层"兜底"：不管前面是哪个功能出了错，
-   固定每隔一小段时间检查一次——如果同时有超过一个面板在显示，
-   只留下最后一个真正打开的，其余全部强制关闭；一旦某处代码
-   出错（JS error），也立刻做一次这样的清理，防止卡死。
+   bb-anti-stuck-panel-guard-v310-disabled
+   旧版会在每次点击时读取十五个面板样式，并每 700ms 轮询一次；
+   iPhone 上会造成明显掉帧和“点一下就卡”。310 已移除这套全局扫描，
+   改由文件末尾的轻量导航清理器只在真正切页时执行。
 =================================================================== */
-(function(){
-  var PANEL_IDS = [
-    "beautify","chatBgSettings","settings","apiSettings","chatAPI",
-    "visionAPI","imageAPI","minimaxAPI","modal","iconEdit","textEdit",
-    "personaArchive","chatSettingsPanel","dualAvatarPanel","dataManagerPage"
-  ];
-  // 这两个是"真的会在聊天室里用到"的面板（聊天详情/双头像设置），
-  // 其余十几个都是桌面层级的设置页，正常情况下不该在聊天室开着的
-  // 同时还留在最上面——如果它们还开着，基本可以断定是没关干净的残留。
-  var CHAT_SCOPED_PANEL_IDS = ["chatSettingsPanel","dualAvatarPanel"];
-  var DESKTOP_ONLY_PANEL_IDS = PANEL_IDS.filter(function(id){
-    return CHAT_SCOPED_PANEL_IDS.indexOf(id) === -1;
-  });
-
-  var lastOpenedId = null;
-  var cleaning = false;
-
-  function panelEl(id){ return document.getElementById(id); }
-
-  function isPanelOpen(id){
-    var el = panelEl(id);
-    if(!el) return false;
-    return getComputedStyle(el).display !== "none";
-  }
-
-  function isChatRoomActive(){
-    var el = document.getElementById("chatRoom");
-    return !!el && getComputedStyle(el).display !== "none";
-  }
-
-  // 只留 keepId（如果传了）或"最后一次真正打开的那个"，其余全部关掉；
-  // 另外，只要聊天室是当前活动页面，桌面层级的设置页一律不该还开着，
-  // 不管当时是不是只剩它自己一个——这正是"点语音却跳到设置行"的根因。
-  function cleanupExtraPanels(keepId){
-    if(cleaning) return;
-    cleaning = true;
-    try{
-      if(isChatRoomActive()){
-        DESKTOP_ONLY_PANEL_IDS.forEach(function(id){
-          if(id === keepId) return;
-          if(isPanelOpen(id)){
-            var el = panelEl(id);
-            if(el) el.style.display = "none";
-          }
-        });
-      }
-
-      var openOnes = PANEL_IDS.filter(isPanelOpen);
-      if(openOnes.length > 1){
-        var keep = keepId && openOnes.indexOf(keepId) !== -1
-          ? keepId
-          : (lastOpenedId && openOnes.indexOf(lastOpenedId) !== -1 ? lastOpenedId : openOnes[openOnes.length - 1]);
-
-        openOnes.forEach(function(id){
-          if(id === keep) return;
-          var el = panelEl(id);
-          if(el) el.style.display = "none";
-        });
-      }
-    }catch(e){
-      // 清理逻辑本身不应该再引发新的报错
-    }
-    cleaning = false;
-  }
-
-  // 包一层 openPanel：每次真正打开某个面板时，记下它是"最新"的，
-  // 并顺手把其它可能卡住的面板关掉
-  var originalOpenPanel = window.openPanel;
-  if(typeof originalOpenPanel === "function"){
-    window.openPanel = function(id){
-      var result = originalOpenPanel.apply(this, arguments);
-      if(PANEL_IDS.indexOf(id) !== -1){
-        lastOpenedId = id;
-        setTimeout(function(){ cleanupExtraPanels(id); }, 0);
-      }
-      return result;
-    };
-  }
-
-  // 有些地方不走 openPanel，是直接 $("xxx").style.display="block"，
-  // 用 MutationObserver 盯着这些面板的 style 变化，同样做兜底清理
-  function watchPanels(){
-    PANEL_IDS.forEach(function(id){
-      var el = panelEl(id);
-      if(!el || el.__bbGuardWatched) return;
-      el.__bbGuardWatched = true;
-      var mo = new MutationObserver(function(){
-        if(getComputedStyle(el).display !== "none"){
-          lastOpenedId = id;
-        }
-        setTimeout(function(){ cleanupExtraPanels(); }, 0);
-      });
-      mo.observe(el, { attributes:true, attributeFilter:["style","class"] });
-    });
-  }
-
-  // 任何地方一旦报错，都做一次兜底清理，避免因为某次异常
-  // 导致某个面板永远卡在最上层
-  window.addEventListener("error", function(){
-    setTimeout(function(){ cleanupExtraPanels(); }, 0);
-  });
-  window.addEventListener("unhandledrejection", function(){
-    setTimeout(function(){ cleanupExtraPanels(); }, 0);
-  });
-
-  // 每点一下屏幕，都顺手查一次（几乎不耗性能，只是比较 15 个面板的 display）
-  document.addEventListener("click", function(){
-    setTimeout(function(){ cleanupExtraPanels(); }, 0);
-  }, true);
-
-  // 双保险：定时轮询
-  setInterval(function(){ cleanupExtraPanels(); }, 700);
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", watchPanels, {once:true});
-  }else{
-    watchPanels();
-  }
-  [50,300,1000,3000].forEach(function(ms){ setTimeout(watchPanels, ms); });
-})();
-
 /* ===================================================================
    bb-voice-longpress-double-fire-fix（296 新增）
    问题背景：聊天气泡上同时绑定了 touchstart 和 mousedown 两种"长按"
@@ -37865,4 +37737,173 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   const desktop=$("desktop");
   if(desktop)new MutationObserver(()=>requestAnimationFrame(moveDesktopInsBelowApps)).observe(desktop,{childList:true,subtree:true});
   console.log("豹豹机 309：生图提示词框与首页组件位置已修复");
+})();
+
+
+/* ===================================================================
+   豹豹机 310：朋友圈归属修复 + 点击卡顿清理
+   - 角色自己发的朋友圈不再被当成用户朋友圈。
+   - 反侦察记忆仍保留，但不再显示巨大 MEMORY EVENT 卡片。
+   - 删除旧版“每次点击扫描面板 + 700ms 轮询”，只在真正导航时清理。
+=================================================================== */
+(function(){
+  "use strict";
+  if(window.__bbMomentOwnershipAndTapSmoothV310)return;
+  window.__bbMomentOwnershipAndTapSmoothV310=true;
+
+  const PANEL_IDS=[
+    "beautify","chatBgSettings","settings","apiSettings","chatAPI",
+    "visionAPI","imageAPI","minimaxAPI","modal","iconEdit","textEdit",
+    "personaArchive","chatSettingsPanel","dualAvatarPanel","dataManagerPage"
+  ];
+
+  function saveState(){
+    try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal();}catch(_){ }
+  }
+
+  function removeOldMemoryCards(){
+    try{
+      if(typeof state==="undefined")return false;
+      const arrays=[];
+      if(Array.isArray(state.chatMessages))arrays.push(state.chatMessages);
+      if(state.chatRecords&&typeof state.chatRecords==="object"){
+        Object.values(state.chatRecords).forEach(list=>{
+          if(Array.isArray(list)&&!arrays.includes(list))arrays.push(list);
+        });
+      }
+      let changed=false;
+      arrays.forEach(list=>{
+        for(let i=list.length-1;i>=0;i--){
+          const message=list[i];
+          if(message&&(message.antiReconCard||message.type==="anti_recon_card")){
+            list.splice(i,1);
+            changed=true;
+          }
+        }
+      });
+      if(changed)saveState();
+      return changed;
+    }catch(_){return false;}
+  }
+
+  function userHasOwnMoment(){
+    try{
+      const posts=JSON.parse(localStorage.getItem("baobao_moments_posts_v3")||"[]");
+      return Array.isArray(posts)&&posts.some(post=>post&&post.authorType!=="persona");
+    }catch(_){return false;}
+  }
+
+  function cancelMisownedPendingEvents(){
+    try{
+      const posts=JSON.parse(localStorage.getItem("baobao_moments_posts_v3")||"[]");
+      const list=Array.isArray(posts)?posts:[];
+      const hasUserPost=list.some(post=>post&&post.authorType!=="persona");
+      const rolePostTexts=list
+        .filter(post=>post&&post.authorType==="persona")
+        .map(post=>String(post.text||"").replace(/\s+/g," ").trim())
+        .filter(Boolean);
+      if(typeof state==="undefined")return false;
+      const arrays=[];
+      if(Array.isArray(state.chatMessages))arrays.push(state.chatMessages);
+      if(state.chatRecords&&typeof state.chatRecords==="object"){
+        Object.values(state.chatRecords).forEach(messages=>{
+          if(Array.isArray(messages)&&!arrays.includes(messages))arrays.push(messages);
+        });
+      }
+      let changed=false;
+      arrays.forEach(messages=>messages.forEach(message=>{
+        if(!message||!message.antiReconEvent||message.antiReconConsumed)return;
+        const detail=String(message.antiReconDetail||message.content||"").replace(/\s+/g," ");
+        const matchesRolePost=rolePostTexts.some(text=>text.length>=4&&detail.includes(text.slice(0,Math.min(28,text.length))));
+        if(matchesRolePost||(!hasUserPost&&/朋友圈|最近动态/.test(detail))){
+          message.antiReconConsumed=true;
+          message.antiReconConsumedAt=Date.now();
+          changed=true;
+        }
+      }));
+      if(changed)saveState();
+      return changed;
+    }catch(_){return false;}
+  }
+
+  function panelOpen(id){
+    const panel=document.getElementById(id);
+    if(!panel)return false;
+    const style=panel.style;
+    return style.display==="block"||style.display==="flex"||panel.classList.contains("show");
+  }
+
+  function closeOtherPanels(keepId){
+    PANEL_IDS.forEach(id=>{
+      if(id===keepId)return;
+      const panel=document.getElementById(id);
+      if(!panel||!panelOpen(id))return;
+      panel.classList.remove("show");
+      panel.style.display="none";
+    });
+    try{
+      document.body.style.pointerEvents="";
+      const phone=document.querySelector(".phone");
+      if(phone)phone.style.pointerEvents="";
+      const demo=document.getElementById("chatDemo");
+      if(demo)demo.style.pointerEvents="";
+    }catch(_){ }
+  }
+
+  function wrapNavigation(name,keepResolver){
+    const original=window[name];
+    if(typeof original!=="function"||original.__bbTapSmoothV310)return;
+    const wrapped=function(){
+      const keep=typeof keepResolver==="function"?keepResolver.apply(this,arguments):"";
+      closeOtherPanels(keep||"");
+      return original.apply(this,arguments);
+    };
+    wrapped.__bbTapSmoothV310=true;
+    wrapped.__bbPrevious=original;
+    window[name]=wrapped;
+    try{if(typeof globalThis[name]!=="undefined")globalThis[name]=wrapped;}catch(_){ }
+  }
+
+  function hideAnyRenderedCard(){
+    document.querySelectorAll("#chatMsgs .bb-ar-memory-row").forEach(row=>row.remove());
+  }
+
+  function wrapRenderer(){
+    const original=window.renderChatMessages;
+    if(typeof original!=="function"||original.__bbNoMemoryCardV310)return;
+    const wrapped=function(){
+      const result=original.apply(this,arguments);
+      hideAnyRenderedCard();
+      return result;
+    };
+    wrapped.__bbNoMemoryCardV310=true;
+    wrapped.__bbPrevious=original;
+    window.renderChatMessages=wrapped;
+    try{renderChatMessages=wrapped;}catch(_){ }
+  }
+
+  function boot(){
+    const changed=removeOldMemoryCards()|cancelMisownedPendingEvents();
+    wrapRenderer();
+    wrapNavigation("openPanel",id=>String(id||""));
+    wrapNavigation("openChatRoom",()=>"");
+    wrapNavigation("openOfflineMode",()=>"");
+    wrapNavigation("openSubjectPhone",()=>"");
+    wrapNavigation("switchAppTab",()=>"");
+    try{
+      document.body.style.pointerEvents="";
+      const phone=document.querySelector(".phone");
+      if(phone)phone.style.pointerEvents="";
+      const demo=document.getElementById("chatDemo");
+      if(demo)demo.style.pointerEvents="";
+    }catch(_){ }
+    hideAnyRenderedCard();
+    if(changed&&typeof window.renderChatMessages==="function"){
+      try{window.renderChatMessages();}catch(_){ }
+    }
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+  [120,700,2200].forEach(ms=>setTimeout(boot,ms));
 })();
