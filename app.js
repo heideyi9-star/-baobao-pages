@@ -14957,7 +14957,14 @@ async function baobaoVision(payload){
       lines=lines[0].split("|").map(x=>x.trim()).filter(Boolean);
     }
 
-    return lines.slice(0,3).map(x=>x.slice(0,90));
+    const merged=[];
+    for(const line of lines){
+      const degenerate=!/[\u4e00-\u9fffA-Za-z0-9]/.test(line);
+      if(degenerate&&merged.length)merged[merged.length-1]=(merged[merged.length-1]+line).trim();
+      else if(!degenerate)merged.push(line);
+    }
+
+    return merged.slice(0,3).map(x=>x.slice(0,90));
   }
 
   function fallbackAppeal(person){
@@ -35161,6 +35168,8 @@ ${offline}
     text=text.split(/\n+/)[0]||text;
     if(text.length>36)text=text.slice(0,36);
     if(/(?:作为AI|系统|程序|功能|已自动回复|生成回复)/i.test(text))return "";
+    // 清洗后如果只剩标点/空白(比如裸的一个"?")，视为无效输出，交给下方兜底池
+    if(!/[\u4e00-\u9fffA-Za-z0-9]/.test(text))return "";
     return text;
   }
   function fallbackRoleReply(person,comment){
@@ -38792,7 +38801,7 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const type=clean(last.type||"text").toLowerCase();
     if(type==="transfer")return "用户刚发了真实转账卡。角色必须按自己的人设、关系和当下情绪决定收款或退回；回复最后另起一行输出 [[TRANSFER:ACCEPT]] 或 [[TRANSFER:RETURN]]，不要解释标记。";
     if(type==="sticker")return "用户刚发的是表情包。把它当作情绪/态度，不要误认成普通照片或链接。";
-    if(type==="image")return "用户刚发的是图片。只有视觉描述可靠时才能评价细节；看不清就按人设直接说看不清，禁止编造画面。";
+    if(type==="image")return "用户刚发的是图片。如果视觉描述可靠：必须像真实对象一样，具体点出画面里让你有反应的细节（东西是什么、什么颜色/材质/细节、跟你们的关系或梗有没有关联），带着符合人设的真实情绪去反应，可以惊讶、羡慕、调侃、心动、嫌弃等，不要含糊带过、不要写成鉴定报告式的客观描述，也可以顺着情绪连续发好几条短消息；只有描述完全不可靠或看不清时，才按人设直接说看不清，不能编造根本没提到的画面内容。";
     if(type==="voice")return "用户刚发的是语音。以转写内容为准自然回应，不要解释你读取了语音。";
     return "";
   }
@@ -38846,6 +38855,7 @@ ${userProfile()}
 7. 不要为了“正确”“体贴”擅自劝导、总结、教育、安慰或提供方案，除非这个角色确实会这么做。
 8. 情绪和态度有惯性：如果上一轮在生气、撒娇、冷战或开心，这一轮要延续这种状态自然演变，不能毫无理由瞬间恢复正常语气。
 9. 每一条回复都要像这个人在此刻脑子里冒出来的真实反应，不要输出成"正确答案"或"完整语篇"；允许不完整、跳跃、只回一半意思。
+10. 遇到让角色开心、惊喜、心动或觉得有趣的事（礼物、夸奖、好玩的图片等），可以自然表现得浮夸、话多、连续发好几条、用这个人本来就会用的网络热词和称呼；不要因为想显得"高级"或"克制"就把情绪压扁写成干巴巴的客观陈述——除非人设本身就是高冷、惜字如金或不擅表达。
 
 ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开头/相同口癖/相同句式】\n${recentAssistant.map((line,i)=>`${i+1}. ${line}`).join("\n")}\n\n`:""}${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
 只输出这个角色此刻会发出的聊天正文。`;
@@ -38978,7 +38988,9 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
         messages.push(...history);
         const raw=await cleanCompletion(messages);
         lastReply=cleanReply(raw);
+        const hasRealContent=/[\u4e00-\u9fffA-Za-z0-9]/.test(lastReply);
         lastScore=(window.BaobaoPersonaEngine&&typeof window.BaobaoPersonaEngine.aiStyleScore==="function")?window.BaobaoPersonaEngine.aiStyleScore(lastReply):0;
+        if(!hasRealContent)lastScore=100; // 整条回复只剩标点/空白，强制判定不合格，进入重写
         if(lastScore<20)break;
       }
       if(!lastReply)throw new Error("接口返回了空回复");
@@ -39005,6 +39017,24 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
       return null;
     }
   }
+  function isDegenerateFragment(text){
+    // 没有任何汉字/字母/数字，只剩标点符号或空白，视为"退化片段"（比如单独一个"?"或","）
+    return !/[\u4e00-\u9fffA-Za-z0-9]/.test(String(text||""));
+  }
+  function mergeDegenerateFragments(parts){
+    const merged=[];
+    for(const part of parts){
+      if(isDegenerateFragment(part)&&merged.length){
+        merged[merged.length-1]=(merged[merged.length-1]+part).trim();
+      }else if(isDegenerateFragment(part)){
+        // 开头就是退化片段且前面没有内容可依附时，直接丢弃这一条
+        continue;
+      }else{
+        merged.push(part);
+      }
+    }
+    return merged;
+  }
   function splitByPersona(reply){
     const person=currentPersona();
     const raw=[person.persona,person.personality,person.brief,person.setting,person.prompt].map(clean).join("\n");
@@ -39013,6 +39043,7 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
     if(/话多|碎碎念|表达欲强|消息轰炸|一连串|唠叨/.test(raw))max=5;
     let parts=cleanReply(reply).split(/\n+/).map(clean).filter(Boolean);
     parts=parts.filter((part,index)=>index===0||part!==parts[index-1]);
+    parts=mergeDegenerateFragments(parts);
     if(parts.length>max)parts=[...parts.slice(0,max-1),parts.slice(max-1).join("")];
     return parts.length?parts:["嗯"];
   }
@@ -39042,3 +39073,35 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
   window.addEventListener("pageshow",()=>setTimeout(pin,0));
   console.log("豹豹机 313：严格人设硬锁核心已启用");
 })();
+
+/* baobao-persona-debug-viewer-v313 */
+window.openPersonaDebugPanel = function(){
+  try{
+    const debug = (window.BaobaoPersonaEngine && typeof window.BaobaoPersonaEngine.getDebug === "function")
+      ? window.BaobaoPersonaEngine.getDebug()
+      : (window.baobaoLastPersonaDebug || null);
+
+    const metaEl = document.getElementById("personaDebugMeta");
+    const promptEl = document.getElementById("personaDebugPrompt");
+    const replyEl = document.getElementById("personaDebugReply");
+
+    if(!debug){
+      if(metaEl) metaEl.textContent = "还没有生成记录。先去和角色聊一句，再回来看这个页面。";
+      if(promptEl) promptEl.textContent = "";
+      if(replyEl) replyEl.textContent = "";
+    }else{
+      if(metaEl){
+        metaEl.textContent =
+          "角色：" + (debug.personaName || "未知") +
+          "　引擎：" + (debug.engine || "默认") +
+          "　时间：" + (debug.checkedAt ? new Date(debug.checkedAt).toLocaleString("zh-CN",{hour12:false}) : "未知");
+      }
+      if(promptEl) promptEl.textContent = debug.prompt || "（本次没有记录到系统提示词）";
+      if(replyEl) replyEl.textContent = debug.rawReply || "（本次没有记录到原始回复）";
+    }
+  }catch(e){
+    console.warn("打开人设诊断面板失败：", e && e.message);
+  }
+  if(typeof openPanel === "function") openPanel("personaDebugPage");
+  else { const p=document.getElementById("personaDebugPage"); if(p) p.style.display="block"; }
+};

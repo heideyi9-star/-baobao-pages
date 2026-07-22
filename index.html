@@ -407,6 +407,11 @@ onchange="fontFileChosen(this)">
 <div class="ios-row-label">API 设置</div>
 <div class="ios-row-chevron">›</div>
 </div>
+<div class="ios-row" data-label="查看最近一次人设Prompt" onclick="openPersonaDebugPanel()">
+<div class="ios-row-icon"></div>
+<div class="ios-row-label">查看最近一次人设 Prompt<div class="ios-row-desc">诊断：确认人设内容有没有真的发给模型</div></div>
+<div class="ios-row-chevron">›</div>
+</div>
 <div class="ios-row" data-label="Minimax语音合成" onclick="openPanel('minimaxAPI')">
 <div class="ios-row-icon"></div>
 <div class="ios-row-label">Minimax语音合成</div>
@@ -1179,6 +1184,18 @@ API Key<br>
 
 
 
+
+<div class="panel ios-settings" id="personaDebugPage">
+<span class="ios-back" onclick="closePanel('personaDebugPage')">‹</span>
+<h1>人设 Prompt 诊断</h1>
+<div class="ios-group" style="padding:14px 16px;">
+<div id="personaDebugMeta" style="font-size:13px;color:#888;margin-bottom:10px;"></div>
+<div style="font-size:13px;font-weight:600;margin-bottom:6px;">实际发给模型的完整系统提示词：</div>
+<pre id="personaDebugPrompt" style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6;background:#f7f7f7;border-radius:10px;padding:12px;max-height:45vh;overflow:auto;"></pre>
+<div style="font-size:13px;font-weight:600;margin:14px 0 6px;">模型原始回复：</div>
+<pre id="personaDebugReply" style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.6;background:#f7f7f7;border-radius:10px;padding:12px;max-height:20vh;overflow:auto;"></pre>
+</div>
+</div>
 
 <div class="panel ios-settings" id="dataManagerPage">
 <span class="ios-back" onclick="closePanel('dataManagerPage')">‹</span>
