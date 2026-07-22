@@ -1,5 +1,5 @@
-/* 豹豹机 303：查手机直达 App、NPC 独立口吻与桌面底栏下移缓存。 */
-const CACHE_NAME = "baobao-shell-v303";
+/* 豹豹机 304：取消本地生成兜底，查手机、短信与心声只使用对话 API。 */
+const CACHE_NAME = "baobao-shell-v304";
 const SHELL = [
   "./",
   "./index.html",

@@ -6043,8 +6043,7 @@ ${p.personality || "无"}
   const originalSendUser = window.sendUserMessage;
   if(typeof originalSendUser === "function"){
     window.sendUserMessage = function(){
-      originalSendUser.apply(this, arguments);
-      setTimeout(()=>window.generateInnerVoiceForCurrentPersonaV2(true), 80);
+      return originalSendUser.apply(this, arguments);
     };
   }
 
@@ -6303,6 +6302,7 @@ ${history||"暂无"}
   document.addEventListener("click",function(e){
     const btn=e.target.closest && e.target.closest("#innerVoiceBtn,.inner-voice-heart-btn");
     if(!btn) return;
+    if(window.BaobaoInnerVoice4)return;
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
@@ -6644,19 +6644,14 @@ ${history||"暂无"}
       }
       current.unreadVoice=false;
       save();renderHeart();
-      if(window.BaobaoInnerVoice3 && typeof BaobaoInnerVoice3.open==="function"){
+      if(window.BaobaoInnerVoice4 && typeof BaobaoInnerVoice4.open==="function"){
+        BaobaoInnerVoice4.open();
+      }else if(window.BaobaoInnerVoice3 && typeof BaobaoInnerVoice3.open==="function"){
         BaobaoInnerVoice3.open();
       }else if(typeof window.openInnerVoicePanel==="function"){
         openInnerVoicePanel();
       }
-      if(current.voiceDirty){
-        current.voiceDirty=false;save();
-        setTimeout(()=>{
-          if(window.BaobaoInnerVoice3 && typeof BaobaoInnerVoice3.generate==="function"){
-            BaobaoInnerVoice3.generate(true);
-          }
-        },80);
-      }
+      if(current.voiceDirty){current.voiceDirty=false;save();}
     });
     renderHeart();
   }
@@ -6677,9 +6672,8 @@ ${history||"暂无"}
       finally{
         setTimeout(()=>{
           scanMessages();
-          if(userMessages().length>0 && window.BaobaoInnerVoice3 && typeof BaobaoInnerVoice3.generate==="function"){
-            BaobaoInnerVoice3.generate(true);
-          }
+          const heart=$("innerVoiceBtn");
+          if(userMessages().length>0&&heart)heart.classList.add("has-new-voice");
         },120);
       }
     };
@@ -6786,27 +6780,30 @@ ${history||"暂无"}
     $("iv4Status").textContent=status||"";
   }
 
-  function parseJSON(text,fb){
+  function blankVoice(){return {first:"……",mind:"",unsent:"“……”",action:"",source:"empty"};}
+
+  function parseJSON(text){
     try{
       const m=String(text||"").match(/\{[\s\S]*\}/);
-      if(!m)return fb;
+      if(!m)return null;
       const o=JSON.parse(m[0]);
-      return {
-        first:o.firstReaction||o.first||fb.first,
-        mind:o.innerThought||o.mind||fb.mind,
-        unsent:o.unsent||fb.unsent,
-        action:o.action||fb.action,
+      const data={
+        first:String(o.firstReaction||o.first||"").trim(),
+        mind:String(o.innerThought||o.mind||"").trim(),
+        unsent:String(o.unsent||"").trim(),
+        action:String(o.action||"").trim(),
         source:"api"
       };
-    }catch(e){return fb}
+      return data.first&&data.mind&&data.unsent&&data.action?data:null;
+    }catch(e){return null}
   }
 
   async function generate(hash){
-    const p=persona(),fb=fallback();
-    render(fb,"正在生成完整心声…");
+    const p=persona();
+    render(blankVoice(),"正在使用对话 API 生成心声…");
     $("iv4State").classList.add("iv4-loading");
-    $("iv4StateText").textContent="正在读取当前状态";
-    if(typeof window.sendChatCompletion!=="function") return {...fb,hash,time:Date.now()};
+    $("iv4StateText").textContent="正在连接对话 API";
+    if(typeof window.sendChatCompletion!=="function") throw new Error("未配置对话 API");
     const hs=window.BaobaoHumanStateEngine&&BaobaoHumanStateEngine.get?BaobaoHumanStateEngine.get():{};
     const prompt=`请生成角色“${p.name||"角色"}”此刻完整、统一、实时的内心活动。四部分必须围绕同一段最近对话，全部重新生成，不能套模板，不能OOC。
 角色资料：${p.persona||"未填写"}
@@ -6822,9 +6819,11 @@ ${conversationText()}
                                            {role:"user",content:prompt}]);
       const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),10000));
       const raw=await Promise.race([req,timeout]);
-      return {...parseJSON(raw,fb),hash,time:Date.now()};
-    }catch(e){
-      return {...fb,hash,time:Date.now()};
+      const parsed=parseJSON(raw);
+      if(!parsed)throw new Error("心声返回格式不完整");
+      return {...parsed,hash,time:Date.now()};
+    }finally{
+      $("iv4State").classList.remove("iv4-loading");
     }
   }
 
@@ -6834,20 +6833,34 @@ ${conversationText()}
     if(userCount()===0){ if(typeof showToast==="function")showToast("先和他聊一句，才会产生心声",true); return; }
     const hash=await hashText(conversationText());
     const cached=readCache();
-    if(!force&&cached&&cached.hash===hash){render(cached,"已同步到当前对话");return}
+    if(!force){
+      if(cached)render(cached,cached.hash===hash?"已打开当前心声":"聊天有新变化，点“重新偷看”手动刷新");
+      else render(blankVoice(),"点“重新偷看”使用对话 API 生成心声");
+      $("iv4StateText").textContent=cached?"已读取上次 API 心声":"等待手动生成";
+      return;
+    }
     if(busy)return; busy=true;
-    const result=await generate(hash);
-    writeCache(result);render(result,result.source==="api"?"已根据当前对话刷新":"API暂不可用，已使用本地实时心声");
-    $("iv4StateText").textContent="已读取此刻的真实想法";
-    $("iv4State").classList.remove("iv4-loading");
-    busy=false;
+    try{
+      const result=await generate(hash);
+      writeCache(result);
+      render(result,"已使用当前对话 API 生成");
+      $("iv4StateText").textContent="已读取此刻的真实想法";
+      const heart=$("innerVoiceBtn");if(heart)heart.classList.remove("has-new-voice");
+    }catch(error){
+      if(cached)render(cached,"生成失败，已保留上次 API 心声");
+      else render(blankVoice(),"生成失败，请检查对话 API 后重试");
+      $("iv4StateText").textContent="生成失败";
+      if(typeof showToast==="function")showToast("心声生成失败："+String(error&&error.message||"未知错误"),true);
+    }finally{
+      $("iv4State").classList.remove("iv4-loading");
+      busy=false;
+    }
   }
 
   async function open(){
     createHeartUI();
     if(userCount()===0){ if(typeof showToast==="function")showToast("先和他聊一句，才会产生心声",true); return; }
     $("iv4Overlay").classList.add("show");
-    const cached=readCache(); if(cached)render(cached,"正在检查是否有新变化");
     await refresh(false);
   }
 
@@ -6858,9 +6871,8 @@ ${conversationText()}
     e.preventDefault();e.stopPropagation();e.stopImmediatePropagation();open();
   },true);
 
-  // 消息变化后自动生成新的心声。使用防抖，避免多条回复连续出现时重复调用接口。
+  // 消息变化后只标记“有新心声”，不自动调用 API；用户可在心声页手动刷新。
   let lastSig="";
-  let autoVoiceTimer=0;
   setInterval(()=>{
     if(document.hidden)return;
     const list=msgs(),last=list[list.length-1];
@@ -6870,10 +6882,6 @@ ${conversationText()}
     if(userCount()>0){
       const heart=$("innerVoiceBtn");
       if(heart)heart.classList.add("has-new-voice");
-      clearTimeout(autoVoiceTimer);
-      autoVoiceTimer=setTimeout(()=>{
-        refresh(true).catch(()=>{});
-      },2400);
     }
   },650);
 
@@ -14683,6 +14691,10 @@ async function baobaoVision(payload){
         ?'<div class="sms-appeal-label">从微信拉黑后转来的短信</div>'
         :"";
 
+      if(msg.generationFailed){
+        return dayHtml+'<div class="sms-generation-failed-v304">生成失败</div>';
+      }
+
       return dayHtml+appeal+
         '<div class="sms-row '+(msg.role==="user"?"user":"assistant")+'">'+
           '<div class="sms-message-stack">'+
@@ -14887,7 +14899,7 @@ async function baobaoVision(payload){
     ];
 
     if(typeof window.sendChatCompletion!=="function"){
-      return fallbackAppeal(person);
+      return null;
     }
 
     try{
@@ -14897,10 +14909,10 @@ async function baobaoVision(payload){
         new Promise((_,reject)=>setTimeout(()=>reject(new Error("短信挽回生成超时")),12000))
       ]);
       const parts=parseSmsReply(reply);
-      return parts.length?parts:fallbackAppeal(person);
+      return parts.length?parts:null;
     }catch(e){
       console.warn("短信挽回生成失败：",e&&e.message);
-      return fallbackAppeal(person);
+      return null;
     }
   }
 
@@ -14931,7 +14943,7 @@ async function baobaoVision(payload){
     ];
 
     if(typeof window.sendChatCompletion!=="function"){
-      return ["我看见了。","你愿意在短信里回我就好。"];
+      return null;
     }
 
     try{
@@ -14941,10 +14953,10 @@ async function baobaoVision(payload){
         new Promise((_,reject)=>setTimeout(()=>reject(new Error("短信回复生成超时")),12000))
       ]);
       const parts=parseSmsReply(reply);
-      return parts.length?parts:["我看见了。"];
+      return parts.length?parts:null;
     }catch(e){
       console.warn("短信回复生成失败：",e&&e.message);
-      return ["我看见了。","这次我不躲，你想说什么都可以。"];
+      return null;
     }
   }
 
@@ -14963,6 +14975,13 @@ async function baobaoVision(payload){
     if(String(activePersonaId)===String(personId)){
       document.getElementById("smsTyping")?.classList.remove("show");
       document.getElementById("smsSendBtn").disabled=false;
+    }
+
+    if(!Array.isArray(replies)||!replies.length){
+      appendSms(personId,"system","生成失败",{source:"sms_generation_failed",generationFailed:true});
+      replying.delete(String(personId));
+      if(String(activePersonaId)===String(personId))updateSmsSendButton();
+      return;
     }
 
     for(let i=0;i<replies.length;i++){
@@ -15101,6 +15120,17 @@ async function baobaoVision(payload){
     }
 
     const replies=await generateAppeal(person,blockedAt);
+    if(!Array.isArray(replies)||!replies.length){
+      appendSms(personId,"system","生成失败",{
+        source:"sms_generation_failed",
+        generationFailed:true,
+        blockedAt:Number(blockedAt||0)
+      });
+      const failedPending=loadPending();
+      delete failedPending[String(personId)];
+      savePending(failedPending);
+      return;
+    }
     for(let i=0;i<replies.length;i++){
       if(i)await new Promise(resolve=>setTimeout(resolve,700+Math.random()*750));
       appendSms(personId,"assistant",replies[i],{
@@ -31721,7 +31751,10 @@ ${offline}
     ];
     return {version:259,generatedAt:Date.now(),balance:base,shopping:shop,expenses,album,music,videos,reading,notes,calls,sms,wechat,browser};
   }
-  function getData(forceLocal=false){const p=person();if(!p)return null;const store=ensure();if(!store[p.id]||forceLocal){store[p.id]=localData(p,Date.now());save();}return store[p.id];}
+  function emptyData(){
+    return {version:304,source:"empty",generatedAt:0,balance:0,shopping:[],expenses:[],album:[],music:{note:"",playlists:[]},videos:[],reading:[],notes:[],calls:[],sms:[],wechat:{friends:[]},browser:[]};
+  }
+  function getData(){const p=person();if(!p)return null;const store=ensure();return store[p.id]||emptyData();}
   function normalizeData(raw,fallback){
     const out={...fallback,...(raw&&typeof raw==="object"?raw:{})};
     const arrays=["shopping","expenses","album","videos","reading","notes","calls","sms","browser"];for(const k of arrays)if(!Array.isArray(out[k]))out[k]=fallback[k];
@@ -31733,13 +31766,18 @@ ${offline}
   function parseJSON(text){const s=String(text||"");const a=s.indexOf("{");const b=s.lastIndexOf("}");if(a<0||b<=a)throw new Error("AI没有返回可读取的数据");return JSON.parse(s.slice(a,b+1));}
   async function generateAI(){
     const p=person();if(!p)return;const body=document.getElementById("bbspaBody");if(body)body.innerHTML='<div class="bbspa-loading">正在读取人设与聊天记录，生成他的手机…</div>';
-    const fallback=localData(p,Date.now());
+    const fallback=emptyData();
     const prompt=`你正在为一款仿真人聊天小手机生成“查手机”内容。请严格根据角色人设和最近聊天，生成像真人手机里真实存在的数据，不要解释，不要Markdown，只返回合法JSON。\n角色名：${p.name||"未命名"}\n人设：${personaText(p).slice(0,6000)}\n最近聊天：${recentText(p)}\nJSON结构必须是：{"balance":数字,"shopping":[{"item":"","reason":"","price":数字,"time":""}],"expenses":[{"label":"","amount":负数,"time":""}],"album":[{"caption":"","detail":"","time":""}],"music":{"note":"","playlists":[{"name":"","desc":"","tracks":[""]}]},"videos":[{"title":"","text":"","comments":[{"name":"","text":""}],"myComment":""}],"reading":[{"title":"","author":"","progress":数字0到100,"note":""}],"notes":[{"time":"","text":""}],"calls":[{"name":"","type":"呼入/呼出/未接","duration":"","time":""}],"sms":[{"name":"","last":"","time":"","messages":[""]}],"wechat":{"friends":[{"name":"","relation":"","time":"","messages":[{"role":"them或me","content":""}]}]},"browser":[{"query":"","time":""}]}。要求：购物与人设爱好或聊天提到的东西相关；微信至少5个好友，每个至少4条往来；短视频要有评论区和角色自己的评论；备忘录和浏览器记录要有隐私感但符合人设；不要把用户与角色的主聊天复制进好友微信。`;
     try{
       if(typeof window.sendChatCompletion!=="function")throw new Error("没有找到对话API");
       const raw=await window.sendChatCompletion([{role:"system",content:"只输出JSON。"},{role:"user",content:prompt}]);
-      const data=normalizeData(parseJSON(raw),fallback);data.album=[...realAlbumImages(p),...data.album].slice(0,10);ensure()[p.id]=data;save();renderCurrent();if(typeof showToast==="function")showToast("手机内容生成完成");
-    }catch(e){ensure()[p.id]=fallback;save();renderCurrent();if(typeof showToast==="function")showToast("已先生成本地内容："+clean(e.message),true);}
+      const data=normalizeData(parseJSON(raw),fallback);data.album=[...realAlbumImages(p),...data.album].slice(0,10);data.source="api";data.version=304;ensure()[p.id]=data;save();renderCurrent();if(typeof showToast==="function")showToast("手机内容生成完成");
+      return data;
+    }catch(e){
+      if(body)body.innerHTML='<div class="bbspa-generation-failed-v304"><b>生成失败</b><span>检查对话 API 后，点右上角“生成”重试。</span></div>';
+      if(typeof showToast==="function")showToast("生成失败："+clean(e.message),true);
+      throw e;
+    }
   }
   function setHead(title,action=""){document.getElementById("bbspaTitle").textContent=title;document.getElementById("bbspaAction").innerHTML=action;}
   function rowIcon(name){return `<div class="bbspa-row-icon">${esc(clean(name).slice(0,2)||"--")}</div>`;}
@@ -31755,15 +31793,15 @@ ${offline}
   function renderBrowser(d){return `<div class="bbspa-search-head">搜索或输入网址</div><div class="bbspa-section-title">搜索记录</div>${(d.browser||[]).map(x=>`<div class="bbspa-row"><div class="bbspa-row-icon">WEB</div><div class="bbspa-row-copy"><div class="bbspa-row-title">${esc(x.query)}</div><div class="bbspa-row-last">${esc(x.time||"")}</div></div></div>`).join("")}`;}
   function renderWechat(d){return `<div class="bbspa-chat-list"><div class="bbspa-section-title">聊天 · 可以用他的身份发消息</div>${(d.wechat?.friends||[]).map((f,i)=>{const last=(f.messages||[]).slice(-1)[0];return `<div class="bbspa-row" onclick="bbPhoneOpenWechat(${i})">${rowIcon(f.name)}<div class="bbspa-row-copy"><div class="bbspa-row-title">${esc(f.name)}</div><div class="bbspa-row-last">${esc(last?.content||f.relation||"")}</div></div><div class="bbspa-row-time">${esc(f.time||"")}</div></div>`}).join("")}</div>`;}
   function renderX(){return `<div class="bbspa-placeholder"><b>X</b>这个按钮先保留。<br>等豹豹机自己的 X App 做好后，再把这里和角色账号、帖子、私信联动起来。</div>`;}
-  function renderCurrent(){const d=getData();const body=document.getElementById("bbspaBody");if(!d||!body)return;const map={shopping:renderShopping,assets:renderAssets,album:renderAlbum,music:renderMusic,videos:renderVideos,reading:renderReading,notes:renderNotes,calls:renderCalls,sms:renderSms,wechat:renderWechat,browser:renderBrowser,x:renderX};body.innerHTML=(map[currentApp]||renderX)(d);}
+  function renderCurrent(){const d=getData();const body=document.getElementById("bbspaBody");if(!d||!body)return;if(d.source==="empty"){body.innerHTML='<div class="bbspa-empty-v304"><b>暂无内容</b><span>点右上角“生成”，使用对话 API 生成人设手机。</span></div>';return;}const map={shopping:renderShopping,assets:renderAssets,album:renderAlbum,music:renderMusic,videos:renderVideos,reading:renderReading,notes:renderNotes,calls:renderCalls,sms:renderSms,wechat:renderWechat,browser:renderBrowser,x:renderX};body.innerHTML=(map[currentApp]||renderX)(d);}
   window.openSubjectPhoneApp=function(app){if(!person())return;currentApp=app;currentWechatIndex=-1;document.getElementById("bbspaChat").classList.remove("show");setHead(TITLES[app]||"App",app==="x"?"":`<span onclick="bbPhoneGenerateData()">生成</span>`);renderCurrent();document.getElementById("bbSubjectAppPanel").style.display="flex";};
   window.bbPhoneAppBack=function(){const chat=document.getElementById("bbspaChat");if(chat.classList.contains("show")){chat.classList.remove("show");currentWechatIndex=-1;setHead(TITLES[currentApp]||"微信",`<span onclick="bbPhoneGenerateData()">生成</span>`);renderCurrent();return;}document.getElementById("bbSubjectAppPanel").style.display="none";};
   window.bbPhoneOpenSimpleThread=function(type,index){const d=getData();const x=(d[type]||[])[index];if(!x)return;setHead(x.name||TITLES[type],"");const body=document.getElementById("bbspaBody");body.innerHTML=`<div class="bbspa-section-title">${esc(x.time||"")}</div>${(x.messages||[]).map(t=>`<div class="bbspa-card"><div class="bbspa-note">${esc(t)}</div></div>`).join("")}`;};
-  window.bbPhoneOpenWechat=function(index){const d=getData();const f=d.wechat?.friends?.[index];if(!f)return;currentWechatIndex=index;setHead(f.name||"聊天","");const wrap=document.getElementById("bbspaChatMessages");wrap.innerHTML=(f.messages||[]).map(m=>`<div class="bbspa-msg ${m.role==="me"?"me":""}"><div class="bbspa-msg-bubble">${esc(m.content)}</div></div>`).join("");document.getElementById("bbspaChat").classList.add("show");requestAnimationFrame(()=>{wrap.scrollTop=wrap.scrollHeight;document.getElementById("bbspaChatInput").focus();});};
+  window.bbPhoneOpenWechat=function(index){const d=getData();const f=d.wechat?.friends?.[index];if(!f)return;currentWechatIndex=index;setHead(f.name||"聊天","");const wrap=document.getElementById("bbspaChatMessages");wrap.innerHTML=(f.messages||[]).map(m=>m&&m.generationFailed?`<div class="bbspa-gen-failed-v304">生成失败</div>`:`<div class="bbspa-msg ${m.role==="me"?"me":""}"><div class="bbspa-msg-bubble">${esc(m.content)}</div></div>`).join("");document.getElementById("bbspaChat").classList.add("show");requestAnimationFrame(()=>{wrap.scrollTop=wrap.scrollHeight;document.getElementById("bbspaChatInput").focus();});};
   function npcReply(friend,text){const replies=["？你拿错手机了吧","你今天说话怎么怪怪的","行 你先说清楚","你是不是又在搞事","他本人呢","等一下 这不像你","知道了 但我截图了"];if(/借钱|转账|钱/.test(text))return "你先让本人给我打电话。";if(/喜欢|爱|想你/.test(text))return "……你确定这是你本人发的？";return replies[hash(friend.name+text+Date.now())%replies.length];}
   window.bbPhoneSendWechat=function(){const d=getData();const f=d.wechat?.friends?.[currentWechatIndex];const input=document.getElementById("bbspaChatInput");const text=clean(input.value);if(!f||!text)return;f.messages=f.messages||[];f.messages.push({role:"me",content:text,time:Date.now(),intrusion:true});f.time="刚刚";input.value="";save();window.bbPhoneOpenWechat(currentWechatIndex);setTimeout(()=>{f.messages.push({role:"them",content:npcReply(f,text),time:Date.now(),intrusionReply:true});save();window.bbPhoneOpenWechat(currentWechatIndex);},700+Math.random()*700);};
   window.bbPhoneGenerateData=generateAI;
-  window.bbPhoneLocalRefresh=function(){const p=person();if(!p)return;ensure()[p.id]=localData(p,Date.now());save();if(document.getElementById("bbSubjectAppPanel").style.display==="flex")renderCurrent();if(typeof showToast==="function")showToast("已刷新手机内容");};
+  window.bbPhoneLocalRefresh=function(){return generateAI();};
   window.bbPhoneClearCurrent=function(){const p=person();if(!p)return;delete ensure()[p.id];save();if(typeof showToast==="function")showToast("已清空，下次打开会重新生成");};
   window.bbPhoneShowSettings=function(){document.getElementById("bbspaSettingsSheet").classList.add("show");};
   window.bbPhoneHideSettings=function(){document.getElementById("bbspaSettingsSheet").classList.remove("show");};
@@ -36048,7 +36086,7 @@ ${offline}
       markGenerated(person,true);
       syncPhoneHome(person);
     }catch(error){
-      markGenerated(person,true);
+      markGenerated(person,false);
       syncPhoneHome(person);
       if(typeof window.showToast==="function")window.showToast("生成失败："+clean(error&&error.message),true);
     }
@@ -36243,10 +36281,10 @@ ${offline}
       .replace(new RegExp(`^(?:${String(friend&&friend.name||"对方").replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}|回复)[:：]\\s*`),"")
       .trim();
     const parts=value.split(/\n+/).map(clean).filter(Boolean).slice(0,2).map(part=>part.slice(0,80));
-    return parts.length?parts:[shapeFallback(friend,text)];
+    return parts.length?parts:[];
   }
   async function npcReply(friend,text,person){
-    if(typeof window.sendChatCompletion!=="function")return [shapeFallback(friend,text)];
+    if(typeof window.sendChatCompletion!=="function")throw new Error("未配置对话 API");
     const prompt=[
       `你是“${friend.name||"对方"}”，不是手机主人“${person&&person.name||"TA"}”。`,
       `你和手机主人的关系：${friend.relation||"熟人"}。`,
@@ -36262,9 +36300,11 @@ ${offline}
         {role:"system",content:"你在模拟手机通讯录中的独立NPC。只输出NPC真正发送的消息正文。"},
         {role:"user",content:prompt}
       ]);
-      return parseReply(raw,friend,text);
+      const parsed=parseReply(raw,friend,text);
+      if(!parsed.length)throw new Error("NPC 没有返回有效回复");
+      return parsed;
     }catch(error){
-      return [shapeFallback(friend,text)];
+      throw error;
     }
   }
   function renderFriend(index){
@@ -36326,11 +36366,19 @@ ${offline}
       const task=previousQueue.then(async()=>{
         if(clean($("bbspaTitle")&&$("bbspaTitle").textContent)===clean(friend.name))showTyping(index);
         await sleep(520+Math.random()*520);
-        const replies=await npcReply(friend,text,person);
-        hideTyping();
-        for(let i=0;i<replies.length;i++){
-          if(i>0)await sleep(260+Math.random()*320);
-          friend.messages.push({role:"them",content:replies[i],time:Date.now()+i,intrusionReply:true,npcToneV303:true});
+        try{
+          const replies=await npcReply(friend,text,person);
+          hideTyping();
+          for(let i=0;i<replies.length;i++){
+            if(i>0)await sleep(260+Math.random()*320);
+            friend.messages.push({role:"them",content:replies[i],time:Date.now()+i,intrusionReply:true,npcToneV303:true});
+            friend.time="刚刚";
+            save();
+            if(clean($("bbspaTitle")&&$("bbspaTitle").textContent)===clean(friend.name))renderFriend(index);
+          }
+        }catch(error){
+          hideTyping();
+          friend.messages.push({role:"system",content:"生成失败",time:Date.now(),generationFailed:true,npcToneV304:true});
           friend.time="刚刚";
           save();
           if(clean($("bbspaTitle")&&$("bbspaTitle").textContent)===clean(friend.name))renderFriend(index);
@@ -36361,4 +36409,83 @@ ${offline}
   window.addEventListener("pageshow",boot);
   [80,260,700,1500,3200].forEach(ms=>setTimeout(boot,ms));
 
+})();
+
+
+/* ===== 豹豹机 304：取消本地生成兜底，查手机手动 API，心声手动 API ===== */
+(function(){
+  "use strict";
+  if(window.__bbApiOnlyGenerationV304)return;
+  window.__bbApiOnlyGenerationV304=true;
+
+  function save(){try{if(typeof window.saveLocal==="function")window.saveLocal();}catch(e){}}
+  function migratePhoneData(){
+    try{
+      if(localStorage.getItem("bb_phone_api_only_migrated_v304")==="1")return;
+      if(window.state){
+        state.subjectPhoneData={};
+        state.subjectPhoneManualGeneratedV301={};
+      }
+      try{
+        const key="baobao_sms_threads_v190";
+        const store=JSON.parse(localStorage.getItem(key)||"{}");
+        const oldFallbacks=new Set([
+          "我看见了。","你愿意在短信里回我就好。","这次我不躲，你想说什么都可以。",
+          "微信拉黑我了？","至少把原因说清楚。","拉黑就当结束了？","短信回我。我们把话说清楚。",
+          "行，微信拉黑我。","那短信总能看见吧。给我一次解释的机会。",
+          "我知道你现在不想听我说话。","可我不想就这样失去你。等你愿意的时候，回我一下好不好。",
+          "我不想我们就这样断掉。","再给我一次把话说清楚的机会。"
+        ]);
+        Object.values(store||{}).forEach(thread=>{
+          if(thread&&Array.isArray(thread.messages)){
+            thread.messages=thread.messages.filter(message=>!(message&&message.role==="assistant"&&oldFallbacks.has(String(message.content||"").trim())));
+            thread.updatedAt=thread.messages.length?Number(thread.messages[thread.messages.length-1].time||0):0;
+          }
+        });
+        localStorage.setItem(key,JSON.stringify(store||{}));
+      }catch(e){}
+      localStorage.setItem("bb_phone_api_only_migrated_v304","1");
+      save();
+    }catch(e){}
+  }
+  function injectStyle(){
+    if(document.getElementById("bbApiOnlyStyleV304"))return;
+    const style=document.createElement("style");
+    style.id="bbApiOnlyStyleV304";
+    style.textContent=`
+      .sms-generation-failed-v304,
+      .bbspa-gen-failed-v304{
+        width:max-content;
+        max-width:80%;
+        margin:14px auto;
+        padding:6px 12px;
+        border-radius:999px;
+        background:rgba(150,150,158,.14);
+        color:#999;
+        font-size:13px;
+        text-align:center;
+      }
+      .bbspa-empty-v304,
+      .bbspa-generation-failed-v304{
+        min-height:58vh;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:10px;
+        padding:32px;
+        text-align:center;
+        color:#999;
+      }
+      .bbspa-empty-v304 b,
+      .bbspa-generation-failed-v304 b{font-size:22px;color:#222}
+      .bbspa-empty-v304 span,
+      .bbspa-generation-failed-v304 span{font-size:14px;line-height:1.55}
+    `;
+    document.head.appendChild(style);
+  }
+  function boot(){injectStyle();migratePhoneData();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  window.addEventListener("pageshow",boot);
+  setTimeout(boot,300);
 })();
