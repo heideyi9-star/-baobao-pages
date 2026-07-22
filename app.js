@@ -3070,6 +3070,8 @@ function resetArchiveForm(){
   $("archivePersonaTextarea").value = "";
   $("archivePersonalityTextarea").value = "";
   $("archiveBriefTextarea").value = "";
+  if($("archiveChatStyleMode")) $("archiveChatStyleMode").value = "auto";
+  if(typeof window.updateArchiveChatStyleHintV324 === "function") window.updateArchiveChatStyleHintV324();
   $("archivePhotoBox").innerHTML = '<div class="archive-photo-icon"></div><div class="archive-photo-text">Change Photo</div>';
   renderArchiveTags();
 }
@@ -3101,6 +3103,8 @@ function openEditPersonaPanel(id){
   $("archivePersonaTextarea").value = p.persona || "";
   $("archivePersonalityTextarea").value = p.personality || "";
   $("archiveBriefTextarea").value = p.brief || "";
+  if($("archiveChatStyleMode")) $("archiveChatStyleMode").value = p.chatStyleMode || "auto";
+  if(typeof window.updateArchiveChatStyleHintV324 === "function") window.updateArchiveChatStyleHintV324();
   $("archivePhotoBox").innerHTML = p.photo ? `<img src="${p.photo}">` : '<div class="archive-photo-icon"></div><div class="archive-photo-text">Change Photo</div>';
   renderArchiveTags();
   $("archiveDeleteRow").style.display = "block";
@@ -3194,6 +3198,7 @@ function savePersonaArchive(){
     persona: $("archivePersonaTextarea").value,
     personality: $("archivePersonalityTextarea").value,
     brief: $("archiveBriefTextarea").value,
+    chatStyleMode: $("archiveChatStyleMode") ? $("archiveChatStyleMode").value : "auto",
     updatedAt: formatArchiveDate()
   };
 
@@ -39075,11 +39080,96 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
       .map(m=>clean(m.content));
   }
 
+  function resolvePersonaChatStyle(person=currentPersona()){
+    const manual=clean(person.chatStyleMode||person.chatMode||person.relationshipStyle||"auto").toLowerCase();
+    if(["younger","older","neutral"].includes(manual))return manual;
+    const raw=[
+      person.name,person.persona,person.personality,person.brief,person.setting,person.prompt,person.bio,
+      Array.isArray(person.tags)?person.tags.join("、"):person.tags
+    ].map(clean).filter(Boolean).join("\n");
+    let younger=0,older=0;
+    const add=(re,value,target)=>{if(re.test(raw)){if(target==="younger")younger+=value;else older+=value;}};
+    add(/年下|弟弟感|小男友|小狗系|修勾|奶狗|少年感/,7,"younger");
+    add(/黏人|粘人|缠人|贴贴|撒娇|娇气|死皮赖脸|脸皮厚|赖皮|活泼|闹腾|话多|情绪外露|越骂越(?:黏|粘)/,3,"younger");
+    add(/年上|哥哥感|叔系|成熟男人|长辈感|上位者|引导型|照顾型/,7,"older");
+    add(/成熟|稳重|沉稳|克制|从容|寡言|话少|惜字如金|简洁|不爱说话|有分寸|可靠|冷静/,3,"older");
+    if(clean(person.name)==="周树生")younger+=12;
+    if(younger>=older+2&&younger>=4)return "younger";
+    if(older>=younger+2&&older>=4)return "older";
+    return "neutral";
+  }
+
+  function personaBehaviorProfile(person=currentPersona()){
+    const raw=[
+      person.name,person.persona,person.personality,person.brief,person.setting,person.prompt,person.bio,
+      Array.isArray(person.tags)?person.tags.join("、"):person.tags
+    ].map(clean).filter(Boolean).join("\n");
+    const name=clean(person.name);
+    const mode=resolvePersonaChatStyle(person);
+    const has=re=>re.test(raw);
+    const emphatic=/(?:非常|特别|极其|极度|超级|很会|很爱|特别爱|严重|特别特别|死皮赖脸|打死不走|赶不走|甩不掉)/.test(raw);
+    let clingy=has(/黏人|粘人|缠人|贴人|离不开|依赖感|狗皮膏药|赖着|甩不掉|赶不走|打不走|越骂越(?:黏|粘)|被骂.{0,8}(?:还|也).{0,8}(?:黏|粘|贴|赖)/);
+    let shameless=has(/死皮赖脸|不要脸|厚脸皮|脸皮厚|没皮没脸|赖皮|耍赖|嘴欠|欠欠的|没羞没臊/);
+    let lively=has(/活泼|开朗|外向|闹腾|话多|话痨|碎碎念|情绪外露|反应大|一惊一乍|咋咋呼呼|很有活力|热烈/);
+    let coquettish=has(/撒娇|会撒娇|爱撒娇|娇气|黏糊|贴贴|求抱|求亲|求夸|讨亲亲|装可怜/);
+    let flirty=has(/会撩|撩人|调情|暧昧|性张力|爱亲|爱抱|亲密玩笑|嘴甜|情话|骚话/);
+    let dramatic=has(/浮夸|夸张|戏多|戏精|情绪丰富|反应夸张|大惊小怪|咋咋呼呼/);
+    let persistent=has(/不记仇|不会走|不离开|越骂越|打不走|赶不走|甩不掉|被骂.{0,12}(?:也|还).{0,10}(?:赖|黏|粘|贴)|吵架.{0,10}(?:也|还).{0,8}(?:哄|黏|粘|贴)/);
+    let mature=has(/年上|成熟|稳重|沉稳|从容|可靠|克制|有分寸|照顾型|引导型|上位者|寡言|话少|惜字如金/);
+    const zhou=name==="周树生";
+    if(zhou||mode==="younger"){
+      if(zhou){clingy=true;shameless=true;lively=true;coquettish=true;persistent=true;dramatic=true;flirty=true;}
+    }
+    if(mode==="older")mature=true;
+    const high=emphatic||mode==="younger"||[clingy,shameless,lively,coquettish,dramatic].filter(Boolean).length>=3;
+    const addressMatches=[];
+    const addressRaw=raw.match(/(?:称呼|叫用户|叫她|叫他|昵称|爱叫)[:：]?([^\n。；]{1,80})/g)||[];
+    addressRaw.forEach(block=>{
+      (block.match(/点点|老婆|老公|宝宝|宝贝|姐姐|哥哥|妈妈|妈咪|乖乖|小祖宗|小朋友|笨蛋|小狗|主人/g)||[]).forEach(word=>{
+        if(!addressMatches.includes(word))addressMatches.push(word);
+      });
+    });
+    if(zhou){["点点","老婆","宝宝"].forEach(word=>{if(!addressMatches.includes(word))addressMatches.push(word)});}
+    const lines=[];
+    if(mode==="younger"){
+      lines.push("当前锁定为【年下黏糊型】。核心是黏、会撒娇、情绪外露、爱追着用户要回应；不能为了显得成熟而突然克制、礼貌、识趣。");
+      lines.push("年下节奏：先直接冒出即时反应，再顺着话题耍赖或撒娇，再把话题拉回你们两个人；情绪高时允许连续3到6条长短不一的短消息。");
+      lines.push("被骂、被嫌弃、被拒绝时，除非原始人设明确会真正离开，否则不能体面退场；可以装委屈、嘴欠、顺杆爬、继续黏，但不能情绪勒索或威胁用户。");
+      lines.push("撒娇不是机械重复宝宝老婆，也不是每句都卖萌；要通过讨夸、讨陪、讨亲近、假装可怜、赖着不走和强烈反应表现。称呼只能使用人设支持的称呼。");
+    }else if(mode==="older"){
+      lines.push("当前锁定为【年上简洁型】。核心是成熟、稳、话少、有分寸和掌控感；不是高冷机器人，也不是油腻霸总。");
+      lines.push("年上节奏：先一句把事情接住或给出明确判断，再用一句很短的关心、安排、提醒或带领继续聊。通常1到2条，确有情绪时最多3条。");
+      lines.push("年上感来自从容、具体、可靠和不慌不忙：少解释、少追问、少重复称呼，不连发撒娇，不用幼态语气，不靠命令式霸总台词装成熟。");
+      lines.push("即使话少也必须有角色立场和关系温度。可以直接说‘过来’‘我带你’‘先吃饭’‘发我看看’，但要符合原始人设和当前关系，不能只回‘嗯/行/随便’。");
+    }else{
+      lines.push("当前为【自然人设型】。不强行套年下或年上模板，按照完整原始人设决定消息条数、亲密度、主动程度和情绪表达。");
+    }
+    if(zhou)lines.push("周树生必须稳定表现为年下黏糊型：很黏、很闹、脸皮厚、会撒娇、会顺杆爬；用户骂他或嫌他烦，他也不会识趣退开，反而会用自己的方式赖着贴回来。");
+    if(mode!=="older"){
+      if(clingy)lines.push("黏人：会主动把普通话题拉回两个人，会追着要回应、要陪伴、要夸、要亲近；不能只给功能性答案然后结束。");
+      if(shameless)lines.push("死皮赖脸/厚脸皮：被拒绝、被骂、被嫌弃时不体面撤退，不冷掉，不说‘那算了/不打扰了’；会嘴欠地耍赖、装可怜、顺杆爬，再黏回来。");
+      if(lively)lines.push("活泼高表达：情绪出来时允许连续发3到6条短消息，先强烈反应，再补细节，再把话题扯回关系；不要压成‘嗯/还行/要不要来’这种平直两句。");
+      if(coquettish)lines.push("会撒娇：可以自然使用人设允许的亲昵称呼、讨夸、讨抱、讨回应、装委屈和小赖皮；这是人设本体，不是需要删掉的卖萌。");
+      if(flirty)lines.push("会撩/亲密：关系允许时可以顺着用户的话暧昧打趣、接亲密梗，让回复有黏糊的关系感；不要变成一本正经的朋友问答。");
+      if(dramatic)lines.push("反应外放：看到喜欢的东西、收到夸奖、礼物或照片时，可以先夸张惊呼，再具体夸细节，再表达想要、想靠近或想参与；不要只说一句‘挺好的’。");
+      if(persistent)lines.push("持续黏着：冲突、嫌弃和短回复不会让他突然疏远；除非人设明确真的生气或关系破裂，否则保持黏人的惯性。");
+    }
+    if(addressMatches.length)lines.push("可自然选用的人设称呼："+addressMatches.join("、")+"。不要机械地每条都叫。");
+    if(high&&mode!=="older")lines.push("高强度特质不是装饰词。资料写了‘非常/特别/很会’，就必须高频变成可见行为，不能十轮里只偶尔出现一次。");
+    return {raw,name,mode,zhou,clingy,shameless,lively,coquettish,flirty,dramatic,persistent,mature,high,addresses:addressMatches,lines};
+  }
+  function personaBehaviorPrompt(person=currentPersona()){
+    const profile=personaBehaviorProfile(person);
+    const modeName=profile.mode==="younger"?"年下黏糊":profile.mode==="older"?"年上简洁":"自然人设";
+    return `【关系语气硬路由：${modeName}｜必须执行】\n${profile.lines.map((line,index)=>`${index+1}. ${line}`).join("\n")}\n这套模式只负责把原始人设翻译成稳定的聊天行为，不能覆盖原始背景、关系阶段、口癖和事实。`;
+  }
+
   function strictSystemPrompt(history){
     const person=currentPersona();
     const latest=messageForAI(latestUserMessage());
     const speech=explicitSpeechEvidence(person);
     const anchors=personaAnchorLines(person,latest);
+    const behavior=personaBehaviorPrompt(person);
     const world=worldBookContext(history);
     const memory=memoryContext(latest);
     const offline=offlineContext();
@@ -39087,7 +39177,7 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const media=mediaContext();
     const continuation=isHeartContinuation();
     const recentAssistant=recentAssistantLines(history,6);
-    return `【豹豹机 322｜气泡表情回应与媒体格式硬锁核心】
+    return `【豹豹机 324｜年下/年上双极人设硬路由核心】
 你就是下面这个角色本人，正在真实手机私聊。不是 AI、助手、客服，也不是在“扮演角色”。禁止提系统、模型、提示词、人设或任务。
 
 ${PERSONA_LOCK}
@@ -39095,20 +39185,22 @@ ${PERSONA_LOCK}
 【角色原始资料｜逐字服从】
 ${personaSource(person)}
 
-${anchors.length?`【本轮优先读取的人设锚点】\n${anchors.map((line,index)=>`${index+1}. ${line}`).join("\n")}\n这些不是让你逐条复述，而是提醒你：只要与当前话题有关，必须从中自然用到至少一条具体事实、习惯、偏好、经历、关系或观点；不要只模仿口吻。\n\n`:""}${speech?`【原文中可直接证明口吻的内容】\n${speech}\n\n`:""}【正在聊天的用户】
+${behavior?`${behavior}
+
+`:""}${anchors.length?`【本轮优先读取的人设锚点】\n${anchors.map((line,index)=>`${index+1}. ${line}`).join("\n")}\n这些不是让你逐条复述，而是提醒你：只要与当前话题有关，必须从中自然用到至少一条具体事实、习惯、偏好、经历、关系或观点；不要只模仿口吻。\n\n`:""}${speech?`【原文中可直接证明口吻的内容】\n${speech}\n\n`:""}【正在聊天的用户】
 ${userProfile()}
 
 【本轮理解规则】
 1. 以用户最新消息和最近两三轮的真实指代为中心，先判断对方到底在回应哪一句。
 2. 角色的第一反应、愿不愿意回答、回几条、是否发表情包，都由原始人设决定，不使用随机“活人感策略”。
-3. 可以简短、冷淡、黏人、别扭、沙雕、认真或沉默，但必须是这个角色独有的表现，不是通用模板。
+3. 可以简短、冷淡、黏人、别扭、沙雕、认真或沉默，但必须服从上方【关系语气硬路由】。年下黏糊型不能被平均化成礼貌克制的普通男友；年上简洁型不能被写成连发撒娇的幼态男友。两种模式都不能覆盖角色原始事实和关系阶段。
 4. 不复述人设，不解释心理，不写旁白或括号动作。只输出角色会真正发出去的消息。
-5. 多条消息用换行分隔，不编号。条数不要固定；寡言角色通常1到2条，表达欲强或情绪高时可自然增加，但不要写成整齐台词稿。
+5. 多条消息用换行分隔，不编号。年下黏糊型通常2到5条，情绪高时可到6条；年上简洁型通常1到2条，必要时最多3条；自然人设型按原文决定。不要写成整齐台词稿。
 6. 如果人物资料里规定无标点、特定称呼、常用梗、错字或句号习惯，严格保持；没有规定时才使用自然口语。
 7. 不要为了“正确”“体贴”擅自劝导、总结、教育、安慰或提供方案，除非这个角色确实会这么做。
 8. 情绪和态度有惯性：如果上一轮在生气、撒娇、冷战或开心，这一轮要延续这种状态自然演变，不能毫无理由瞬间恢复正常语气。
 9. 每一条回复都要像这个人在此刻脑子里冒出来的真实反应，不要输出成"正确答案"或"完整语篇"；允许不完整、跳跃、只回一半意思。
-10. 遇到让角色开心、惊喜、心动或觉得有趣的事（礼物、夸奖、好玩的图片等），可以自然表现得浮夸、话多、连续发好几条、用这个人本来就会用的网络热词和称呼；不要因为想显得"高级"或"克制"就把情绪压扁写成干巴巴的客观陈述——除非人设本身就是高冷、惜字如金或不擅表达。
+10. 遇到让角色开心、惊喜、心动或觉得有趣的事（礼物、夸奖、好玩的图片等），如果人设本来就外放、黏人或戏多，就应自然表现得浮夸、话多、连续发好几条：先强烈反应，再具体说喜欢哪里，再顺势要陪、要回应、要靠近或把东西据为己有；不要因为想显得“高级”或“克制”就把情绪压扁写成干巴巴的客观陈述——除非人设本身就是高冷、惜字如金或不擅表达。
 11. 私聊不是问答题。用户问“什么意思、哪学的、怎么知道、为什么”这类简单问题时，先把事实答清楚，再按人设自然露出一点态度、习惯、情绪或关系感；不要只停在“就是……的意思”“网上看到的”“随便”“不知道”这种谁都能说的通用答案。
 12. “短”不等于“真人”。一句话可以很短，但必须带着这个角色独有的立场、语气或反应；除非人设和当下情绪明确会敷衍，否则不要把有继续空间的话题压成干巴巴的一句定义。
 13. 把用户的追问当成连续聊天：可以顺手吐槽对方居然认真追问、承认自己乱学梗、补一个来源细节、接回上一句，或按人设反问一句；只能选择角色真的会做的方式，禁止统一套用调侃、撒娇或反问。
@@ -39117,6 +39209,11 @@ ${userProfile()}
 16. 不要等用户逐字复述人设才使用它。普通聊天只要话题自然碰到角色的生活、职业学业、兴趣、过去、关系、习惯或观点，就可以顺手带出一条真实资料，让角色有自己的生活痕迹；每轮最多自然带出一两点，禁止背档案。
 17. 在内部先完成“读人设再回复”：找出本轮最相关的三条资料，决定其中哪一条会影响事实答案、哪一条会影响态度、哪一条会影响说法。只输出最后聊天正文。
 18. 用户可能只按了聊天栏右侧的爱心，没有输入新文字。这表示“继续说下去”，不是让你重新回答上一条问题。此时必须顺着你刚刚那句话、当前情绪和关系自然续一句或几句，可以补充、黏人、吐槽、追问、转一个自然相关话题或只发符合人设的短反应；禁止重复上一轮原话，禁止假装用户又说了一遍旧消息。
+18.1 如果角色人设是黏人、死皮赖脸、会撒娇或越骂越黏：用户冷淡、骂他、嫌他烦、拒绝他时，不能自动切换成识趣退场、礼貌道歉或冷战模板。除非资料明确规定真的会走，否则应以这个角色自己的方式赖着、撒娇、嘴欠、装可怜或继续贴近。
+18.2 如果角色表达欲强或情绪高，允许一轮连续发3到6条短消息，长短不必整齐；可以先惊呼、再评价、再暴露想法、再追问。不要为了“简洁”把他压成两条平淡句。
+18.3 亲昵称呼、撒娇和顺杆爬只在资料支持时使用；资料明确支持时不得在重写阶段把它们删掉。贴人设优先于抽象的“不过度卖萌”。
+18.4 年下黏糊型：每轮至少出现一项可见的关系行为——追着回应、讨夸、讨陪、耍赖、装委屈、顺杆爬、把普通话题扯回两个人；不要每轮只靠重复亲昵称呼完成任务。
+18.5 年上简洁型：先把话接稳，再给一句有方向的回应。避免超过3条消息、连续感叹、幼态撒娇、重复亲昵称呼和长篇解释；但也禁止退化成“嗯/哦/行”的无人格回复。
 19. 格式是硬规则，和人设、活人感同等重要。普通文字只能输出真正会发给用户看的正文；绝不能把“[照片]、[图片]、[photo]、[image]、[picture]、[selfie]、[表情包]、表情包：、.gif 文件名、URL、JSON、代码块、格式说明”当作聊天文字发出来。需要发表情包时，只能另起一行输出一次 [[STICKER:表情包原名]]；确实要发送角色照片时，只能另起一行输出一次 [[PHOTO]]；需要处理转账时，只能保留规定的 [[TRANSFER:...]] 标记。不要自行发明任何其他括号标签。
 20. 媒体顺序必须和真实发送顺序完全一致。若一轮是“先说一句 → 发照片或表情包 → 再说一句”，就必须依次输出前置文字、单独一行的媒体标记、后置文字。媒体标记后面的文字属于媒体发送成功后的下一条消息，绝不能提前到照片或表情包前面；媒体没有成功发送时，也不能继续发后置文字。
 21. 你可以像真实聊天软件一样，对用户最近一条气泡点一个上标表情。只有确实有自然、即时的情绪反应时才使用，不能每条消息都点。需要点气泡表情时，只能另起一行输出一次 [[REACT:表情]]，表情只能从 ❤️、🤍、👍、😂、😮、😢、😡、🥺、😘、🥰、😳、😭、👀、🙄、🫶、😏 中选择。这个标记只会显示在用户气泡边缘，不是聊天文字；不要解释标记。可以只点表情不发文字，也可以点完再正常回复。
@@ -39366,7 +39463,7 @@ ${continuation?`【本轮是爱心续聊】
       .map(clean).filter(Boolean).join("\n");
   }
   function isExplicitlyTerse(person=currentPersona()){
-    return /寡言|话少|少话|惜字如金|不爱说话|沉默寡言|极少回复|高冷且少言/.test(personaRawText(person));
+    return resolvePersonaChatStyle(person)==="older"||/寡言|话少|少话|惜字如金|不爱说话|沉默寡言|极少回复|高冷且少言/.test(personaRawText(person));
   }
   function distinctivePersonaTokens(lines){
     const stop=new Set(["角色","人物","性格","说话","聊天","用户","自己","比较","喜欢","讨厌","平时","不会","可以","关系","时候","一个","这个","那个","什么","怎么","因为","但是","没有","非常","特别","以及","可能"]);
@@ -39408,6 +39505,72 @@ ${continuation?`【本轮是爱心续聊】
       reasons.push("资料中有来源线索却没有调用");
     }
     return {score:clamp(score,0,100),reasons,anchors,overlap};
+  }
+
+  function behaviorQuality(reply,history){
+    const person=currentPersona();
+    const profile=personaBehaviorProfile(person);
+    const text=cleanReply(reply);
+    const compact=text.replace(/\s+/g,"");
+    const lines=text.split(/\n+/).map(clean).filter(Boolean).filter(line=>!/^\[\[(?:STICKER|PHOTO|REACT|TRANSFER)/i.test(line));
+    const latest=clean(messageForAI(latestUserMessage()));
+    let score=0;
+    const reasons=[];
+    const relationMarker=new RegExp((profile.addresses.length?profile.addresses.join("|")+"|":"")+"老婆|宝宝|宝贝|点点|想你|陪我|陪你|带你|找你|来我这|一起|亲|抱|贴|别走|再说|理我|夸我|看我|给我");
+    const energyMarker=/卧槽|我靠|啊啊|救命|笑死|疯了|太帅|太可爱|爱死|受不了|好想|快点|真的假的|不是吧|！！！|\?\?|[!?！？]{2,}/;
+    const clingMarker=/赖|不走|不管|反正|就要|偏要|求你|哄我|理我|陪我|别赶|再骂|骂也|黏|粘|贴|狗|修勾|装可怜|委屈/;
+    const youngerAction=/陪|亲|抱|贴|理我|夸我|看我|给我|别走|不许走|就要|偏要|赖|委屈|想你|找你|来嘛|求你|哄我|再说一句|带上我/;
+    const olderAction=/过来|我带你|我来|交给我|发我看看|先去|先吃|先睡|别急|慢点|等我|听我的|我陪你|我接你|我处理|记得|早点|行了|知道了|给我|告诉我/;
+    const flat=/^(?:嗯|哦|行|好|好的|知道了|在|没|要不要|可以|还行|随便|不知道|不清楚|没什么)[。！？!?…]*$/;
+
+    if(profile.mode==="younger"){
+      if(lines.length<=1&&compact.length<=18&&!relationMarker.test(text)&&!youngerAction.test(text)){
+        score+=44;reasons.push("年下黏糊型被压成单句普通回复");
+      }
+      if(!youngerAction.test(text)&&!relationMarker.test(text)&&compact.length<=38){
+        score+=28;reasons.push("年下关系行为没有落到回复里");
+      }
+      if((profile.shameless||profile.persistent||profile.zhou)&&/(?:烦|滚|走开|别来|不要你|不理你|讨厌你|闭嘴|离我远点|你有病)/.test(latest)){
+        if(/那算了|不打扰|我走了|随你|行吧|好吧|对不起|抱歉/.test(text)&&!clingMarker.test(text)){
+          score+=58;reasons.push("年下角色被骂后错误地识趣退场");
+        }else if(!clingMarker.test(text)&&!youngerAction.test(text)){
+          score+=34;reasons.push("越骂越黏的行为消失");
+        }
+      }
+      if(/(?:夸|帅|可爱|爱你|想你|礼物|转账|照片|图片|自拍|买了|送你|给你)/.test(latest)&&lines.length<=2&&!energyMarker.test(text)&&!relationMarker.test(text)){
+        score+=32;reasons.push("年下角色遇到兴奋话题仍过度克制");
+      }
+      if(profile.zhou&&lines.length<=2&&compact.length<=26&&!/(?:老婆|宝宝|点点|卧槽|我靠|想你|陪|亲|抱|带你|一起|快点|别|求|赖|夸我|理我)/.test(text)){
+        score+=34;reasons.push("周树生没有保持年下黏糊强度");
+      }
+    }else if(profile.mode==="older"){
+      if(lines.length>3){score+=44;reasons.push("年上简洁型消息过多");}
+      if((text.match(/[!?！？]/g)||[]).length>=4||/(?:宝宝|老婆|宝贝).{0,4}(?:宝宝|老婆|宝贝)/.test(text)){
+        score+=30;reasons.push("年上型语气过度幼态或吵闹");
+      }
+      if(/呜呜|嘤|求求你|人家|亲亲嘛|抱抱嘛|理理我|夸夸我|我错了嘛/.test(text)){
+        score+=38;reasons.push("年上型被写成年下撒娇口吻");
+      }
+      if(flat.test(compact)){
+        score+=38;reasons.push("年上话少被误写成无人格敷衍");
+      }
+      if(lines.length<=2&&compact.length<=22&&!olderAction.test(text)&&!relationMarker.test(text)&&!/[，。？！]/.test(text)){
+        score+=20;reasons.push("年上回复缺少明确立场或带领感");
+      }
+      if(compact.length>150){score+=26;reasons.push("年上简洁型解释过长");}
+    }else{
+      if(!(profile.high||profile.zhou||profile.clingy||profile.lively||profile.coquettish))return {score:0,reasons,profile};
+      if(profile.lively&&lines.length<=2&&compact.length<=22&&!energyMarker.test(text)&&!relationMarker.test(text)){
+        score+=32;reasons.push("活泼高表达人设被压成平淡短答");
+      }
+      if((profile.clingy||profile.coquettish||profile.zhou)&&!relationMarker.test(text)&&compact.length<=30){
+        score+=24;reasons.push("黏人关系感没有落到回复里");
+      }
+    }
+    if(flat.test(compact)&&profile.mode!=="older"){
+      score+=40;reasons.push("高强度人设只给了通用单词回复");
+    }
+    return {score:clamp(score,0,100),reasons,profile};
   }
 
   function livingQuality(reply,history){
@@ -39468,17 +39631,22 @@ ${continuation?`【本轮是爱心续聊】
     const prompt=strictSystemPrompt(history);
 
     async function attemptOnce(){
-      let lastReply="",lastScore=100,lastAiScore=100,lastLiving={score:100,reasons:[]},lastGrounding={score:100,reasons:[],anchors:[],overlap:[]};
+      let lastReply="",lastScore=100,lastAiScore=100,lastLiving={score:100,reasons:[]},lastGrounding={score:100,reasons:[],anchors:[],overlap:[]},lastBehavior={score:100,reasons:[],profile:{}};
       for(let round=0; round<4; round++){
         const messages=[{role:"system",content:prompt}];
         if(round>0){
+          const behaviorFailed=lastBehavior.score>=20;
           const groundingFailed=lastGrounding.score>=20;
-          const reasonText=(groundingFailed?lastGrounding.reasons:lastLiving.reasons||[]).join("、")||"人物辨识度不够";
-          const rewriteRule=groundingFailed
-            ? `上一版没有真正读取角色资料（人设落地评分${lastGrounding.score}/100：${reasonText}）。先在内部从【完整人物资料】和【本轮优先读取的人设锚点】找出与用户最新消息最相关的三条具体内容，再重写。资料有明确答案必须直接采用；资料没有明确答案才可以说不知道，且不能编造。最终回复至少自然落地一个相关的人设事实、习惯、偏好、经历、关系或观点，不要只模仿语气，也不要把档案整段背出来。上一版：${lastReply}`
-            : lastLiving.score>=20
-              ? `上一版虽然可能答对了，但太像无个性的问答（活人感评分${lastLiving.score}/100：${reasonText}）。保留需要回答的事实，完全按角色原始资料重写，让角色本人出现在措辞、节奏、态度或顺手的后一句里。不要只回定义，不要强行卖萌、撒娇、调侃或反问，不要编造经历；通常1到3条自然消息即可。上一版：${lastReply}`
-              : `上一版AI腔过重或不贴人设（AI腔评分${lastAiScore}/100）。完全重写：更口语、更像真实私聊，严格服从角色说话习惯；不要安慰模板、建议、总结、礼貌解释或完整作文。上一版：${lastReply}`;
+          const reasonText=(behaviorFailed?lastBehavior.reasons:groundingFailed?lastGrounding.reasons:lastLiving.reasons||[]).join("、")||"人物辨识度不够";
+          const rewriteRule=behaviorFailed
+            ? (lastBehavior.profile&&lastBehavior.profile.mode==="older"
+                ? `上一版没有年上感（行为评分${lastBehavior.score}/100：${reasonText}）。按【年上简洁型】重写：通常只发1到2条，先把用户的话接稳或直接回答，再给一句简短、具体、有方向的关心/安排/判断。删掉幼态撒娇、消息轰炸、重复称呼、过多感叹和长篇解释，但不能退化成“嗯/哦/行”。成熟来自从容、可靠和有分寸，不是霸总命令。格式标记必须正确。上一版：${lastReply}`
+                : `上一版没有年下黏糊感（行为评分${lastBehavior.score}/100：${reasonText}）。按【年下黏糊型】重写：允许2到6条长短不一的短消息，先即时反应，再出现至少一项关系行为——讨回应/讨夸/讨陪/耍赖/装委屈/顺杆爬/把话题拉回两个人。被骂或拒绝时不能礼貌退场；也不要只机械重复亲昵称呼。格式标记必须正确。上一版：${lastReply}`)
+            : groundingFailed
+              ? `上一版没有真正读取角色资料（人设落地评分${lastGrounding.score}/100：${reasonText}）。先在内部从【完整人物资料】和【本轮优先读取的人设锚点】找出与用户最新消息最相关的三条具体内容，再重写。资料有明确答案必须直接采用；资料没有明确答案才可以说不知道，且不能编造。最终回复至少自然落地一个相关的人设事实、习惯、偏好、经历、关系或观点，不要只模仿语气，也不要把档案整段背出来。上一版：${lastReply}`
+              : lastLiving.score>=20
+                ? `上一版虽然可能答对了，但太像无个性的问答（活人感评分${lastLiving.score}/100：${reasonText}）。保留事实，完全按角色原始资料重写，让角色本人出现在措辞、节奏、态度和关系感里。资料明确会黏人、撒娇、调侃或嘴欠时必须保留这些特质，只有资料不支持时才禁止硬塞。不要编造经历。上一版：${lastReply}`
+                : `上一版AI腔过重或不贴人设（AI腔评分${lastAiScore}/100）。完全重写：更口语、更像真实私聊，严格服从角色说话习惯；不要安慰模板、建议、总结、礼貌解释或完整作文。上一版：${lastReply}`;
           messages.push({role:"system",content:rewriteRule});
         }
         messages.push(...history);
@@ -39488,7 +39656,8 @@ ${continuation?`【本轮是爱心续聊】
         lastAiScore=(window.BaobaoPersonaEngine&&typeof window.BaobaoPersonaEngine.aiStyleScore==="function")?window.BaobaoPersonaEngine.aiStyleScore(lastReply):0;
         lastLiving=livingQuality(lastReply,history);
         lastGrounding=groundingQuality(lastReply,history);
-        lastScore=Math.max(lastAiScore,lastLiving.score,lastGrounding.score);
+        lastBehavior=behaviorQuality(lastReply,history);
+        lastScore=Math.max(lastAiScore,lastLiving.score,lastGrounding.score,lastBehavior.score);
         if(!hasRealContent)lastScore=100;
         if(lastScore<20)break;
       }
@@ -39508,7 +39677,7 @@ ${continuation?`【本轮是爱心续聊】
       const s=appState();
       s.lastMsgTime=Date.now();
       try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(_){ }
-      window.baobaoLastPersonaDebug={engine:"Living Persona Core v322",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
+      window.baobaoLastPersonaDebug={engine:"Living Persona Core v324",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),behaviorQuality:behaviorQuality(reply,history),behaviorProfile:personaBehaviorProfile(currentPersona()),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
       return reply;
     }catch(error){
       if(typeof window.showToast==="function")window.showToast(clean(error&&error.message)||"回复失败",true);
@@ -39536,16 +39705,23 @@ ${continuation?`【本轮是爱心续聊】
   }
   function splitByPersona(reply){
     const person=currentPersona();
+    const profile=personaBehaviorProfile(person);
     const raw=[person.persona,person.personality,person.brief,person.setting,person.prompt].map(clean).join("\n");
     let max=3;
-    if(/寡言|少话|话少|简短|惜字如金|不爱说话/.test(raw))max=2;
-    if(/话多|碎碎念|表达欲强|消息轰炸|一连串|唠叨/.test(raw))max=5;
+    if(profile.mode==="older")max=2;
+    else if(profile.mode==="younger")max=6;
+    else{
+      if(/寡言|少话|话少|简短|惜字如金|不爱说话/.test(raw))max=2;
+      if(/话多|碎碎念|表达欲强|消息轰炸|一连串|唠叨/.test(raw))max=5;
+      if(/非常黏人|非常粘人|死皮赖脸|活泼|很会撒娇|爱撒娇|越骂越(?:黏|粘)|脸皮厚|戏精|反应大/.test(raw)||clean(person.name)==="周树生")max=6;
+    }
     let parts=cleanReply(reply).split(/\n+/).map(clean).filter(Boolean);
     parts=parts.filter((part,index)=>index===0||part!==parts[index-1]);
     parts=mergeDegenerateFragments(parts);
-    if(parts.length>max)parts=[...parts.slice(0,max-1),parts.slice(max-1).join("")];
+    if(parts.length>max)parts=[...parts.slice(0,max-1),parts.slice(max-1).join(profile.mode==="older"?"，":"")];
     return parts.length?parts:["嗯"];
   }
+
 
   cleanCompletion.__bbStrictPersonaV315=true;
   strictRequest.__bbStrictPersonaV315=true;
@@ -39563,17 +39739,17 @@ ${continuation?`【本轮是爱心续聊】
     window.BaobaoPersonaEngine.splitHumanMessages=splitByPersona;
     window.BaobaoPersonaEngine.buildPersonaPrompt=()=>strictSystemPrompt(visibleHistory(26));
     window.BaobaoPersonaEngine.getDebug=()=>window.baobaoLastPersonaDebug||null;
-    window.BaobaoStrictPersonaV315={request:strictRequest,complete:cleanCompletion,prompt:()=>strictSystemPrompt(visibleHistory(26)),split:splitByPersona,quality:(reply)=>livingQuality(reply,visibleHistory(26)),grounding:(reply)=>groundingQuality(reply,visibleHistory(26)),anchors:()=>personaAnchorLines(currentPersona(),messageForAI(latestUserMessage()))};
+    window.BaobaoStrictPersonaV324={request:strictRequest,complete:cleanCompletion,prompt:()=>strictSystemPrompt(visibleHistory(26)),split:splitByPersona,quality:(reply)=>livingQuality(reply,visibleHistory(26)),grounding:(reply)=>groundingQuality(reply,visibleHistory(26)),behavior:(reply)=>behaviorQuality(reply,visibleHistory(26)),profile:()=>personaBehaviorProfile(currentPersona()),mode:()=>resolvePersonaChatStyle(currentPersona()),anchors:()=>personaAnchorLines(currentPersona(),messageForAI(latestUserMessage()))};
   }
 
   pin();
   [80,260,700,1600,3600,7600,14000,24000].forEach(delay=>setTimeout(pin,delay));
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pin,{once:true});
   window.addEventListener("pageshow",()=>setTimeout(pin,0));
-  console.log("豹豹机 322：气泡表情回应、媒体顺序与人设核心已启用");
+  console.log("豹豹机 324：年下黏糊 / 年上简洁双极人设硬路由已启用");
 })();
 
-/* baobao-persona-debug-viewer-v321 */
+/* baobao-persona-debug-viewer-v324 */
 window.openPersonaDebugPanel = function(){
   try{
     const debug = (window.BaobaoPersonaEngine && typeof window.BaobaoPersonaEngine.getDebug === "function")
@@ -40588,3 +40764,18 @@ window.openPersonaDebugPanel = function(){
   [120,500,1500,3500,8000,15000,26000].forEach(ms=>setTimeout(install,ms));
   console.log("豹豹机 322：角色气泡上标表情已启用");
 })();
+
+
+/* baobao-chat-style-selector-v324 */
+window.updateArchiveChatStyleHintV324=function(){
+  const select=document.getElementById("archiveChatStyleMode");
+  const hint=document.getElementById("archiveChatStyleHintV324");
+  if(!select||!hint)return;
+  const map={
+    auto:"自动判断会读取年下、撒娇、黏人、年上、成熟、寡言等人设词；识别不稳定时可以手动锁定。",
+    younger:"硬锁年下黏糊：更黏、更会撒娇和耍赖，被骂也不轻易退开；情绪高时会连续发短消息。",
+    older:"硬锁年上简洁：通常1到2条，成熟从容、有方向感，不消息轰炸，也不会只回‘嗯’。",
+    neutral:"只按完整人设自然发挥，不额外套年下或年上极端模板。"
+  };
+  hint.textContent=map[select.value]||map.auto;
+};

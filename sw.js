@@ -1,5 +1,5 @@
-/* 豹豹机 322：气泡表情回应版。 */
-const CACHE_NAME = "baobao-shell-v322";
+/* 豹豹机 324：年下黏糊 / 年上简洁双极人设版。 */
+const CACHE_NAME = "baobao-shell-v324";
 const SHELL = [
   "./",
   "./index.html",

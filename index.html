@@ -24,7 +24,7 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=322">
+<link rel="manifest" href="./baobao-manifest.json?v=324">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
@@ -150,8 +150,8 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
-<link rel="stylesheet" href="./app.css?v=322">
-<script defer src="./app.js?v=322"></script>
+<link rel="stylesheet" href="./app.css?v=324">
+<script defer src="./app.js?v=324"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -770,6 +770,18 @@ API Key<br>
 
   <div class="archive-section-label">PERSONA / TRAITS</div>
   <textarea id="archivePersonaTextarea" class="archive-textarea" placeholder="Describe background, personality..."></textarea>
+
+
+  <div class="archive-divider"></div>
+
+  <div class="archive-section-label">CHAT STYLE / 关系语气模式</div>
+  <select id="archiveChatStyleMode" class="archive-dashed-input" onchange="updateArchiveChatStyleHintV324()" style="width:100%;height:44px;margin-top:8px;background:#fff;color:#222">
+    <option value="auto">自动判断（优先按完整人设）</option>
+    <option value="younger">年下黏糊：爱撒娇、黏人、死皮赖脸</option>
+    <option value="older">年上简洁：成熟、话少、有年上感</option>
+    <option value="neutral">自然人设：不套两种极端</option>
+  </select>
+  <div id="archiveChatStyleHintV324" style="font-size:12px;line-height:1.55;color:#8a8a8f;margin:8px 2px 2px">自动判断会读取年下、撒娇、黏人、年上、成熟、寡言等人设词；不稳定时可手动锁定。</div>
 
   <div class="archive-divider"></div>
 
@@ -2227,3 +2239,7 @@ API Key<br>
 <!-- index(321)：媒体顺序硬锁；文字、表情包或照片、后续文字会按真实发送顺序逐条出现，媒体未发送成功前不会提前显示后续消息。 -->
 
 <!-- index(322)：角色可以给用户气泡点上标表情；表情作为气泡边缘回应显示，不会掉成聊天文字。 -->
+
+<!-- index(323)：强化人设行为强度；非常黏人、死皮赖脸、活泼、会撒娇等特质会稳定落实到每轮回复，周树生不再被压成普通克制男友。 -->
+
+<!-- index(324)：每个角色可选择自动、年下黏糊、年上简洁或自然人设；聊天核心按模式硬路由并分别检查重写。 -->
