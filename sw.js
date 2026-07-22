@@ -1,5 +1,5 @@
-/* 豹豹机 315：人设读取强化核心。 */
-const CACHE_NAME = "baobao-shell-v315";
+/* 豹豹机 317：修格式 + 帅图优化版。 */
+const CACHE_NAME = "baobao-shell-v317";
 const SHELL = [
   "./",
   "./index.html",

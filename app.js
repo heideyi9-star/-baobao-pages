@@ -39283,3 +39283,724 @@ window.openPersonaDebugPanel = function(){
   if(typeof openPanel === "function") openPanel("personaDebugPage");
   else { const p=document.getElementById("personaDebugPage"); if(p) p.style.display="block"; }
 };
+
+
+/* baobao-persona-image-reading-v316 */
+(function(){
+  "use strict";
+  if(window.__bbPersonaImageReadingV316)return;
+  window.__bbPersonaImageReadingV316=true;
+
+  const $=id=>document.getElementById(id);
+  const clean=value=>String(value==null?"":value).trim();
+  const esc=value=>String(value==null?"":value)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+  function appState(){
+    try{return window.state||state||{}}catch(_){return window.state||{}}
+  }
+  function currentPersona(){
+    const s=appState();
+    const list=Array.isArray(s.personas)?s.personas:[];
+    const ids=[
+      s.activeChatId,
+      window.currentChatPersona&&window.currentChatPersona.id,
+      s.currentChatPersona&&s.currentChatPersona.id
+    ].map(v=>String(v||"")).filter(Boolean);
+    for(const id of ids){
+      const found=list.find(item=>item&&String(item.id||"")===id);
+      if(found){
+        window.currentChatPersona=found;
+        s.currentChatPersona=found;
+        return found;
+      }
+    }
+    return window.currentChatPersona||s.currentChatPersona||{};
+  }
+  function splitPersonaLines(text){
+    return clean(text)
+      .replace(/[。！？；]/g,m=>m+'\n')
+      .split(/\n+/)
+      .map(line=>clean(line.replace(/^[\s\-—•·*#\d.、）)【\[]+/,'')))
+      .filter(Boolean);
+  }
+  function uniqueLines(list,max){
+    const out=[]; const seen=new Set();
+    (Array.isArray(list)?list:[]).forEach(item=>{
+      const value=clean(item);
+      if(!value||seen.has(value))return;
+      seen.add(value); out.push(value);
+    });
+    return typeof max==='number'?out.slice(0,max):out;
+  }
+  function personaAppearanceLines(person){
+    const direct=[person.appearance,person.looks,person.visual,person.imagePrompt,person.image_prompt,person.profile]
+      .flatMap(value=>splitPersonaLines(value));
+    const raw=[
+      person.persona,person.personality,person.brief,person.setting,person.prompt,
+      person.bio,person.description,person.background,person.scenario,
+      Array.isArray(person.tags)?person.tags.join('、'):person.tags
+    ].flatMap(value=>splitPersonaLines(value));
+    const keys=/(外貌|长相|样貌|长发|短发|头发|刘海|发色|发型|瞳|眼睛|眼眸|肤色|皮肤|五官|嘴唇|鼻梁|脸|眉|耳钉|耳饰|项链|身高|体型|身材|肩|手|手指|穿着|穿搭|衣服|衬衫|外套|毛衣|校服|西装|裙|裤|鞋|饰品|气质|清冷|温柔|少年|青年|成熟|可爱|帅|漂亮|慵懒|冷淡|病弱|白皙|苍白|银发|金发|黑发|白发|灰发|蓝发|粉发|红发)/;
+    const rank=line=>{
+      let score=0;
+      if(keys.test(line))score+=80;
+      if(/[“”「」『』"]/.test(line))score+=8;
+      if(line.length>=4&&line.length<=80)score+=12;
+      if(/^(?:喜欢|讨厌|平时|经常|不会|不要|不能|如果|因为)/.test(line))score-=18;
+      if(/(?:聊天|回复|语气|称呼|口癖|标点|关系|底线|世界观|剧情|经历|家庭|朋友|同学|工作|学校|专业|爱好)/.test(line))score-=10;
+      return score;
+    };
+    const scored=uniqueLines(direct.concat(raw),80)
+      .map((line,index)=>({line,index,score:rank(line)}))
+      .sort((a,b)=>b.score-a.score||a.index-b.index)
+      .filter(item=>item.score>0)
+      .map(item=>item.line);
+    return scored.slice(0,10);
+  }
+  function personaSupportLines(person){
+    const raw=[
+      person.personality,person.brief,person.setting,person.prompt,person.bio,
+      Array.isArray(person.tags)?person.tags.join('、'):person.tags
+    ].flatMap(value=>splitPersonaLines(value));
+    return uniqueLines(raw.filter(line=>!personaAppearanceLines(person).includes(line)),8).slice(0,6);
+  }
+  function personaVisualSummary(person){
+    const appearance=personaAppearanceLines(person);
+    const support=personaSupportLines(person);
+    return {
+      appearance,
+      support,
+      text:[
+        appearance.length?('【外貌与穿搭】\n'+appearance.map((line,index)=>(index+1)+'. '+line).join('\n')):'',
+        support.length?('【气质与补充】\n'+support.map((line,index)=>(index+1)+'. '+line).join('\n')):''
+      ].filter(Boolean).join('\n\n')
+    };
+  }
+  function defaultPromptByStyle(style,person){
+    const name=clean(person&&person.name)||'当前角色';
+    const map={
+      photo:`按${name}的人设外貌生成一张真实生活照，像他本人随手拍的照片。`,
+      portrait:`按${name}的人设外貌生成一张清晰头像，重点表现脸部、发型和气质。`,
+      anime:`按${name}的人设外貌生成一张高质量人物插画，突出角色辨识度。`,
+      cinema:`按${name}的人设外貌生成一张电影感人物照片，保留角色本人的样子。`,
+      none:`按${name}的人设外貌生成图片，保持是同一个人。`
+    };
+    return map[clean(style)]||map.photo;
+  }
+  function styleSuffix(style){
+    const map={
+      photo:'写实的 iPhone 随手拍照片，自然光线、真实皮肤和生活环境，不要文字、水印或边框。',
+      portrait:'真实人物头像照片，适合作为社交头像，自然皮肤，不要文字或水印。',
+      anime:'高质量二次元插画，人物细节完整，不要文字或水印。',
+      cinema:'电影感真实摄影，氛围光影和自然构图，不要文字或水印。',
+      none:''
+    };
+    return map[clean(style)]||map.photo;
+  }
+  function buildPersonaAwarePrompt(userPrompt,style,usePersona){
+    const person=currentPersona();
+    const summary=personaVisualSummary(person);
+    const request=clean(userPrompt)||defaultPromptByStyle(style,person);
+    const personaEnabled=!!usePersona&&summary.text;
+    if(!personaEnabled){
+      return {
+        prompt:request+(styleSuffix(style)?'\n\n画面要求：'+styleSuffix(style):''),
+        usedPersona:false,
+        request,
+        person
+      };
+    }
+    const prompt=[
+      '你要生成的主角必须是当前聊天角色本人，不是陌生模特，也不要忽略角色已经写明的外貌。',
+      clean(person.name)?('角色名：'+clean(person.name)):'',
+      summary.text,
+      '【本次用户想要的画面】\n'+request,
+      '请优先遵守角色原始外貌与气质，让生成结果一眼看得出是这个角色本人。若本次要求没有写全，就按角色的人设自然补全合理的服装、场景、动作、镜头和光线。不要出现文字、水印、聊天界面或手机边框。',
+      styleSuffix(style)?('画面要求：'+styleSuffix(style)):''
+    ].filter(Boolean).join('\n\n');
+    return {prompt,usedPersona:true,request,person};
+  }
+  function setTyping(active){
+    try{if(typeof window.bbTypingBubbleV292==='function')window.bbTypingBubbleV292(!!active);}catch(_){ }
+    try{if(typeof window.bbSetNaturalTypingV250==='function')window.bbSetNaturalTypingV250(!!active);}catch(_){ }
+  }
+  function compressSource(source){
+    if(!/^data:image\//i.test(String(source||'')))return Promise.resolve(source);
+    return new Promise(resolve=>{
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          const max=1400;
+          const scale=Math.min(1,max/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
+          const width=Math.max(1,Math.round((img.naturalWidth||img.width)*scale));
+          const height=Math.max(1,Math.round((img.naturalHeight||img.height)*scale));
+          const canvas=document.createElement('canvas');
+          canvas.width=width; canvas.height=height;
+          const ctx=canvas.getContext('2d',{alpha:false});
+          ctx.fillStyle='#fff'; ctx.fillRect(0,0,width,height); ctx.drawImage(img,0,0,width,height);
+          resolve(canvas.toDataURL('image/jpeg',0.84));
+        }catch(_){resolve(source)}
+      };
+      img.onerror=()=>resolve(source);
+      img.src=source;
+    });
+  }
+  function persistAndRenderGenerated(message){
+    const s=appState();
+    if(!Array.isArray(s.chatMessages))s.chatMessages=[];
+    s.chatMessages.push(message);
+    try{
+      const key=String(s.activeChatId||'');
+      if(!s.chatRecords||typeof s.chatRecords!=='object')s.chatRecords={};
+      if(key)s.chatRecords[key]=s.chatMessages;
+    }catch(_){ }
+    try{if(typeof window.saveLocal==='function')window.saveLocal();else if(typeof saveLocal==='function')saveLocal();}catch(_){ }
+    try{if(typeof window.renderChatMessages==='function')window.renderChatMessages();else if(typeof renderChatMessages==='function')renderChatMessages();}catch(_){ }
+    try{if(typeof window.renderChatList==='function')window.renderChatList();else if(typeof renderChatList==='function')renderChatList();}catch(_){ }
+  }
+  async function sendPersonaAwareImage(){
+    const usePersona=$('bbImageUsePersonaV316')?$('bbImageUsePersonaV316').checked:true;
+    const rawPrompt=clean($('bbImagePromptV308')?.value);
+    const person=currentPersona();
+    const hasPersona=!!personaVisualSummary(person).text;
+    if(!rawPrompt&&(!usePersona||!hasPersona)){
+      if(typeof showToast==='function')showToast('请输入画面描述，或开启“读取人设外貌”',true);
+      return;
+    }
+    const style=clean($('bbImageStyleV308')?.value)||'photo';
+    const size=clean($('bbImageSizeV308')?.value)||'1024x1024';
+    const sender=clean($('bbImageSenderV308')?.value)||'assistant';
+    const button=$('bbImageGenerateButtonV308');
+    if(button){button.disabled=true;button.textContent='生成人设图中…';}
+    if(sender!=='user')setTyping(true);
+    try{
+      const built=buildPersonaAwarePrompt(rawPrompt,style,usePersona);
+      const generator=(window.BaobaoImageGenerationV311&&window.BaobaoImageGenerationV311.generate)||(window.BaobaoImageGenerationV308&&window.BaobaoImageGenerationV308.generate);
+      if(typeof generator!=='function')throw new Error('生图功能还没加载好');
+      const images=await generator(built.prompt,{size});
+      const first=Array.isArray(images)?images[0]:images;
+      if(!first)throw new Error('接口返回了空图片');
+      const source=await compressSource(first);
+      persistAndRenderGenerated({
+        id:'bb316_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        role:sender==='user'?'user':'assistant',
+        type:'image',
+        content:source,
+        generated:true,
+        generatedPrompt:built.prompt,
+        generatedRequest:built.request,
+        personaReadV316:!!built.usedPersona,
+        personaName:clean(built.person&&built.person.name),
+        time:Date.now(),
+        delivery:sender==='user'?'sent':'received'
+      });
+      if(typeof window.closeBaobaoToolModal==='function')window.closeBaobaoToolModal();
+      if(typeof showToast==='function')showToast(built.usedPersona?'已按当前角色人设外貌生图并发送':'图片已生成并发送');
+    }catch(error){
+      if(typeof showToast==='function')showToast(clean(error&&error.message||error||'生成失败'),true);
+    }finally{
+      setTyping(false);
+      if(button){button.disabled=false;button.textContent='生成并发送';}
+    }
+  }
+  function injectStyle(){
+    if($('bbPersonaImageV316Style'))return;
+    const style=document.createElement('style');
+    style.id='bbPersonaImageV316Style';
+    style.textContent=`
+      .bb-gen-v316-card{margin-top:10px;padding:12px 12px 11px;border-radius:16px;background:#f7f7f8;border:1px solid rgba(0,0,0,.08)}
+      .bb-gen-v316-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+      .bb-gen-v316-title{font-size:13px;font-weight:800;color:#222}
+      .bb-gen-v316-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:#333;font-weight:700}
+      .bb-gen-v316-toggle input{width:16px;height:16px}
+      .bb-gen-v316-hint{margin-top:7px;font-size:12px;line-height:1.55;color:#777;white-space:pre-line}
+      .bb-gen-v316-quick{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+      .bb-gen-v316-quick button{border:0;border-radius:999px;padding:7px 11px;background:#fff;color:#222;font-size:12px;font-weight:700;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+    `;
+    document.head.appendChild(style);
+  }
+  function personaHintText(){
+    const person=currentPersona();
+    const summary=personaVisualSummary(person);
+    const name=clean(person.name)||'当前角色';
+    if(!summary.appearance.length){
+      return `当前角色：${name}\n暂时没有明显的外貌描述；已保存人设后，生图仍会优先参考现有人设内容。`;
+    }
+    return `当前角色：${name}\n已读取外貌要点：${summary.appearance.slice(0,3).join('；')}`;
+  }
+  window.bbUsePersonaPresetV316=function(kind){
+    const textarea=$('bbImagePromptV308');
+    if(!textarea)return;
+    const person=currentPersona();
+    const name=clean(person.name)||'当前角色';
+    const presetMap={
+      portrait:`按${name}的人设外貌生成一张清晰头像，重点突出脸、发型和眼神。`,
+      selfie:`按${name}的人设外貌生成一张自然自拍，像刚拍给我看的生活照。`,
+      full:`按${name}的人设外貌生成一张全身图，衣着和姿态自然。`,
+      daily:`按${name}的人设外貌生成一张日常生活照，环境要符合他的气质。`
+    };
+    textarea.value=presetMap[kind]||presetMap.daily;
+    textarea.dispatchEvent(new Event('input',{bubbles:true}));
+    textarea.focus();
+  };
+  function enhanceModal(){
+    injectStyle();
+    const textarea=$('bbImagePromptV308');
+    const actions=textarea&&textarea.parentNode;
+    if(!textarea||!actions)return;
+    let card=$('bbPersonaImageCardV316');
+    if(!card){
+      card=document.createElement('div');
+      card.id='bbPersonaImageCardV316';
+      card.className='bb-gen-v316-card';
+      card.innerHTML=''+
+        '<div class="bb-gen-v316-head">'+
+          '<div class="bb-gen-v316-title">按当前角色人设生图</div>'+
+          '<label class="bb-gen-v316-toggle"><input type="checkbox" id="bbImageUsePersonaV316" checked>读取人设外貌</label>'+
+        '</div>'+
+        '<div class="bb-gen-v316-hint" id="bbPersonaImageHintV316"></div>'+
+        '<div class="bb-gen-v316-quick">'+
+          '<button type="button" onclick="bbUsePersonaPresetV316(\'portrait\')">头像</button>'+
+          '<button type="button" onclick="bbUsePersonaPresetV316(\'selfie\')">自拍</button>'+
+          '<button type="button" onclick="bbUsePersonaPresetV316(\'full\')">全身图</button>'+
+          '<button type="button" onclick="bbUsePersonaPresetV316(\'daily\')">生活照</button>'+
+        '</div>';
+      textarea.insertAdjacentElement('afterend',card);
+    }
+    const hint=$('bbPersonaImageHintV316');
+    if(hint)hint.textContent=personaHintText();
+    textarea.placeholder='可写具体要求，例如：穿黑衬衫，在窗边回头看镜头。留空也可以，勾选“读取人设外貌”后会按当前角色人设直接生图。';
+  }
+  function wrapOpen(){
+    const current=window.openBaobaoImageGeneratorV308;
+    if(typeof current!=='function'||current.__bbPersonaImageV316Wrapped)return;
+    const wrapped=function(){
+      const result=current.apply(this,arguments);
+      setTimeout(enhanceModal,0);
+      setTimeout(enhanceModal,80);
+      setTimeout(enhanceModal,260);
+      return result;
+    };
+    wrapped.__bbPersonaImageV316Wrapped=true;
+    wrapped.__bbPrevious=current;
+    window.openBaobaoImageGeneratorV308=wrapped;
+    window.openImagePromptEdit=wrapped;
+    if(window.BaobaoImageGenerationV308)window.BaobaoImageGenerationV308.open=wrapped;
+  }
+  function install(){
+    wrapOpen();
+    window.baobaoGenerateImageV308=sendPersonaAwareImage;
+    try{if(typeof globalThis.baobaoGenerateImageV308!=='undefined')globalThis.baobaoGenerateImageV308=sendPersonaAwareImage;}catch(_){ }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+  window.addEventListener('pageshow',()=>setTimeout(install,0));
+  [150,700,1800,4200,9000].forEach(delay=>setTimeout(install,delay));
+  console.log('豹豹机 316：生图已支持自动读取当前角色人设外貌');
+})();
+
+
+/* baobao-sticker-format-and-handsome-image-v317 */
+(function(){
+  "use strict";
+  if(window.__bbStickerHandsomeImageV317)return;
+  window.__bbStickerHandsomeImageV317=true;
+
+  const $=id=>document.getElementById(id);
+  const clean=value=>String(value==null?"":value).trim();
+  const esc=value=>String(value==null?"":value)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+  function appState(){
+    try{return window.state||state||{}}catch(_){return window.state||{}}
+  }
+  function currentPersona(){
+    const s=appState();
+    const list=Array.isArray(s.personas)?s.personas:[];
+    const ids=[
+      s.activeChatId,
+      window.currentChatPersona&&window.currentChatPersona.id,
+      s.currentChatPersona&&s.currentChatPersona.id
+    ].map(v=>String(v||"")).filter(Boolean);
+    for(const id of ids){
+      const found=list.find(item=>item&&String(item.id||"")===id);
+      if(found){
+        window.currentChatPersona=found;
+        s.currentChatPersona=found;
+        return found;
+      }
+    }
+    return window.currentChatPersona||s.currentChatPersona||{};
+  }
+  function stickerList(){
+    const s=appState();
+    return Array.isArray(s.stickers)?s.stickers.filter(item=>item&&item.url):[];
+  }
+  function normalizeStickerName(name){
+    return clean(name)
+      .replace(/^\s*[【\[]?表情包[】\]]?[:：]?\s*/i,'')
+      .replace(/\.(gif|webp|png|jpe?g)$/i,'')
+      .replace(/[【】\[\]()（）]/g,' ')
+      .replace(/[_-]+/g,' ')
+      .replace(/\s+/g,' ')
+      .toLowerCase();
+  }
+  function findBestSticker(name){
+    const wanted=normalizeStickerName(name);
+    if(!wanted)return null;
+    const list=stickerList();
+    if(!list.length)return null;
+    const exact=list.find(item=>normalizeStickerName(item.name||item.stickerName||'')===wanted);
+    if(exact)return exact;
+    const contains=list.find(item=>{
+      const n=normalizeStickerName(item.name||item.stickerName||'');
+      return n&& (n.includes(wanted)||wanted.includes(n));
+    });
+    if(contains)return contains;
+    const queryTerms=wanted.split(/\s+/).filter(Boolean);
+    let best=null,bestScore=0;
+    list.forEach(item=>{
+      const n=normalizeStickerName(item.name||item.stickerName||'');
+      if(!n)return;
+      let score=0;
+      queryTerms.forEach(term=>{ if(n.includes(term))score+=term.length+2; });
+      if(/猫|猫猫|小猫/.test(wanted)&&/猫/.test(n))score+=5;
+      if(/爱|喜欢|开心|摇尾巴|探头|委屈|亲|抱/.test(wanted) && /爱|喜欢|开心|摇尾巴|探头|委屈|亲|抱/.test(n))score+=4;
+      if(score>bestScore){bestScore=score;best=item;}
+    });
+    return bestScore>=2?best:null;
+  }
+  function rewriteLooseStickerFormat(reply){
+    let text=String(reply||'');
+    if(!text || /\[\[STICKER:/i.test(text))return text;
+    const pattern=/(\[表情包\]|【表情包】|表情包[:：])\s*([^\n\r]{1,80})/ig;
+    let changed=false;
+    text=text.replace(pattern,(full,tag,name)=>{
+      const rawName=clean(name).replace(/^[：:]+/,'').trim();
+      const sticker=findBestSticker(rawName);
+      if(!sticker)return full;
+      changed=true;
+      return '\n[[STICKER:'+String(sticker.name||'').replace(/[\]\[]/g,'')+']]';
+    });
+    if(!changed)return text;
+    text=text.replace(/\n{3,}/g,'\n\n').replace(/[ \t]+\n/g,'\n').trim();
+    return text;
+  }
+  function wrapRequestChatReply(){
+    const current=window.requestChatReply;
+    if(typeof current!=='function' || current.__bbLooseStickerV317)return;
+    const wrapped=async function(){
+      const result=await current.apply(this,arguments);
+      return rewriteLooseStickerFormat(result);
+    };
+    wrapped.__bbLooseStickerV317=true;
+    wrapped.__bbPrevious=current;
+    window.requestChatReply=wrapped;
+    try{requestChatReply=wrapped}catch(_){ }
+  }
+
+  function splitPersonaLines(text){
+    return clean(text)
+      .replace(/[。！？；]/g,m=>m+'\n')
+      .split(/\n+/)
+      .map(line=>clean(line.replace(/^[\s\-—•·*#\d.、）)【\[]+/,'')))
+      .filter(Boolean);
+  }
+  function uniqueLines(list,max){
+    const out=[]; const seen=new Set();
+    (Array.isArray(list)?list:[]).forEach(item=>{
+      const value=clean(item);
+      if(!value||seen.has(value))return;
+      seen.add(value); out.push(value);
+    });
+    return typeof max==='number'?out.slice(0,max):out;
+  }
+  function personaAppearanceLines(person){
+    const keys=/(外貌|长相|样貌|发型|头发|碎发|刘海|黑发|白发|银发|瞳|眼睛|眼神|鼻梁|下颌线|唇|耳钉|唇钉|舌钉|穿孔|身高|体型|瘦|瘦高|衣架子|青筋|锁骨|手|手指|穿着|穿搭|黑衣|卫衣|外套|衬衫|裤|鞋|饰品|气质|冷淡|高街|忧郁|少年|帅|漂亮|白皙)/;
+    const blocks=[
+      person.appearance,person.looks,person.visual,person.imagePrompt,person.image_prompt,
+      person.persona,person.personality,person.brief,person.setting,person.prompt,
+      person.bio,person.description,person.background,person.scenario,
+      Array.isArray(person.tags)?person.tags.join('、'):person.tags
+    ].flatMap(value=>splitPersonaLines(value));
+    const ranked=uniqueLines(blocks,90)
+      .map((line,index)=>({line,index,score:(keys.test(line)?75:0)+(line.length>=4&&line.length<=80?10:0)}))
+      .filter(item=>item.score>0)
+      .sort((a,b)=>b.score-a.score||a.index-b.index)
+      .map(item=>item.line);
+    return ranked.slice(0,10);
+  }
+  function personaAuraLines(person){
+    const blocks=[person.personality,person.brief,Array.isArray(person.tags)?person.tags.join('、'):person.tags]
+      .flatMap(value=>splitPersonaLines(value));
+    return uniqueLines(blocks,8).slice(0,5);
+  }
+  function personaGender(person){
+    const raw=[person.name,person.persona,person.personality,person.brief,person.tags].map(v=>Array.isArray(v)?v.join('、'):clean(v)).join(' ');
+    if(/\b男\b|男生|男孩|少年|哥哥|帅哥|185|树懒拟人/.test(raw))return 'male';
+    if(/\b女\b|女生|女孩|少女|姐姐|美女/.test(raw))return 'female';
+    return 'unknown';
+  }
+  function presetRequest(kind,person){
+    const name=clean(person&&person.name)||'当前角色';
+    const map={
+      handsome:`按${name}的人设外貌生成一张高颜值帅哥图，重点把人拍帅。`,
+      mirror:`按${name}的人设外貌生成一张黑衣镜自拍，氛围感强。`,
+      topview:`按${name}的人设外貌生成一张俯拍自拍，脸和发型要好看。`,
+      portrait:`按${name}的人设外貌生成一张清晰头像，冷淡帅气。`,
+      daily:`按${name}的人设外貌生成一张好看的日常生活照。`
+    };
+    return map[kind]||map.handsome;
+  }
+  function styleSuffix(style){
+    const map={
+      photo:'写实的 iPhone 随手拍照片，自然光线、清晰、真实皮肤和生活环境，不要文字、水印或边框。',
+      portrait:'真实人物头像照片，适合作为社交头像，脸部清晰，光线自然，不要文字或水印。',
+      anime:'高质量二次元插画，人物精致好看，五官稳定，不要文字或水印。',
+      cinema:'电影感真实摄影，氛围光影和自然构图，不要文字或水印。',
+      none:''
+    };
+    return map[clean(style)]||map.photo;
+  }
+  function handsomeCore(person,mode){
+    const gender=personaGender(person);
+    const common=[
+      '主体必须很好看，成片要有氛围感和高级感。',
+      '脸部清晰，五官端正稳定，不要脸崩，不要头大身短。',
+      '皮肤干净，质感真实，不要塑料磨皮，不要低清晰度，不要畸形手指。'
+    ];
+    const male=[
+      '如果角色是男性，请拍成高颜值帅哥：脸小，下颌线清晰，鼻梁挺，眼神有氛围，瘦高身材，锁骨和手部好看。',
+      '整体是冷淡、干净、慵懒、微丧但很帅的感觉，不要油腻，不要土气。'
+    ];
+    const female=[
+      '如果角色是女性，请拍成高颜值美女：五官精致，皮肤干净，气质突出。'
+    ];
+    const sceneMap={
+      handsome:'推荐拍成最出片的人像，突出脸、发型和气质。',
+      mirror:'优先做黑衣镜自拍，房间内暖暗光，手机遮挡适度，姿势自然。',
+      topview:'优先做俯拍自拍，镜头从上往下，发丝自然垂落，脸显小。',
+      portrait:'优先做近景头像或半身照，聚焦五官与气质。',
+      daily:'优先做自然生活照，像随手拍但很好看。'
+    };
+    const blocks=[...common];
+    if(gender==='female')blocks.push(...female); else blocks.push(...male);
+    if(sceneMap[mode])blocks.push(sceneMap[mode]);
+    return blocks.join(' ');
+  }
+  function buildPrompt(options){
+    const person=currentPersona();
+    const rawPrompt=clean(options&&options.prompt);
+    const style=clean(options&&options.style)||'photo';
+    const usePersona=!!(options&&options.usePersona);
+    const handsome=!!(options&&options.handsome);
+    const mode=clean(options&&options.mode)||'handsome';
+    const appearance=personaAppearanceLines(person);
+    const aura=personaAuraLines(person);
+    const request=rawPrompt || presetRequest(mode,person);
+    const blocks=[];
+    if(usePersona && appearance.length){
+      blocks.push('你要生成的主角必须是当前聊天角色本人，不是随机模特。');
+      if(clean(person.name))blocks.push('角色名：'+clean(person.name));
+      blocks.push('【角色外貌重点】\n'+appearance.map((line,index)=>(index+1)+'. '+line).join('\n'));
+      if(aura.length)blocks.push('【角色气质补充】\n'+aura.map((line,index)=>(index+1)+'. '+line).join('\n'));
+      blocks.push('人设没有明确写到的地方，可以顺着这个人的气质自然补全，但必须保持是同一个人。');
+    }
+    blocks.push('【本次生成要求】\n'+request);
+    if(handsome)blocks.push('【内置帅图优化】\n'+handsomeCore(person,mode));
+    blocks.push('【质量要求】\n'+styleSuffix(style));
+    blocks.push('避免：脸崩、眼睛大小不一、过度磨皮、手指畸形、低清晰度、廉价滤镜、文字、水印、聊天界面、手机边框。');
+    return {prompt:blocks.join('\n\n'),person,request};
+  }
+  function setTyping(active){
+    try{if(typeof window.bbTypingBubbleV292==='function')window.bbTypingBubbleV292(!!active);}catch(_){ }
+    try{if(typeof window.bbSetNaturalTypingV250==='function')window.bbSetNaturalTypingV250(!!active);}catch(_){ }
+  }
+  function compressSource(source){
+    if(!/^data:image\//i.test(String(source||'')))return Promise.resolve(source);
+    return new Promise(resolve=>{
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          const max=1400;
+          const scale=Math.min(1,max/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
+          const width=Math.max(1,Math.round((img.naturalWidth||img.width)*scale));
+          const height=Math.max(1,Math.round((img.naturalHeight||img.height)*scale));
+          const canvas=document.createElement('canvas');
+          canvas.width=width; canvas.height=height;
+          const ctx=canvas.getContext('2d',{alpha:false});
+          ctx.fillStyle='#fff'; ctx.fillRect(0,0,width,height); ctx.drawImage(img,0,0,width,height);
+          resolve(canvas.toDataURL('image/jpeg',0.84));
+        }catch(_){resolve(source)}
+      };
+      img.onerror=()=>resolve(source);
+      img.src=source;
+    });
+  }
+  function persistAndRenderGenerated(message){
+    const s=appState();
+    if(!Array.isArray(s.chatMessages))s.chatMessages=[];
+    s.chatMessages.push(message);
+    try{
+      const key=String(s.activeChatId||'');
+      if(!s.chatRecords||typeof s.chatRecords!=='object')s.chatRecords={};
+      if(key)s.chatRecords[key]=s.chatMessages;
+    }catch(_){ }
+    try{if(typeof window.saveLocal==='function')window.saveLocal();else if(typeof saveLocal==='function')saveLocal();}catch(_){ }
+    try{if(typeof window.renderChatMessages==='function')window.renderChatMessages();else if(typeof renderChatMessages==='function')renderChatMessages();}catch(_){ }
+    try{if(typeof window.renderChatList==='function')window.renderChatList();else if(typeof renderChatList==='function')renderChatList();}catch(_){ }
+  }
+  async function handsomeGenerate(){
+    const usePersona=$('bbImageUsePersonaV316')?$('bbImageUsePersonaV316').checked:true;
+    const handsome=$('bbImageHandsomeV317')?$('bbImageHandsomeV317').checked:true;
+    const mode=clean(($('bbImageModeV317')&&$('bbImageModeV317').value)||'handsome');
+    const rawPrompt=clean($('bbImagePromptV308')?.value);
+    if(!rawPrompt && !usePersona){
+      if(typeof showToast==='function')showToast('请输入画面描述，或开启“读取人设外貌”',true);
+      return;
+    }
+    const style=clean($('bbImageStyleV308')?.value)||'photo';
+    const size=clean($('bbImageSizeV308')?.value)||'1024x1024';
+    const sender=clean($('bbImageSenderV308')?.value)||'assistant';
+    const button=$('bbImageGenerateButtonV308');
+    if(button){button.disabled=true;button.textContent='正在优化出图…';}
+    if(sender!=='user')setTyping(true);
+    try{
+      const built=buildPrompt({prompt:rawPrompt,style,usePersona,handsome,mode});
+      const generator=(window.BaobaoImageGenerationV311&&window.BaobaoImageGenerationV311.generate)||(window.BaobaoImageGenerationV308&&window.BaobaoImageGenerationV308.generate);
+      if(typeof generator!=='function')throw new Error('生图功能还没加载好');
+      const images=await generator(built.prompt,{size});
+      const first=Array.isArray(images)?images[0]:images;
+      if(!first)throw new Error('接口返回了空图片');
+      const source=await compressSource(first);
+      persistAndRenderGenerated({
+        id:'bb317_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+        role:sender==='user'?'user':'assistant',
+        type:'image',
+        content:source,
+        generated:true,
+        generatedPrompt:built.prompt,
+        generatedRequest:built.request,
+        handsomeBoostV317:handsome,
+        personaReadV317:usePersona,
+        personaName:clean(built.person&&built.person.name),
+        time:Date.now(),
+        delivery:sender==='user'?'sent':'received'
+      });
+      if(typeof window.closeBaobaoToolModal==='function')window.closeBaobaoToolModal();
+      if(typeof showToast==='function')showToast('已优化提示词并生成帅图');
+    }catch(error){
+      if(typeof showToast==='function')showToast(clean(error&&error.message||error||'生成失败'),true);
+    }finally{
+      setTyping(false);
+      if(button){button.disabled=false;button.textContent='生成并发送';}
+    }
+  }
+  window.bbImageSetModeV317=function(mode){
+    const input=$('bbImageModeV317');
+    if(input)input.value=mode||'handsome';
+    const textarea=$('bbImagePromptV308');
+    if(textarea && !clean(textarea.value))textarea.value=presetRequest(mode,currentPersona());
+    textarea&&textarea.dispatchEvent(new Event('input',{bubbles:true}));
+    const wrap=$('bbImagePresetBarV317');
+    if(wrap)wrap.querySelectorAll('button').forEach(btn=>btn.classList.toggle('is-on',btn.dataset.mode===mode));
+  };
+  function injectStyle(){
+    if($('bbImageHandsomeV317Style'))return;
+    const style=document.createElement('style');
+    style.id='bbImageHandsomeV317Style';
+    style.textContent=`
+      .bb-gen-v317-card{margin-top:10px;padding:12px;border-radius:16px;background:#f6f6f7;border:1px solid rgba(0,0,0,.08)}
+      .bb-gen-v317-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+      .bb-gen-v317-title{font-size:13px;font-weight:800;color:#222}
+      .bb-gen-v317-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:#333;font-weight:700}
+      .bb-gen-v317-toggle input{width:16px;height:16px}
+      .bb-gen-v317-bar{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+      .bb-gen-v317-bar button{border:0;border-radius:999px;padding:7px 11px;background:#fff;color:#222;font-size:12px;font-weight:700;box-shadow:inset 0 0 0 1px rgba(0,0,0,.08)}
+      .bb-gen-v317-bar button.is-on{background:#222;color:#fff;box-shadow:none}
+      .bb-gen-v317-tip{margin-top:8px;font-size:12px;color:#777;line-height:1.55;white-space:pre-line}
+    `;
+    document.head.appendChild(style);
+  }
+  function modalTipText(){
+    const person=currentPersona();
+    const lines=personaAppearanceLines(person).slice(0,3);
+    const prefix=clean(person.name)||'当前角色';
+    return lines.length
+      ? `当前角色：${prefix}\n已读取外貌：${lines.join('；')}\n已内置帅图优化，默认更容易出冷淡好看的帅哥图。`
+      : `当前角色：${prefix}\n已内置帅图优化，默认会把人物往更好看、更出片的方向优化。`;
+  }
+  function enhanceModal(){
+    injectStyle();
+    const textarea=$('bbImagePromptV308');
+    if(!textarea)return;
+    let card=$('bbImageHandsomeCardV317');
+    if(!card){
+      card=document.createElement('div');
+      card.id='bbImageHandsomeCardV317';
+      card.className='bb-gen-v317-card';
+      card.innerHTML=''+
+        '<div class="bb-gen-v317-head">'+
+          '<div class="bb-gen-v317-title">帅图优化与内置提示词</div>'+
+          '<label class="bb-gen-v317-toggle"><input type="checkbox" id="bbImageHandsomeV317" checked>默认优化成帅哥/高颜值图</label>'+
+        '</div>'+
+        '<input type="hidden" id="bbImageModeV317" value="handsome">'+
+        '<div class="bb-gen-v317-bar" id="bbImagePresetBarV317">'+
+          '<button type="button" data-mode="handsome" onclick="bbImageSetModeV317(\'handsome\')">帅哥图</button>'+
+          '<button type="button" data-mode="mirror" onclick="bbImageSetModeV317(\'mirror\')">黑衣镜自拍</button>'+
+          '<button type="button" data-mode="topview" onclick="bbImageSetModeV317(\'topview\')">俯拍自拍</button>'+
+          '<button type="button" data-mode="portrait" onclick="bbImageSetModeV317(\'portrait\')">头像</button>'+
+          '<button type="button" data-mode="daily" onclick="bbImageSetModeV317(\'daily\')">生活照</button>'+
+        '</div>'+
+        '<div class="bb-gen-v317-tip" id="bbImageTipV317"></div>';
+      const anchor=$('bbPersonaImageCardV316')||textarea;
+      anchor.insertAdjacentElement('afterend',card);
+    }
+    const tip=$('bbImageTipV317');
+    if(tip)tip.textContent=modalTipText();
+    const textareaPlaceholder='可直接写“黑衣镜自拍、要帅一点、冷淡感、像朋友圈自拍”之类的要求；不写也行，会自动套用内置帅图提示词。';
+    textarea.placeholder=textareaPlaceholder;
+    window.bbImageSetModeV317(clean(($('bbImageModeV317')&&$('bbImageModeV317').value)||'handsome'));
+  }
+  function wrapOpenGenerator(){
+    const current=window.openBaobaoImageGeneratorV308;
+    if(typeof current!=='function' || current.__bbHandsomeV317Wrapped)return;
+    const wrapped=function(){
+      const result=current.apply(this,arguments);
+      setTimeout(enhanceModal,0);
+      setTimeout(enhanceModal,80);
+      setTimeout(enhanceModal,220);
+      return result;
+    };
+    wrapped.__bbHandsomeV317Wrapped=true;
+    wrapped.__bbPrevious=current;
+    window.openBaobaoImageGeneratorV308=wrapped;
+    window.openImagePromptEdit=wrapped;
+    if(window.BaobaoImageGenerationV308)window.BaobaoImageGenerationV308.open=wrapped;
+  }
+  function patchTestPrompt(){
+    const current=window.testImageAPI;
+    if(typeof current!=='function' || current.__bbHandsomeV317)return;
+    const wrapped=async function(){
+      const el=$('imageTestPromptV309');
+      if(el && !clean(el.value))el.value='高颜值黑衣帅哥镜自拍，冷淡感，氛围灯，自然真实，不要文字水印';
+      return current.apply(this,arguments);
+    };
+    wrapped.__bbHandsomeV317=true;
+    wrapped.__bbPrevious=current;
+    window.testImageAPI=wrapped;
+  }
+  function install(){
+    wrapRequestChatReply();
+    wrapOpenGenerator();
+    patchTestPrompt();
+    window.baobaoGenerateImageV308=handsomeGenerate;
+    try{if(typeof globalThis.baobaoGenerateImageV308!=='undefined')globalThis.baobaoGenerateImageV308=handsomeGenerate;}catch(_){ }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+  window.addEventListener('pageshow',()=>setTimeout(install,0));
+  [120,600,1500,3200,6500,12000].forEach(delay=>setTimeout(install,delay));
+  console.log('豹豹机 317：已修复松散表情包格式，并内置帅图优化提示词');
+})();
