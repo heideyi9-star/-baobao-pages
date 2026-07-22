@@ -1,5 +1,5 @@
-/* 豹豹机 301：查手机密码与秘密入口缓存。HTML 先返回，CSS/JS 独立缓存，后续桌面启动无需重复解析内联大文件。 */
-const CACHE_NAME = "baobao-shell-v301";
+/* 豹豹机 303：查手机直达 App、NPC 独立口吻与桌面底栏下移缓存。 */
+const CACHE_NAME = "baobao-shell-v303";
 const SHELL = [
   "./",
   "./index.html",

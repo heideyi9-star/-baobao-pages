@@ -35401,83 +35401,106 @@ ${offline}
 
 
 /* =========================================================
-   bb-ios-desktop-icon-ghost-click-fix-v300
-   修复 iOS/PWA 桌面图标被系统当作图片长按预览后留下灰黑残影，
-   同时避免残影盖住设置等 App，保留短按打开与长按编辑。
+   bb-ios-desktop-icon-ghost-click-fix-v302
+   彻底移除会残留的按压层：不再接管 touchstart / pointerdown，
+   只关闭 iOS 图片拖拽、长按预览和系统高亮，保留原桌面点击与长按编辑。
    ========================================================= */
 (function(){
   "use strict";
-  if(window.__bbIosDesktopIconGhostClickFixV300)return;
-  window.__bbIosDesktopIconGhostClickFixV300=true;
+  if(window.__bbIosDesktopIconGhostClickFixV302)return;
+  window.__bbIosDesktopIconGhostClickFixV302=true;
 
-  const STYLE_ID="bbIosDesktopIconGhostClickFixV300Style";
+  const STYLE_ID="bbIosDesktopIconGhostClickFixV302Style";
   const APP_SELECTOR="#desktop .apps-page > .app";
-  let active=null;
-  let pressTimer=0;
-  let longPressed=false;
-  let moved=false;
 
   function injectStyle(){
     if(document.getElementById(STYLE_ID))return;
     const style=document.createElement("style");
     style.id=STYLE_ID;
     style.textContent=`
-      #desktop,
-      #desktop .pages-viewport,
-      #desktop .pages-container,
-      #desktop .apps-page,
-      #desktop .app,
-      #desktop .app .icon,
-      #desktop .app .icon *,
-      #desktop .dock,
-      #desktop .dock *{
+      #desktop .apps-page > .app,
+      #desktop .apps-page > .app:active,
+      #desktop .apps-page > .app:focus,
+      #desktop .apps-page > .app:focus-visible{
+        position:relative !important;
+        background:transparent !important;
+        box-shadow:none !important;
+        filter:none !important;
+        opacity:1 !important;
+        outline:none !important;
+        -webkit-tap-highlight-color:transparent !important;
+        -webkit-touch-callout:none !important;
+        -webkit-user-select:none !important;
+        user-select:none !important;
+        -webkit-user-drag:none !important;
+        touch-action:manipulation !important;
+      }
+      #desktop .apps-page > .app::before,
+      #desktop .apps-page > .app::after{
+        content:none !important;
+        display:none !important;
+        width:0 !important;
+        height:0 !important;
+        background:transparent !important;
+        box-shadow:none !important;
+      }
+      #desktop .apps-page > .app .icon,
+      #desktop .apps-page > .app .icon:active,
+      #desktop .apps-page > .app .icon:focus{
+        outline:none !important;
+        filter:none !important;
+        opacity:1 !important;
+        -webkit-tap-highlight-color:transparent !important;
+        -webkit-touch-callout:none !important;
+        -webkit-user-select:none !important;
+        user-select:none !important;
+        -webkit-user-drag:none !important;
+      }
+      #desktop .apps-page > .app .icon::before,
+      #desktop .apps-page > .app .icon::after{
+        content:none !important;
+        display:none !important;
+      }
+      #desktop .apps-page > .app img,
+      #desktop .apps-page > .app svg,
+      #desktop .apps-page > .app .icon *{
+        pointer-events:none !important;
         -webkit-touch-callout:none !important;
         -webkit-user-select:none !important;
         user-select:none !important;
         -webkit-user-drag:none !important;
         -webkit-tap-highlight-color:transparent !important;
       }
-      #desktop .app,
-      #desktop .app .icon{
-        touch-action:manipulation !important;
-      }
-      #desktop .app img,
-      #desktop .icon img{
-        pointer-events:none !important;
-        -webkit-user-drag:none !important;
-        -webkit-touch-callout:none !important;
-      }
-      #desktop .app.bb-v300-pressing .icon{
-        transform:scale(.96) !important;
-        transition:transform .10s ease-out !important;
+      #desktop .apps-page > .app.bb-v300-pressing,
+      #desktop .apps-page > .app.bb-v302-pressing,
+      #desktop .apps-page > .app.bb-v300-pressing .icon,
+      #desktop .apps-page > .app.bb-v302-pressing .icon{
+        background:transparent !important;
+        box-shadow:none !important;
+        filter:none !important;
+        opacity:1 !important;
+        transform:none !important;
+        transition:none !important;
       }
     `;
     document.head.appendChild(style);
   }
 
-  function appFrom(target){
-    const app=target&&target.closest&&target.closest(APP_SELECTOR);
-    return app&&app.isConnected?app:null;
-  }
-
-  function appInfo(app){
-    if(!app||!app.parentElement)return null;
-    const page=app.parentElement;
-    const index=Array.prototype.indexOf.call(page.children,app);
-    if(index<0)return null;
-    return {app,index,page2:page.classList.contains("page2-only")};
+  function apps(root){
+    const scope=root&&root.querySelectorAll?root:document;
+    const list=[];
+    if(scope.matches&&scope.matches(APP_SELECTOR))list.push(scope);
+    if(scope.querySelectorAll)scope.querySelectorAll(APP_SELECTOR).forEach(el=>list.push(el));
+    return list;
   }
 
   function sanitize(root){
-    const scope=root&&root.querySelectorAll?root:document;
-    const nodes=[];
-    if(scope.matches&&scope.matches(APP_SELECTOR))nodes.push(scope);
-    scope.querySelectorAll&&scope.querySelectorAll(APP_SELECTOR).forEach(node=>nodes.push(node));
-    nodes.forEach(app=>{
+    apps(root).forEach(app=>{
       app.setAttribute("draggable","false");
-      app.style.webkitUserDrag="none";
-      app.style.webkitTouchCallout="none";
-      app.querySelectorAll("img,svg,*").forEach(node=>{
+      app.removeAttribute("tabindex");
+      app.classList.remove("bb-v300-pressing","bb-v302-pressing","pressed","pressing");
+      try{app.blur();}catch(error){}
+      app.querySelectorAll("img,svg,.icon,.icon *").forEach(node=>{
         try{node.setAttribute("draggable","false");}catch(error){}
         try{node.style.webkitUserDrag="none";}catch(error){}
         try{node.style.webkitTouchCallout="none";}catch(error){}
@@ -35485,154 +35508,53 @@ ${offline}
     });
   }
 
-  function clearPress(){
-    if(pressTimer){clearTimeout(pressTimer);pressTimer=0;}
-    if(active&&active.app)active.app.classList.remove("bb-v300-pressing");
-    active=null;
-    longPressed=false;
-    moved=false;
+  function clearGhostState(){
+    sanitize(document.getElementById("desktop")||document);
   }
 
-  function begin(app,x,y,pointerKind){
-    clearPress();
-    const info=appInfo(app);
-    if(!info)return;
-    active={...info,x:Number(x)||0,y:Number(y)||0,pointerKind:pointerKind||"touch",started:Date.now()};
-    app.classList.add("bb-v300-pressing");
-    pressTimer=setTimeout(()=>{
-      if(!active||moved)return;
-      longPressed=true;
-      active.app.classList.remove("bb-v300-pressing");
-      try{
-        if(active.page2&&typeof window.openIconEditP2==="function")window.openIconEditP2(active.index);
-        else if(!active.page2&&typeof window.openIconEdit==="function")window.openIconEdit(active.index);
-      }catch(error){
-        console.warn("桌面图标长按编辑打开失败",error);
-      }
-    },650);
-  }
-
-  function move(x,y){
-    if(!active)return;
-    const dx=(Number(x)||0)-active.x;
-    const dy=(Number(y)||0)-active.y;
-    if(Math.hypot(dx,dy)>11){
-      moved=true;
-      if(pressTimer){clearTimeout(pressTimer);pressTimer=0;}
-      active.app&&active.app.classList.remove("bb-v300-pressing");
-    }
-  }
-
-  function finish(){
-    if(!active)return;
-    const info=active;
-    if(pressTimer){clearTimeout(pressTimer);pressTimer=0;}
-    info.app&&info.app.classList.remove("bb-v300-pressing");
-    const shouldOpen=!moved&&!longPressed&&!(typeof deskIsSwipe!=="undefined"&&deskIsSwipe);
-    active=null;
-    longPressed=false;
-    moved=false;
-    if(!shouldOpen)return;
-    requestAnimationFrame(()=>{
-      try{
-        if(info.page2){
-          const item=window.state&&Array.isArray(state.page2Apps)?state.page2Apps[info.index]:null;
-          if(typeof window.handleAppActionP2==="function")window.handleAppActionP2(item);
-          else if(item&&typeof window.openAppModal==="function")window.openAppModal(item.label);
-        }else{
-          const item=window.state&&Array.isArray(state.page1Apps)?state.page1Apps[info.index]:null;
-          if(typeof window.handleAppAction==="function")window.handleAppAction(item);
-        }
-      }catch(error){
-        console.warn("桌面 App 打开失败",error);
-      }
-    });
-  }
-
-  /* 阻断旧的匿名 pointer 监听，避免一次短按执行两次；触摸由下方 touch 监听接管。 */
-  document.addEventListener("pointerdown",event=>{
-    const app=appFrom(event.target);
-    if(!app)return;
-    event.stopImmediatePropagation();
-    if(event.pointerType==="mouse")begin(app,event.clientX,event.clientY,"mouse");
-  },true);
-
-  document.addEventListener("pointermove",event=>{
-    if(!active||active.pointerKind!=="mouse")return;
-    move(event.clientX,event.clientY);
-  },true);
-
-  document.addEventListener("pointerup",event=>{
-    const app=appFrom(event.target);
-    if(!app&&!active)return;
-    event.stopImmediatePropagation();
-    if(active&&active.pointerKind==="mouse")finish();
-  },true);
-
-  document.addEventListener("pointercancel",event=>{
-    if(active&&active.pointerKind==="mouse")clearPress();
-  },true);
-
-  document.addEventListener("touchstart",event=>{
-    const app=appFrom(event.target);
-    if(!app)return;
-    const touch=event.touches&&event.touches[0];
-    if(!touch)return;
-    /* 关键：阻止 iOS 生成图片拖拽/长按预览，但不阻止事件冒泡，桌面横滑仍可工作。 */
-    event.preventDefault();
-    begin(app,touch.clientX,touch.clientY,"touch");
-  },{capture:true,passive:false});
-
-  document.addEventListener("touchmove",event=>{
-    if(!active||active.pointerKind!=="touch")return;
-    const touch=event.touches&&event.touches[0];
-    if(touch)move(touch.clientX,touch.clientY);
-  },{capture:true,passive:true});
-
-  document.addEventListener("touchend",event=>{
-    if(!active||active.pointerKind!=="touch")return;
-    event.preventDefault();
-    finish();
-  },{capture:true,passive:false});
-
-  document.addEventListener("touchcancel",()=>clearPress(),true);
-
+  /* 只拦截系统拖拽/长按菜单，不再拦截正常按下、抬起和点击。 */
   ["dragstart","contextmenu","selectstart"].forEach(type=>{
     document.addEventListener(type,event=>{
-      if(!appFrom(event.target))return;
+      const app=event.target&&event.target.closest&&event.target.closest(APP_SELECTOR);
+      if(!app)return;
       event.preventDefault();
-      event.stopImmediatePropagation();
-      clearPress();
+      clearGhostState();
     },true);
   });
 
-  document.addEventListener("click",event=>{
-    if(!appFrom(event.target))return;
-    /* 触摸结束后的合成 click 不再交给旧监听，避免重复打开。 */
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  },true);
+  ["pointerup","pointercancel","touchend","touchcancel","click"].forEach(type=>{
+    document.addEventListener(type,event=>{
+      const app=event.target&&event.target.closest&&event.target.closest(APP_SELECTOR);
+      if(!app)return;
+      requestAnimationFrame(clearGhostState);
+      setTimeout(clearGhostState,80);
+    },true);
+  });
 
   function boot(){
     injectStyle();
     const desktop=document.getElementById("desktop");
     if(!desktop)return;
     sanitize(desktop);
-    if(!desktop.__bbV300Observer){
-      desktop.__bbV300Observer=new MutationObserver(records=>{
+    if(!desktop.__bbV302Observer){
+      desktop.__bbV302Observer=new MutationObserver(records=>{
         records.forEach(record=>record.addedNodes.forEach(node=>{
           if(node&&node.nodeType===1)sanitize(node);
         }));
       });
-      desktop.__bbV300Observer.observe(desktop,{childList:true,subtree:true});
+      desktop.__bbV302Observer.observe(desktop,{childList:true,subtree:true});
     }
   }
 
   document.addEventListener("DOMContentLoaded",boot,{once:true});
   if(document.readyState!=="loading")boot();
-  window.addEventListener("pageshow",()=>{clearPress();boot();});
-  window.addEventListener("pagehide",clearPress);
-  window.addEventListener("blur",clearPress);
+  window.addEventListener("pageshow",()=>{boot();clearGhostState();});
+  window.addEventListener("pagehide",clearGhostState);
+  window.addEventListener("blur",clearGhostState);
+  document.addEventListener("visibilitychange",()=>{
+    if(document.visibilityState==="visible")setTimeout(clearGhostState,0);
+  });
+  [80,260,700,1600,3600].forEach(ms=>setTimeout(boot,ms));
 })();
 
 /* ===== 豹豹机 301：查手机密码、角色决定是否给密码、秘密入口、首次空白生成 ===== */
@@ -36159,4 +36081,284 @@ ${offline}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});
   else boot();
   window.addEventListener("pageshow",boot);
+})();
+
+/* ===== 豹豹机 303：桌面底栏下移、查手机直达 App、NPC 按自身口吻回复 ===== */
+(function(){
+  "use strict";
+  if(window.__bbPhoneDirectNpcV303)return;
+  window.__bbPhoneDirectNpcV303=true;
+
+  const $=id=>document.getElementById(id);
+  const clean=value=>String(value==null?"":value).replace(/\s+/g," ").trim();
+  const esc=value=>String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const replyQueues=new Map();
+
+  function save(){
+    try{
+      if(typeof window.saveLocal==="function")window.saveLocal();
+      else if(typeof saveLocal==="function")saveLocal();
+    }catch(error){}
+  }
+  function personas(){
+    return window.state&&Array.isArray(state.personas)?state.personas:[];
+  }
+  function currentPerson(){
+    const id=String(window.subjectPhoneCurrentId||"");
+    return personas().find(person=>person&&String(person.id)===id)||null;
+  }
+  function phoneData(person){
+    if(!window.state||!person)return null;
+    if(!state.subjectPhoneData||typeof state.subjectPhoneData!=="object")state.subjectPhoneData={};
+    return state.subjectPhoneData[String(person.id)]||null;
+  }
+  function generatedStore(){
+    if(!window.state)return {};
+    if(!state.subjectPhoneManualGeneratedV301||typeof state.subjectPhoneManualGeneratedV301!=="object"||Array.isArray(state.subjectPhoneManualGeneratedV301)){
+      state.subjectPhoneManualGeneratedV301={};
+    }
+    return state.subjectPhoneManualGeneratedV301;
+  }
+  function allowDirectApps(person){
+    if(!person)return;
+    generatedStore()[String(person.id)]=true;
+    const empty=$("bbPhoneEmptyV301");
+    if(empty){
+      empty.classList.remove("show");
+      empty.style.setProperty("display","none","important");
+      empty.innerHTML="";
+    }
+    save();
+  }
+
+  function injectStyle(){
+    if($("bbPhoneDirectNpcStyleV303"))return;
+    const style=document.createElement("style");
+    style.id="bbPhoneDirectNpcStyleV303";
+    style.textContent=`
+      /* 桌面底栏向手机底部靠近；覆盖用户旧 app.css 里抬高 Dock 的规则。 */
+      html body #desktop .dock{
+        top:auto !important;
+        bottom:-8px !important;
+      }
+      /* 进入查手机后直接显示 App，不再挡一张“手机还是空白”的大卡片。 */
+      html body #bbPhoneEmptyV301,
+      html body #bbPhoneEmptyV301.show{
+        display:none !important;
+        visibility:hidden !important;
+        opacity:0 !important;
+        pointer-events:none !important;
+      }
+      .bbspa-npc-typing-v303 .bbspa-msg-bubble{
+        min-width:52px;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:5px;
+        padding:12px 15px;
+      }
+      .bbspa-npc-typing-v303 i{
+        width:6px;
+        height:6px;
+        border-radius:50%;
+        background:#999;
+        animation:bbNpcDotV303 1s infinite ease-in-out;
+      }
+      .bbspa-npc-typing-v303 i:nth-child(2){animation-delay:.14s}
+      .bbspa-npc-typing-v303 i:nth-child(3){animation-delay:.28s}
+      @keyframes bbNpcDotV303{
+        0%,65%,100%{transform:translateY(0);opacity:.42}
+        32%{transform:translateY(-4px);opacity:1}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function currentFriend(){
+    const person=currentPerson();
+    const data=phoneData(person);
+    const friends=data&&data.wechat&&Array.isArray(data.wechat.friends)?data.wechat.friends:[];
+    const title=clean($("bbspaTitle")&&$("bbspaTitle").textContent);
+    let index=friends.findIndex(friend=>clean(friend&&friend.name)===title);
+    if(index<0&&friends.length===1)index=0;
+    return {person,data,friends,index,friend:index>=0?friends[index]:null};
+  }
+  function historyText(friend,ownerName){
+    return (Array.isArray(friend&&friend.messages)?friend.messages:[]).slice(-14).map(message=>{
+      const text=clean(message&&(message.content||message.text));
+      if(!text)return "";
+      return `${message.role==="me"?(ownerName||"手机主人"):(friend.name||"对方")}：${text.slice(0,160)}`;
+    }).filter(Boolean).join("\n");
+  }
+  function personaText(person){
+    return [person&&person.name,person&&person.persona,person&&person.personality,person&&person.brief,Array.isArray(person&&person.tags)?person.tags.join("、"):""]
+      .filter(Boolean).join("\n").slice(0,5000);
+  }
+  function sampleTone(friend){
+    const samples=(Array.isArray(friend&&friend.messages)?friend.messages:[])
+      .filter(message=>message&&message.role!=="me")
+      .slice(-8)
+      .map(message=>clean(message.content||message.text))
+      .filter(Boolean);
+    const joined=samples.join("\n");
+    return {
+      samples,
+      noPunctuation:samples.length>0&&samples.filter(text=>!/[。！？!?，,~～]/.test(text)).length>=Math.ceil(samples.length*.65),
+      veryShort:samples.length>0&&samples.reduce((sum,text)=>sum+text.length,0)/samples.length<9,
+      usesEmoji:/[\u{1F300}-\u{1FAFF}]/u.test(joined)
+    };
+  }
+  function shapeFallback(friend,text){
+    const relation=clean(friend&&friend.relation);
+    const tone=sampleTone(friend);
+    let answer="";
+    if(/借钱|转账|红包|钱/.test(text)){
+      answer=/家人|爸|妈|哥|姐|弟|妹/.test(relation)?"你先说要多少":"多少 先说";
+    }else if(/喜欢|爱你|想你|亲|抱/.test(text)){
+      answer=/对象|恋人|暧昧|前任/.test(relation)?"你今天怎么突然说这个":"你认真的？";
+    }else if(/[骂滚烦讨厌]/.test(text)){
+      answer="你今天吃错药了？";
+    }else if(/在吗|干嘛|忙吗/.test(text)){
+      answer=tone.veryShort?"在":"在 怎么了";
+    }else if(/吃饭|睡觉|晚安|早安/.test(text)){
+      answer=/家人|爸|妈/.test(relation)?"知道了 你也早点":"嗯 你也是";
+    }else{
+      const pool=/同事|老师|领导/.test(relation)
+        ?["收到，我等会看。","好，你把事情说清楚。","可以，晚点回复你。"]
+        :/家人|爸|妈|哥|姐|弟|妹/.test(relation)
+          ?["怎么突然这么说","你又想干嘛","行 你说吧"]
+          :["？","你今天怪怪的","行 你继续说","怎么了突然","你又在搞什么"];
+      let seed=0;
+      for(const ch of clean((friend&&friend.name)+text))seed=(seed*31+ch.charCodeAt(0))>>>0;
+      answer=pool[seed%pool.length];
+    }
+    if(tone.noPunctuation)answer=answer.replace(/[。！？!?，,]/g,"");
+    return answer;
+  }
+  function parseReply(raw,friend,text){
+    let value=String(raw||"")
+      .replace(/<think>[\s\S]*?<\/think>/gi,"")
+      .replace(/^```[a-z]*\s*|```$/gim,"")
+      .replace(new RegExp(`^(?:${String(friend&&friend.name||"对方").replace(/[.*+?^${}()|[\]\\]/g,"\\$&")}|回复)[:：]\\s*`),"")
+      .trim();
+    const parts=value.split(/\n+/).map(clean).filter(Boolean).slice(0,2).map(part=>part.slice(0,80));
+    return parts.length?parts:[shapeFallback(friend,text)];
+  }
+  async function npcReply(friend,text,person){
+    if(typeof window.sendChatCompletion!=="function")return [shapeFallback(friend,text)];
+    const prompt=[
+      `你是“${friend.name||"对方"}”，不是手机主人“${person&&person.name||"TA"}”。`,
+      `你和手机主人的关系：${friend.relation||"熟人"}。`,
+      "现在有人正用手机主人的账号给你发消息。你并不知道一定是别人操作，除非这句话和以往口吻差异特别明显；不要每次都问‘是不是本人’或‘拿错手机了’。",
+      "请只以你自己的性格和历史聊天口吻回复，模仿你过去的句长、标点、语气词和亲疏感。不要模仿手机主人，也不要写旁白、分析、标签或引号。",
+      "回复一到两条自然短消息；需要两条时用换行分开。",
+      `手机主人设定（只用于理解你们的关系）：\n${personaText(person)||"暂无"}`,
+      `你们之前的聊天：\n${historyText(friend,person&&person.name)||"暂无"}`,
+      `刚收到的消息：${text}`
+    ].join("\n\n");
+    try{
+      const raw=await window.sendChatCompletion([
+        {role:"system",content:"你在模拟手机通讯录中的独立NPC。只输出NPC真正发送的消息正文。"},
+        {role:"user",content:prompt}
+      ]);
+      return parseReply(raw,friend,text);
+    }catch(error){
+      return [shapeFallback(friend,text)];
+    }
+  }
+  function renderFriend(index){
+    try{if(typeof window.bbPhoneOpenWechat==="function")window.bbPhoneOpenWechat(index);}catch(error){}
+  }
+  function showTyping(index){
+    const wrap=$("bbspaChatMessages");
+    if(!wrap)return;
+    wrap.querySelectorAll(".bbspa-npc-typing-v303").forEach(node=>node.remove());
+    const row=document.createElement("div");
+    row.className="bbspa-msg bbspa-npc-typing-v303";
+    row.dataset.friendIndex=String(index);
+    row.innerHTML='<div class="bbspa-msg-bubble"><i></i><i></i><i></i></div>';
+    wrap.appendChild(row);
+    wrap.scrollTop=wrap.scrollHeight;
+  }
+  function hideTyping(){
+    document.querySelectorAll(".bbspa-npc-typing-v303").forEach(node=>node.remove());
+  }
+
+  function installDirectPhone(){
+    const empty=$("bbPhoneEmptyV301");
+    if(empty){
+      empty.classList.remove("show");
+      empty.style.setProperty("display","none","important");
+    }
+    const previous=window.openSubjectPhoneApp;
+    if(typeof previous==="function"&&!previous.__bbDirectAppsV303){
+      const wrapped=function(app){
+        const person=currentPerson();
+        if(person)allowDirectApps(person);
+        return previous.apply(this,arguments);
+      };
+      wrapped.__bbDirectAppsV303=true;
+      wrapped.__bbPrevious=previous;
+      window.openSubjectPhoneApp=wrapped;
+    }
+  }
+
+  function installNpcSend(){
+    const previous=window.bbPhoneSendWechat;
+    if(typeof previous!=="function"||previous.__bbNpcToneV303)return;
+    const wrapped=function(){
+      const input=$("bbspaChatInput");
+      const text=clean(input&&input.value);
+      const context=currentFriend();
+      if(!input||!text||!context.person||!context.friend||context.index<0)return;
+
+      const {person,friend,index}=context;
+      friend.messages=Array.isArray(friend.messages)?friend.messages:[];
+      friend.messages.push({role:"me",content:text,time:Date.now(),intrusion:true});
+      friend.time="刚刚";
+      input.value="";
+      save();
+      renderFriend(index);
+
+      const key=String(person.id)+"|"+String(index);
+      const previousQueue=replyQueues.get(key)||Promise.resolve();
+      const task=previousQueue.then(async()=>{
+        if(clean($("bbspaTitle")&&$("bbspaTitle").textContent)===clean(friend.name))showTyping(index);
+        await sleep(520+Math.random()*520);
+        const replies=await npcReply(friend,text,person);
+        hideTyping();
+        for(let i=0;i<replies.length;i++){
+          if(i>0)await sleep(260+Math.random()*320);
+          friend.messages.push({role:"them",content:replies[i],time:Date.now()+i,intrusionReply:true,npcToneV303:true});
+          friend.time="刚刚";
+          save();
+          if(clean($("bbspaTitle")&&$("bbspaTitle").textContent)===clean(friend.name))renderFriend(index);
+        }
+      }).catch(()=>{hideTyping();});
+      const queued=task.finally(()=>{
+        if(replyQueues.get(key)===queued)replyQueues.delete(key);
+      });
+      replyQueues.set(key,queued);
+      return queued;
+    };
+    wrapped.__bbNpcToneV303=true;
+    wrapped.__bbPrevious=previous;
+    window.bbPhoneSendWechat=wrapped;
+  }
+
+  function boot(){
+    injectStyle();
+    installDirectPhone();
+    installNpcSend();
+    const person=currentPerson();
+    const panel=$("subjectPhonePanel");
+    if(person&&panel&&getComputedStyle(panel).display!=="none")allowDirectApps(person);
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});
+  else boot();
+  window.addEventListener("pageshow",boot);
+  [80,260,700,1500,3200].forEach(ms=>setTimeout(boot,ms));
+
 })();
