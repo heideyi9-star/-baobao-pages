@@ -30819,6 +30819,59 @@ ${offline}
       })||null;
   }
 
+  const REACTION_EMOJIS_V322=["❤️","🤍","👍","😂","😮","😢","😡","🥺","😘","🥰","😳","😭","👀","🙄","🫶","😏"];
+  function reactionEmojiV322(value){
+    const raw=clean(value).replace(/\uFE0E/g,"\uFE0F");
+    return REACTION_EMOJIS_V322.find(emoji=>raw.includes(emoji)||raw.replace(/\uFE0F/g,"").includes(emoji.replace(/\uFE0F/g,"")))||"";
+  }
+  function latestReactableUserV322(){
+    const list=window.state&&Array.isArray(state.chatMessages)?state.chatMessages:[];
+    for(let i=list.length-1;i>=0;i--){
+      const message=list[i];
+      if(message&&message.role==="user"&&!message.hiddenSystem&&!message.recalled)return {message,index:i};
+    }
+    return null;
+  }
+  function applyCharReactionV322(value){
+    const emoji=reactionEmojiV322(value);
+    const target=latestReactableUserV322();
+    if(!emoji||!target)return false;
+    const person=currentPersona()||{};
+    target.message.charReaction=emoji;
+    target.message.charReactionBy=clean(person.id||person.name)||"assistant";
+    target.message.charReactionAt=Date.now();
+    syncConversation();
+    try{
+      if(typeof window.baobaoRenderCharReactionsV322==="function")window.baobaoRenderCharReactionsV322(true);
+    }catch(e){}
+    return true;
+  }
+  function maybeAddBubbleReactionV322(chunks,replyText){
+    if((chunks||[]).some(item=>item&&item.type==="reaction"))return chunks;
+    const target=latestReactableUserV322();
+    if(!target||target.message.charReaction)return chunks;
+    const list=window.state&&Array.isArray(state.chatMessages)?state.chatMessages:[];
+    let recentReactions=0,checked=0;
+    for(let i=list.length-1;i>=0&&checked<8;i--){
+      const m=list[i];if(!m||m.hiddenSystem)continue;checked++;
+      if(m.role==="user"&&m.charReaction)recentReactions++;
+    }
+    if(recentReactions>=2)return chunks;
+    const last=target.message;
+    const context=clean([last.content,last.text,last.name,last.visionDesc,replyText].filter(Boolean).join(" "));
+    const type=clean(last.type||"text").toLowerCase();
+    let emoji="",chance=0;
+    if(/爱你|喜欢你|想你|亲亲|抱抱|最帅|真帅|好帅|可爱|宝宝|宝贝|老婆|老公/.test(context)){emoji=/帅|可爱/.test(context)?"🥰":"❤️";chance=.58;}
+    else if(/哈哈|笑死|笑疯|好好笑|乐死|绷不住/.test(context)){emoji="😂";chance=.52;}
+    else if(/呜|难过|委屈|想哭|不开心|不要我|不理我/.test(context)){emoji="🥺";chance=.45;}
+    else if(/震惊|真的假的|不会吧|居然|啊\?|啊？/.test(context)){emoji="😮";chance=.42;}
+    else if(/生气|讨厌|烦死|无语|服了|滚/.test(context)){emoji=/无语|服了/.test(context)?"🙄":"😡";chance=.34;}
+    else if(type==="image"||type==="sticker"){emoji=type==="image"?"👀":"😂";chance=.36;}
+    else if(/好|行|可以|收到|谢谢|晚安|早安/.test(context)){emoji="👍";chance=.13;}
+    if(!emoji||Math.random()>chance)return chunks;
+    return [{type:"reaction",emoji,autoV322:true},...(chunks||[])];
+  }
+
   function splitText(text){
     const value=clean(text);
     if(!value)return [];
@@ -30829,7 +30882,7 @@ ${offline}
 
   function responseChunks(reply){
     const raw=clean(reply);
-    const token=/\[\[\s*STICKER\s*[:：]\s*([^\]]+)\]\]|\[\[\s*PHOTO\s*\]\]|(?:\[|【|\(|（|<)\s*(?:photo|image|picture|selfie|pic|照片|图片|相片|自拍)\s*(?:\]|】|\)|）|>)/gi;
+    const token=/\[\[\s*STICKER\s*[:：]\s*([^\]]+)\]\]|\[\[\s*REACT\s*[:：]\s*([^\]\n]{1,24})\s*\]\]|\[\[\s*PHOTO\s*\]\]|(?:\[|【|\(|（|<)\s*(?:photo|image|picture|selfie|pic|照片|图片|相片|自拍)\s*(?:\]|】|\)|）|>)/gi;
     const chunks=[];
     let last=0,match;
     function addText(value){
@@ -30840,6 +30893,9 @@ ${offline}
       if(match[1]){
         const sticker=stickerByName(match[1]);
         if(sticker)chunks.push({type:"sticker",sticker});
+      }else if(match[2]){
+        const emoji=reactionEmojiV322(match[2]);
+        if(emoji)chunks.push({type:"reaction",emoji});
       }else{
         chunks.push({type:"photo"});
       }
@@ -31126,6 +31182,7 @@ ${offline}
       }
 
       let chunks=responseChunks(displayText);
+      chunks=maybeAddBubbleReactionV322(chunks,displayText);
       chunks=maybeAddStickerChunkV292(chunks,displayText);
       if(!chunks.length)return;
 
@@ -31141,7 +31198,7 @@ ${offline}
 
       setTyping(false);
 
-      if(mode==="voice"&&textOnly&&!chunks.some(x=>x.type==="sticker"||x.type==="photo")){
+      if(mode==="voice"&&textOnly&&!chunks.some(x=>x.type==="sticker"||x.type==="photo"||x.type==="reaction")){
         appendMessage(makeVoiceMessage(textOnly,config));
       }else{
         for(let i=0;i<chunks.length;i++){
@@ -31151,7 +31208,9 @@ ${offline}
             setTyping(false);
           }
           const part=chunks[i];
-          if(part.type==="sticker"&&part.sticker){
+          if(part.type==="reaction"){
+            applyCharReactionV322(part.emoji);
+          }else if(part.type==="sticker"&&part.sticker){
             const s=part.sticker;
             appendMessage({
               role:"assistant",type:"sticker",content:String(s.url||""),url:String(s.url||""),
@@ -39028,7 +39087,7 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const media=mediaContext();
     const continuation=isHeartContinuation();
     const recentAssistant=recentAssistantLines(history,6);
-    return `【豹豹机 321｜媒体顺序硬锁与爱心续聊核心】
+    return `【豹豹机 322｜气泡表情回应与媒体格式硬锁核心】
 你就是下面这个角色本人，正在真实手机私聊。不是 AI、助手、客服，也不是在“扮演角色”。禁止提系统、模型、提示词、人设或任务。
 
 ${PERSONA_LOCK}
@@ -39060,12 +39119,13 @@ ${userProfile()}
 18. 用户可能只按了聊天栏右侧的爱心，没有输入新文字。这表示“继续说下去”，不是让你重新回答上一条问题。此时必须顺着你刚刚那句话、当前情绪和关系自然续一句或几句，可以补充、黏人、吐槽、追问、转一个自然相关话题或只发符合人设的短反应；禁止重复上一轮原话，禁止假装用户又说了一遍旧消息。
 19. 格式是硬规则，和人设、活人感同等重要。普通文字只能输出真正会发给用户看的正文；绝不能把“[照片]、[图片]、[photo]、[image]、[picture]、[selfie]、[表情包]、表情包：、.gif 文件名、URL、JSON、代码块、格式说明”当作聊天文字发出来。需要发表情包时，只能另起一行输出一次 [[STICKER:表情包原名]]；确实要发送角色照片时，只能另起一行输出一次 [[PHOTO]]；需要处理转账时，只能保留规定的 [[TRANSFER:...]] 标记。不要自行发明任何其他括号标签。
 20. 媒体顺序必须和真实发送顺序完全一致。若一轮是“先说一句 → 发照片或表情包 → 再说一句”，就必须依次输出前置文字、单独一行的媒体标记、后置文字。媒体标记后面的文字属于媒体发送成功后的下一条消息，绝不能提前到照片或表情包前面；媒体没有成功发送时，也不能继续发后置文字。
+21. 你可以像真实聊天软件一样，对用户最近一条气泡点一个上标表情。只有确实有自然、即时的情绪反应时才使用，不能每条消息都点。需要点气泡表情时，只能另起一行输出一次 [[REACT:表情]]，表情只能从 ❤️、🤍、👍、😂、😮、😢、😡、🥺、😘、🥰、😳、😭、👀、🙄、🫶、😏 中选择。这个标记只会显示在用户气泡边缘，不是聊天文字；不要解释标记。可以只点表情不发文字，也可以点完再正常回复。
 
 ${continuation?`【本轮是爱心续聊】
 用户没有新增文字，只是再次按下爱心让你继续说。紧接你上一条已发送消息自然往下聊，不要重新回答更早的用户消息，也不要说“你没说话”“怎么了”或解释按钮。
 
 `:""}${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开头/相同口癖/相同句式】\n${recentAssistant.map((line,i)=>`${i+1}. ${line}`).join("\n")}\n\n`:""}${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
-只输出这个角色此刻会发出的聊天正文，并严格遵守第19、20条格式与媒体顺序硬规则。`;
+只输出这个角色此刻会发出的聊天正文，并严格遵守第19、20、21条格式、媒体顺序与气泡表情规则。`;
   }
 
   function getAPI(apiOverride){
@@ -39209,6 +39269,16 @@ ${continuation?`【本轮是爱心续聊】
     const name=clean(sticker.name||sticker.stickerName).replace(/[\[\]\n\r]/g," ").trim();
     return name?`[[STICKER:${name}]]`:"";
   }
+  const REACTION_EMOJIS_V322=["❤️","🤍","👍","😂","😮","😢","😡","🥺","😘","🥰","😳","😭","👀","🙄","🫶","😏"];
+  function canonicalReactionEmojiV322(value){
+    const raw=clean(value).replace(/^(?:react|reaction|回应|反应|气泡表情)\s*[:：]?\s*/i,"");
+    const normalized=raw.replace(/\uFE0E/g,"\uFE0F");
+    return REACTION_EMOJIS_V322.find(emoji=>normalized.includes(emoji)||normalized.replace(/\uFE0F/g,"").includes(emoji.replace(/\uFE0F/g,"")))||"";
+  }
+  function canonicalReactionTokenV322(value){
+    const emoji=canonicalReactionEmojiV322(value);
+    return emoji?`[[REACT:${emoji}]]`:"";
+  }
   function repairReplyFormat(value){
     let text=clean(value)
       .replace(/<think>[\s\S]*?<\/think>/gi,"")
@@ -39221,6 +39291,16 @@ ${continuation?`【本轮是爱心续聊】
     text=text.replace(/(?:\[\[|［［)\s*STICKER\s*[:：]\s*([^\]］\n]{1,100})\s*(?:\]\]|］］)?/gi,(all,name)=>{
       const token=canonicalStickerToken(name);
       return token||"";
+    });
+
+    // Normalize bubble-reaction commands. These are UI actions, never visible chat text.
+    text=text.replace(/(?:\[\[|［［)\s*(?:REACT|REACTION|回应|反应|气泡表情)\s*[:：]\s*([^\]］\n]{1,24})\s*(?:\]\]|］］)?/gi,(all,value)=>{
+      const token=canonicalReactionTokenV322(value);
+      return token?`\n${token}\n`:"";
+    });
+    text=text.replace(/(?:\[\s*(?:react|reaction|回应|反应|气泡表情)\s*[:：]\s*([^\]\n]{1,24})\]|【\s*(?:react|reaction|回应|反应|气泡表情)\s*[:：]\s*([^】\n]{1,24})】|(?:气泡表情|回应表情|反应表情)\s*[:：]\s*([^\n]{1,12}))/gi,(all,a,b,c)=>{
+      const token=canonicalReactionTokenV322(a||b||c);
+      return token?`\n${token}\n`:"";
     });
 
     // Repair the common leaked forms seen in chat, including inline "我爱你[表情包] xxx.gif".
@@ -39248,7 +39328,8 @@ ${continuation?`【本轮是爱心续聊】
     // Every structured token must be on its own line; allow at most one sticker per reply.
     text=text.replace(/\s*(\[\[STICKER:[^\]\n]+\]\])\s*/gi,"\n$1\n");
     text=text.replace(/\s*(\[\[PHOTO\]\])\s*/gi,"\n$1\n");
-    let stickerSeen=false,photoSeen=false;
+    text=text.replace(/\s*(\[\[REACT:[^\]\n]+\]\])\s*/gi,"\n$1\n");
+    let stickerSeen=false,photoSeen=false,reactionSeen=false;
     const lines=[];
     text.split(/\n+/).forEach(raw=>{
       let line=clean(raw);
@@ -39260,6 +39341,13 @@ ${continuation?`【本轮是爱心续聊】
       if(/^\[\[PHOTO\]\]$/i.test(line)){
         if(photoSeen)return;
         photoSeen=true;
+      }
+      if(/^\[\[REACT:/i.test(line)){
+        if(reactionSeen)return;
+        const token=canonicalReactionTokenV322(line.replace(/^\[\[REACT\s*[:：]\s*/i,"").replace(/\]\]$/,""));
+        if(!token)return;
+        reactionSeen=true;
+        line=token;
       }
       // Never show leftover protocol labels, file names or model scaffolding to the user.
       line=line
@@ -39420,7 +39508,7 @@ ${continuation?`【本轮是爱心续聊】
       const s=appState();
       s.lastMsgTime=Date.now();
       try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(_){ }
-      window.baobaoLastPersonaDebug={engine:"Living Persona Core v321",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
+      window.baobaoLastPersonaDebug={engine:"Living Persona Core v322",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
       return reply;
     }catch(error){
       if(typeof window.showToast==="function")window.showToast(clean(error&&error.message)||"回复失败",true);
@@ -39482,7 +39570,7 @@ ${continuation?`【本轮是爱心续聊】
   [80,260,700,1600,3600,7600,14000,24000].forEach(delay=>setTimeout(pin,delay));
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pin,{once:true});
   window.addEventListener("pageshow",()=>setTimeout(pin,0));
-  console.log("豹豹机 321：媒体顺序硬锁与人设核心已启用");
+  console.log("豹豹机 322：气泡表情回应、媒体顺序与人设核心已启用");
 })();
 
 /* baobao-persona-debug-viewer-v321 */
@@ -40398,4 +40486,105 @@ window.openPersonaDebugPanel = function(){
   [100,400,1000,2500,6000,12000,22000,32000].forEach(ms=>setTimeout(install,ms));
   window.BaobaoFormatSanitizerV320={sanitize,migrate};
   console.log("豹豹机 321：[photo] 等标签已改为真实照片发送边界");
+})();
+
+
+/* baobao-char-bubble-reaction-v322 */
+(function(){
+  "use strict";
+  if(window.__bbCharBubbleReactionV322)return;
+  window.__bbCharBubbleReactionV322=true;
+
+  function stateNow(){try{return window.state||state||{}}catch(_){return window.state||{}}}
+  function visibleMessages(){
+    const s=stateNow();
+    return (Array.isArray(s.chatMessages)?s.chatMessages:[]).filter(message=>message&&!message.hiddenSystem);
+  }
+  function messageForBubble(bubble){
+    const index=Number(bubble&&bubble.dataset&&bubble.dataset.msgIndex);
+    if(!Number.isFinite(index))return null;
+    const s=stateNow();
+    const direct=Array.isArray(s.chatMessages)?s.chatMessages[index]:null;
+    if(direct&&direct.role==="user")return direct;
+    const fallback=visibleMessages()[index];
+    return fallback&&fallback.role==="user"?fallback:null;
+  }
+  function injectStyle(){
+    if(document.getElementById("bbCharReactionV322Style"))return;
+    const style=document.createElement("style");
+    style.id="bbCharReactionV322Style";
+    style.textContent=`
+      #chatRoom .bubble.me.bb-has-char-reaction-v322{position:relative!important;overflow:visible!important;}
+      #chatRoom .bb-char-reaction-v322{
+        position:absolute;left:-12px;top:-15px;z-index:18;
+        min-width:26px;height:26px;padding:0 4px;box-sizing:border-box;
+        display:flex;align-items:center;justify-content:center;
+        border-radius:999px;background:rgba(255,255,255,.97);
+        border:2px solid rgba(255,255,255,.98);
+        box-shadow:0 3px 11px rgba(0,0,0,.16);
+        font-size:16px;line-height:1;pointer-events:none;
+        transform-origin:center;animation:bbCharReactionPopV322 .22s cubic-bezier(.2,1.35,.45,1) both;
+      }
+      #chatRoom .bubble.me.bb-sticker-bubble .bb-char-reaction-v322,
+      #chatRoom .bubble.me.bb-text-photo .bb-char-reaction-v322{top:-12px;left:-10px;}
+      @keyframes bbCharReactionPopV322{
+        0%{opacity:0;transform:scale(.35) translateY(5px)}
+        100%{opacity:1;transform:scale(1) translateY(0)}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+  function render(animate){
+    injectStyle();
+    const wrap=document.getElementById("chatMsgs");
+    if(!wrap)return;
+    wrap.querySelectorAll(".bb-char-reaction-v322").forEach(node=>node.remove());
+    wrap.querySelectorAll(".bubble.me.bb-has-char-reaction-v322").forEach(node=>node.classList.remove("bb-has-char-reaction-v322"));
+    wrap.querySelectorAll(".bubble.me[data-msg-index]").forEach(bubble=>{
+      const message=messageForBubble(bubble);
+      const emoji=String(message&&message.charReaction||"").trim();
+      if(!emoji)return;
+      bubble.classList.add("bb-has-char-reaction-v322");
+      const badge=document.createElement("span");
+      badge.className="bb-char-reaction-v322";
+      badge.textContent=emoji;
+      badge.setAttribute("aria-label","角色回应 "+emoji);
+      if(!animate)badge.style.animation="none";
+      bubble.appendChild(badge);
+    });
+  }
+  window.baobaoRenderCharReactionsV322=render;
+
+  function wrapRenderer(name){
+    const current=window[name];
+    if(typeof current!=="function"||current.__bbCharReactionV322)return;
+    const wrapped=function(){
+      const result=current.apply(this,arguments);
+      requestAnimationFrame(()=>render(false));
+      return result;
+    };
+    wrapped.__bbCharReactionV322=true;
+    wrapped.__bbPrevious=current;
+    window[name]=wrapped;
+    try{if(typeof globalThis[name]!=="undefined")globalThis[name]=wrapped}catch(_){ }
+  }
+  function install(){
+    injectStyle();
+    wrapRenderer("renderChatMessages");
+    wrapRenderer("appendChatMessageRow");
+    render(false);
+    const wrap=document.getElementById("chatMsgs");
+    if(wrap&&!wrap.__bbCharReactionObserverV322){
+      wrap.__bbCharReactionObserverV322=true;
+      let queued=false;
+      new MutationObserver(()=>{
+        if(queued)return;queued=true;
+        requestAnimationFrame(()=>{queued=false;render(false)});
+      }).observe(wrap,{childList:true,subtree:true});
+    }
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  [120,500,1500,3500,8000,15000,26000].forEach(ms=>setTimeout(install,ms));
+  console.log("豹豹机 322：角色气泡上标表情已启用");
 })();
