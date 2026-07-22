@@ -41093,10 +41093,10 @@ window.updateArchiveChatStyleHintV324=function(){
 /* baobao-page1-single-layout-v342 */
 (function(){
   "use strict";
-  if(window.__bbPage1SingleLayoutV344)return;
-  window.__bbPage1SingleLayoutV344=true;
+  if(window.__bbPage1SingleLayoutV346)return;
+  window.__bbPage1SingleLayoutV346=true;
 
-  var STYLE_ID='bbPage1SingleLayoutV344Style';
+  var STYLE_ID='bbPage1SingleLayoutV346Style';
   var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
   var scheduled=false;
 
@@ -41129,7 +41129,7 @@ window.updateArchiveChatStyleHintV324=function(){
       max-width:none!important;
       margin:0 0 -24px 10px!important;
       padding:0!important;
-      transform:translateY(-5px)!important;
+      transform:translateY(10px)!important;
       z-index:15!important;
       overflow:visible!important;
     }
@@ -41260,7 +41260,7 @@ window.updateArchiveChatStyleHintV324=function(){
       column-gap:8px!important;
       row-gap:18px!important;
       align-content:start!important;
-      padding:4px 20px 0!important;
+      padding:14px 20px 0!important;
       margin:0!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page > .app{
@@ -41336,7 +41336,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
 
     /* 设置/美化打开后不与桌面叠加 */
-    html body.bb-v344-panel-open #desktop{
+    html body.bb-v346-panel-open #desktop{
       visibility:hidden!important;
       opacity:0!important;
       pointer-events:none!important;
@@ -41377,7 +41377,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function syncPanelState(){
     var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
-    document.body.classList.toggle('bb-v344-panel-open',open);
+    document.body.classList.toggle('bb-v346-panel-open',open);
   }
 
   function applyInline(){
@@ -41400,7 +41400,7 @@ window.updateArchiveChatStyleHintV324=function(){
     if(widget){
       widget.style.setProperty('width','calc(100% - 20px)','important');
       widget.style.setProperty('margin','0 0 -24px 10px','important');
-      widget.style.setProperty('transform','translateY(-5px)','important');
+      widget.style.setProperty('transform','translateY(10px)','important');
     }
     if(viewport){
       viewport.style.setProperty('height','244px','important');
@@ -41409,7 +41409,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     desktop.querySelectorAll('.apps-page').forEach(function(page){
       page.style.setProperty('height','244px','important');
-      page.style.setProperty('padding','4px 20px 0','important');
+      page.style.setProperty('padding','14px 20px 0','important');
       page.style.setProperty('row-gap','18px','important');
     });
     desktop.querySelectorAll('.apps-page > .app').forEach(function(item){
@@ -41446,7 +41446,7 @@ window.updateArchiveChatStyleHintV324=function(){
     var oldOpen=window.openPanel;
     if(typeof oldOpen==='function'&&!oldOpen.__bbV344){
       var wrappedOpen=function(){
-        document.body.classList.add('bb-v344-panel-open');
+        document.body.classList.add('bb-v346-panel-open');
         var result=oldOpen.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,30);
