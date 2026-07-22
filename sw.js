@@ -1,5 +1,5 @@
 /* 豹豹机 331：首页大组件稳定防回弹版。 */
-const CACHE_NAME = "baobao-shell-v334";
+const CACHE_NAME = "baobao-shell-v335";
 const SHELL = [
   "./",
   "./index.html",

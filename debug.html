@@ -24,18 +24,8 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=335">
-<script id="bb-pwa-cache-v293">
-(function(){
-  "use strict";
-  if(!("serviceWorker" in navigator))return;
-  window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=335",{scope:"./"}).then(function(reg){
-      try{reg.update();}catch(e){}
-    }).catch(function(){});
-  },{once:true});
-})();
-</script>
+<link rel="manifest" href="./baobao-manifest.json?v=334">
+
 <meta name="theme-color" content="#f7f7f7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
@@ -164,7 +154,7 @@ html body #desktop:not(.page-two-mode) .apps-page{padding-top:18px!important;row
 html body #desktop:not(.page-two-mode) .dock{bottom:24px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=335"></script>
+<script defer src="./app.js?v=334"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -1813,7 +1803,7 @@ API Key<br>
 
 <!-- index(315)：人设读取强化；每轮先从完整人物资料提取相关锚点，涉及角色生活、经历、习惯、偏好与关系时必须自然调用具体内容，不再只模仿语气。 -->
 <!-- index(316)：AI 生图新增“读取当前角色人设外貌”，可按角色外貌与气质自动生成头像、自拍、全身图和生活照。 -->
-</body>
+<script>window.addEventListener("load",()=>{setTimeout(()=>{const d=document.getElementById("desktop");d&&d.classList.remove("hidden");const ids=["desktop","photoWidget","pagesContainer","dots"];const out={};ids.forEach(id=>{const e=document.getElementById(id);if(e){const r=e.getBoundingClientRect();out[id]={x:r.x,y:r.y,w:r.width,h:r.height,cs:{pos:getComputedStyle(e).position,margin:getComputedStyle(e).margin,transform:getComputedStyle(e).transform,pad:getComputedStyle(e).padding}}}});const dock=document.querySelector("#desktop .dock");if(dock){const r=dock.getBoundingClientRect();out.dock={x:r.x,y:r.y,w:r.width,h:r.height,cs:{pos:getComputedStyle(dock).position,bottom:getComputedStyle(dock).bottom}}};out.apps=[...document.querySelectorAll("#desktop .apps-page:first-child>.app")].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,text:e.textContent.trim()}});document.documentElement.innerHTML='<body><pre id="debug">'+JSON.stringify(out,null,2).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</pre></body>';},2500);});</script></body>
 </html>
 
 <!-- 美化增强功能：
