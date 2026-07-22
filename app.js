@@ -41564,3 +41564,113 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("pageshow",function(){setTimeout(install,0)});
   [80,280,800,1800,3600].forEach(function(ms){setTimeout(install,ms)});
 })();
+
+/* baobao-page1-showcase-bigger-and-lower-v329 */
+(function(){
+  "use strict";
+  if(window.__bbPage1ShowcaseLowerV329)return;
+  window.__bbPage1ShowcaseLowerV329=true;
+
+  function injectStyle(){
+    var old=document.getElementById("bbPage1ShowcaseLowerV329Style");
+    if(old)old.remove();
+    var style=document.createElement("style");
+    style.id="bbPage1ShowcaseLowerV329Style";
+    style.textContent=`
+      html body #desktop:not(.page-two-mode) .desk-scroll{
+        padding-top:88px!important;
+        padding-bottom:102px!important;
+      }
+      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+        width:calc(100% + 8px)!important;
+        margin:12px 0 22px -4px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
+        padding:22px 22px 20px!important;
+        border-radius:36px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-head{
+        grid-template-columns:82px minmax(0,1fr) auto!important;
+        gap:15px!important;
+        min-height:82px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-left,
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
+        width:82px!important;
+        height:82px!important;
+        min-width:82px!important;
+        min-height:82px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
+        width:26px!important;
+        height:26px!important;
+        right:-3px!important;
+        bottom:-3px!important;
+        font-size:12px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
+        min-width:68px!important;
+        padding:11px 14px!important;
+        font-size:16px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-title{
+        font-size:19px!important;
+        letter-spacing:.6px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
+        margin-top:11px!important;
+        font-size:13px!important;
+        line-height:1.5!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-date{
+        padding-top:52px!important;
+        font-size:13px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
+        gap:12px!important;
+        margin-top:18px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
+        height:114px!important;
+        min-height:114px!important;
+        border-radius:12px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
+        height:60px!important;
+        margin-top:18px!important;
+        padding:0 20px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-pill{
+        height:60px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
+        gap:24px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-action{
+        width:26px!important;
+        height:26px!important;
+        font-size:26px!important;
+      }
+      html body #desktop:not(.page-two-mode) .pages-viewport{
+        margin-top:6px!important;
+      }
+      html body #desktop:not(.page-two-mode) .apps-page{
+        padding-top:10px!important;
+      }
+      html body #desktop:not(.page-two-mode) .dots{
+        margin-top:16px!important;
+      }
+      html body #desktop:not(.page-two-mode) .dock{
+        bottom:10px!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function install(){ injectStyle(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",function(){ setTimeout(install,0); });
+  [80,260,700,1600,3200].forEach(function(ms){ setTimeout(install,ms); });
+})();
