@@ -41093,10 +41093,10 @@ window.updateArchiveChatStyleHintV324=function(){
 /* baobao-page1-single-layout-v342 */
 (function(){
   "use strict";
-  if(window.__bbPage1SingleLayoutV342)return;
-  window.__bbPage1SingleLayoutV342=true;
+  if(window.__bbPage1SingleLayoutV344)return;
+  window.__bbPage1SingleLayoutV344=true;
 
-  var STYLE_ID='bbPage1SingleLayoutV342Style';
+  var STYLE_ID='bbPage1SingleLayoutV344Style';
   var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
   var scheduled=false;
 
@@ -41129,7 +41129,7 @@ window.updateArchiveChatStyleHintV324=function(){
       max-width:none!important;
       margin:0 0 -24px 10px!important;
       padding:0!important;
-      transform:translateY(-15px)!important;
+      transform:translateY(-5px)!important;
       z-index:15!important;
       overflow:visible!important;
     }
@@ -41336,7 +41336,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
 
     /* 设置/美化打开后不与桌面叠加 */
-    html body.bb-v342-panel-open #desktop{
+    html body.bb-v344-panel-open #desktop{
       visibility:hidden!important;
       opacity:0!important;
       pointer-events:none!important;
@@ -41377,7 +41377,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function syncPanelState(){
     var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
-    document.body.classList.toggle('bb-v342-panel-open',open);
+    document.body.classList.toggle('bb-v344-panel-open',open);
   }
 
   function applyInline(){
@@ -41400,7 +41400,7 @@ window.updateArchiveChatStyleHintV324=function(){
     if(widget){
       widget.style.setProperty('width','calc(100% - 20px)','important');
       widget.style.setProperty('margin','0 0 -24px 10px','important');
-      widget.style.setProperty('transform','translateY(-15px)','important');
+      widget.style.setProperty('transform','translateY(-5px)','important');
     }
     if(viewport){
       viewport.style.setProperty('height','244px','important');
@@ -41444,27 +41444,27 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function wrapPanelFns(){
     var oldOpen=window.openPanel;
-    if(typeof oldOpen==='function'&&!oldOpen.__bbV342){
+    if(typeof oldOpen==='function'&&!oldOpen.__bbV344){
       var wrappedOpen=function(){
-        document.body.classList.add('bb-v342-panel-open');
+        document.body.classList.add('bb-v344-panel-open');
         var result=oldOpen.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,30);
         return result;
       };
-      wrappedOpen.__bbV342=true;
+      wrappedOpen.__bbV344=true;
       window.openPanel=wrappedOpen;
       try{openPanel=wrappedOpen}catch(e){}
     }
     var oldClose=window.closePanel;
-    if(typeof oldClose==='function'&&!oldClose.__bbV342){
+    if(typeof oldClose==='function'&&!oldClose.__bbV344){
       var wrappedClose=function(){
         var result=oldClose.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,40);
         return result;
       };
-      wrappedClose.__bbV342=true;
+      wrappedClose.__bbV344=true;
       window.closePanel=wrappedClose;
       try{closePanel=wrappedClose}catch(e){}
     }
@@ -41476,14 +41476,14 @@ window.updateArchiveChatStyleHintV324=function(){
     enforce();
     PANEL_IDS.forEach(function(id){
       var panel=document.getElementById(id);
-      if(!panel||panel.__bbV342Observed)return;
-      panel.__bbV342Observed=true;
+      if(!panel||panel.__bbV344Observed)return;
+      panel.__bbV344Observed=true;
       new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
     });
     var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV342Observer){
-      desktop.__bbV342Observer=new MutationObserver(schedule);
-      desktop.__bbV342Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    if(desktop&&!desktop.__bbV344Observer){
+      desktop.__bbV344Observer=new MutationObserver(schedule);
+      desktop.__bbV344Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
     }
   }
 

@@ -1,5 +1,5 @@
-/* 豹豹机 341：首页再缩20px+底栏上移5px版。 */
-const CACHE_NAME = "baobao-shell-v342";
+/* 豹豹机 344：组件保持原尺寸，仅下移10px。 */
+const CACHE_NAME = "baobao-shell-v344";
 const SHELL = [
   "./",
   "./index.html",
