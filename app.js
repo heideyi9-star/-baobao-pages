@@ -18424,7 +18424,7 @@ async function baobaoVision(payload){
 
   function responseChunks(reply){
     const raw=String(reply||'');
-    const token=/\[\[STICKER:([^\]]+)\]\]/gi;
+    const token=/\[\[STICKER:([^\]]+)\]\]|\[\[PHOTO\]\]|(?:\[|【|\(|（|<)\s*(?:photo|image|picture|selfie|pic|照片|图片|相片|自拍)\s*(?:\]|】|\)|）|>)/gi;
     const chunks=[];
     let last=0,match;
     const splitter=window.BaobaoPersonaEngine&&window.BaobaoPersonaEngine.splitHumanMessages;
@@ -18435,12 +18435,59 @@ async function baobaoVision(payload){
     }
     while((match=token.exec(raw))){
       addText(raw.slice(last,match.index));
-      const sticker=findSticker(match[1]);
-      if(sticker)chunks.push({type:'sticker',sticker});
+      if(match[1]){
+        const sticker=findSticker(match[1]);
+        if(sticker)chunks.push({type:'sticker',sticker});
+      }else{
+        chunks.push({type:'photo'});
+      }
       last=token.lastIndex;
     }
     addText(raw.slice(last));
     return chunks;
+  }
+
+  function currentPersonaForOrderedMedia(){
+    try{
+      const s=window.state||state||{};
+      const list=Array.isArray(s.personas)?s.personas:[];
+      return window.currentChatPersona||list.find(p=>String(p&&p.id||'')===String(s.activeChatId||''))||{};
+    }catch(_){return window.currentChatPersona||{}}
+  }
+  function latestUserTextForOrderedMedia(){
+    try{
+      const s=window.state||state||{};
+      const list=Array.isArray(s.chatMessages)?s.chatMessages:[];
+      const last=list.slice().reverse().find(m=>m&&m.role==='user'&&!m.hiddenSystem&&!m.recalled);
+      return String(last&&(last.content||last.text)||'').trim();
+    }catch(_){return ''}
+  }
+  function orderedPhotoPrompt(){
+    const p=currentPersonaForOrderedMedia();
+    const persona=[p.persona,p.appearance,p.looks,p.visual,p.personality,p.brief,p.tags]
+      .flatMap(v=>Array.isArray(v)?v:[v]).map(v=>String(v||'').trim()).filter(Boolean).join('\n');
+    const request=latestUserTextForOrderedMedia();
+    return [
+      '生成当前聊天角色本人刚刚拍下并发给亲近聊天对象的一张真实手机照片。',
+      p.name?'角色名：'+p.name:'',
+      persona?'角色人设与外貌：'+persona.slice(0,3200):'',
+      request?'用户刚才的要求：'+request:'',
+      '必须严格保留人设里写明的发型、发色、五官、身高体型、穿搭、饰品与气质。',
+      '人物要高颜值、好看、自然出片；如果是男性，生成冷淡干净的帅哥，脸小、下颌线清晰、鼻梁挺、瘦高、手和锁骨好看；不要油腻、土气或脸崩。',
+      '像真实 iPhone 随手拍或自拍，自然光线，生活环境真实，不要文字、水印、聊天界面或手机边框。'
+    ].filter(Boolean).join('\n\n');
+  }
+  async function generateOrderedPhotoMessage(){
+    const generator=(window.BaobaoImageGenerationV311&&window.BaobaoImageGenerationV311.generate)||(window.BaobaoImageGenerationV308&&window.BaobaoImageGenerationV308.generate);
+    if(typeof generator!=='function')throw new Error('生图功能还没加载好');
+    const images=await generator(orderedPhotoPrompt(),{size:'1024x1024'});
+    const source=Array.isArray(images)?images[0]:images;
+    if(!source)throw new Error('照片生成失败');
+    return {
+      role:'assistant',type:'image',content:String(source),generated:true,
+      generatedPrompt:orderedPhotoPrompt(),orderedMediaV321:true,
+      time:Date.now(),id:'msg_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)
+    };
   }
 
   function setStatus(text,cls){
@@ -18479,6 +18526,9 @@ async function baobaoVision(payload){
             visionDesc:String(s.visionDesc||s.visionDescription||''),time:Date.now(),
             id:'msg_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)
           };
+        }else if(part.type==='photo'){
+          setStatus('正在发送照片…','typing');
+          msg=await generateOrderedPhotoMessage();
         }else{
           msg={role:'assistant',type:'text',content:String(part.content||''),time:Date.now(),id:'msg_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)};
         }
@@ -18489,7 +18539,7 @@ async function baobaoVision(payload){
         try{if(typeof renderChatList==='function')renderChatList();}catch(e){}
       }
       if(typeof window.baobaoNotifyIncomingReply==='function'){
-        const summary=chunks.map(x=>x.type==='sticker'?'[表情包]':x.content).join('\n');
+        const summary=chunks.map(x=>x.type==='sticker'?'[表情包]':x.type==='photo'?'[照片]':x.content).join('\n');
         window.baobaoNotifyIncomingReply(summary);
       }
     }catch(err){
@@ -30779,7 +30829,7 @@ ${offline}
 
   function responseChunks(reply){
     const raw=clean(reply);
-    const token=/\[\[\s*STICKER\s*[:：]\s*([^\]]+)\]\]/gi;
+    const token=/\[\[\s*STICKER\s*[:：]\s*([^\]]+)\]\]|\[\[\s*PHOTO\s*\]\]|(?:\[|【|\(|（|<)\s*(?:photo|image|picture|selfie|pic|照片|图片|相片|自拍)\s*(?:\]|】|\)|）|>)/gi;
     const chunks=[];
     let last=0,match;
     function addText(value){
@@ -30787,12 +30837,51 @@ ${offline}
     }
     while((match=token.exec(raw))){
       addText(raw.slice(last,match.index));
-      const sticker=stickerByName(match[1]);
-      if(sticker)chunks.push({type:"sticker",sticker});
+      if(match[1]){
+        const sticker=stickerByName(match[1]);
+        if(sticker)chunks.push({type:"sticker",sticker});
+      }else{
+        chunks.push({type:"photo"});
+      }
       last=token.lastIndex;
     }
     addText(raw.slice(last));
     return chunks;
+  }
+
+  function orderedPhotoPersonaV321(){
+    const person=currentPersona()||{};
+    const raw=[person.persona,person.appearance,person.looks,person.visual,person.personality,person.brief,person.tags]
+      .flatMap(value=>Array.isArray(value)?value:[value])
+      .map(value=>clean(value)).filter(Boolean).join("\n");
+    return {person,raw};
+  }
+  function orderedPhotoPromptV321(){
+    const {person,raw}=orderedPhotoPersonaV321();
+    const last=latestUserMessage();
+    const request=clean(last&&(last.content||last.text));
+    return [
+      "生成当前聊天角色本人刚刚拍下并发给亲近聊天对象的一张真实手机照片。",
+      clean(person.name)?"角色名："+clean(person.name):"",
+      raw?"角色人设与外貌："+raw.slice(0,3200):"",
+      request?"用户刚才的要求："+request:"",
+      "必须严格保留人设里写明的发型、发色、五官、身高体型、穿搭、饰品与气质，保持是同一个角色。",
+      "人物必须高颜值、自然好看、很出片；男性角色生成冷淡干净的帅哥，脸小、下颌线清晰、鼻梁挺、瘦高、手和锁骨好看；避免油腻、土气、脸崩和畸形手指。",
+      "像真实 iPhone 随手拍或自拍，自然光线，生活环境真实，不要文字、水印、聊天界面或手机边框。"
+    ].filter(Boolean).join("\n\n");
+  }
+  async function makeOrderedPhotoV321(){
+    const generator=(window.BaobaoImageGenerationV311&&window.BaobaoImageGenerationV311.generate)||(window.BaobaoImageGenerationV308&&window.BaobaoImageGenerationV308.generate);
+    if(typeof generator!=="function")throw new Error("生图功能还没加载好");
+    const prompt=orderedPhotoPromptV321();
+    const images=await generator(prompt,{size:"1024x1024"});
+    const source=Array.isArray(images)?images[0]:images;
+    if(!source)throw new Error("照片生成失败");
+    return {
+      role:"assistant",type:"image",content:String(source),generated:true,
+      generatedPrompt:prompt,orderedMediaV321:true,time:Date.now(),
+      id:"msg_photo_v321_"+Date.now()+"_"+Math.random().toString(36).slice(2,8)
+    };
   }
 
   function globalVoice(){
@@ -31052,7 +31141,7 @@ ${offline}
 
       setTyping(false);
 
-      if(mode==="voice"&&textOnly&&!chunks.some(x=>x.type==="sticker")){
+      if(mode==="voice"&&textOnly&&!chunks.some(x=>x.type==="sticker"||x.type==="photo")){
         appendMessage(makeVoiceMessage(textOnly,config));
       }else{
         for(let i=0;i<chunks.length;i++){
@@ -31071,6 +31160,11 @@ ${offline}
               visionDesc:String(s.visionDesc||s.visionDescription||""),time:Date.now(),
               id:"msg_sticker_v250_"+Date.now()+"_"+Math.random().toString(36).slice(2,8)
             });
+          }else if(part.type==="photo"){
+            setTyping(true);
+            const photoMessage=await makeOrderedPhotoV321();
+            setTyping(false);
+            appendMessage(photoMessage);
           }else{
             appendMessage({
               role:"assistant",type:"text",content:clean(part.content),time:Date.now(),
@@ -31082,7 +31176,7 @@ ${offline}
 
       try{
         if(typeof window.baobaoNotifyIncomingReply==="function"){
-          window.baobaoNotifyIncomingReply(textOnly||"[表情包]");
+          window.baobaoNotifyIncomingReply(textOnly||(chunks.some(x=>x.type==="photo")?"[照片]":"[表情包]"));
         }
       }catch(e){}
     }catch(error){
@@ -38369,20 +38463,23 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   async function createPhotoPlan(person,requestText){
     const fallback={
       reply:"给你看。",
-      prompt:`一张由角色本人用 iPhone 临时拍下并发给亲近聊天对象的真实照片。${personaDescription(person)}\n用户的具体要求：${requestText}\n保持角色外貌与气质一致，像刚刚真实拍摄的生活照或自拍，构图自然，不要文字、水印、聊天界面或手机边框。`
+      after:"",
+      prompt:`一张由角色本人用 iPhone 临时拍下并发给亲近聊天对象的真实照片。${personaDescription(person)}\n用户的具体要求：${requestText}\n保持角色外貌与气质一致，像刚刚真实拍摄的生活照或自拍，构图自然，不要文字、水印、聊天界面或手机边框。人物要高颜值、自然好看；男性角色优先生成冷淡干净的帅哥，避免脸崩、油腻和土气。`
     };
     if(typeof window.sendChatCompletion!=="function")return fallback;
     try{
       const raw=await window.sendChatCompletion([
-        {role:"system",content:`你负责为角色自动发送照片。根据角色资料、最近聊天和用户要求，只输出两行：\n回复：角色发照片前会说的一句自然短消息（最多24字，不要客服腔）\n画面：可直接交给生图模型的中文提示词，必须是角色本人刚拍的真实手机照片，写清外貌、服装、环境、动作、光线、镜头角度；不要文字水印。`},
+        {role:"system",content:`你负责安排角色发送照片。根据角色资料、最近聊天和用户要求，只输出三行：\n照片前：照片真正发出前会说的一句自然短消息，可以留空\n画面：可直接交给生图模型的中文提示词，必须是角色本人刚拍的真实手机照片，写清外貌、服装、环境、动作、光线、镜头角度；人物要高颜值、自然好看；不要文字水印\n照片后：只有照片已经发出去以后，角色才会继续说的一句自然短消息，可以留空\n绝不能把照片后的话塞到照片前，也不要输出 [photo]、[照片] 等标签。`},
         {role:"user",content:`【角色】\n${personaDescription(person)||"未填写具体外貌，请保持同一位自然人物形象"}\n\n【最近聊天】\n${recentTextContext()||"暂无"}\n\n【用户要照片】\n${requestText}`}
       ]);
       const text=clean(raw);
-      const reply=(text.match(/回复\s*[:：]\s*([^\n]+)/i)||[])[1];
-      const prompt=(text.match(/画面\s*[:：]\s*([\s\S]+)/i)||[])[1];
+      const reply=(text.match(/(?:照片前|回复)\s*[:：]\s*([^\n]*)/i)||[])[1];
+      const prompt=(text.match(/画面\s*[:：]\s*([\s\S]*?)(?=\n\s*照片后\s*[:：]|$)/i)||[])[1];
+      const after=(text.match(/照片后\s*[:：]\s*([^\n]*)/i)||[])[1];
       return {
         reply:clean(reply)||fallback.reply,
-        prompt:clean(prompt)||fallback.prompt
+        prompt:clean(prompt)||fallback.prompt,
+        after:clean(after)||fallback.after
       };
     }catch(_){return fallback}
   }
@@ -38411,10 +38508,14 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
         await sleep(320);
       }
       appendAssistantMessage("image",source,{
-        generated:true,generatedPrompt:plan.prompt,autoPhotoReplyV311:true
+        generated:true,generatedPrompt:plan.prompt,autoPhotoReplyV311:true,orderedMediaV321:true
       });
+      if(clean(plan.after)){
+        await sleep(380);
+        appendAssistantMessage("text",clean(plan.after),{autoPhotoReplyV311:true,afterPhotoV321:true});
+      }
       try{
-        if(typeof window.baobaoNotifyIncomingReply==="function")window.baobaoNotifyIncomingReply(clean(plan.reply)||"[照片]");
+        if(typeof window.baobaoNotifyIncomingReply==="function")window.baobaoNotifyIncomingReply(clean(plan.after)||clean(plan.reply)||"[照片]");
       }catch(_){ }
       return true;
     }catch(error){
@@ -38927,7 +39028,7 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const media=mediaContext();
     const continuation=isHeartContinuation();
     const recentAssistant=recentAssistantLines(history,6);
-    return `【豹豹机 319｜格式硬锁与爱心续聊核心】
+    return `【豹豹机 321｜媒体顺序硬锁与爱心续聊核心】
 你就是下面这个角色本人，正在真实手机私聊。不是 AI、助手、客服，也不是在“扮演角色”。禁止提系统、模型、提示词、人设或任务。
 
 ${PERSONA_LOCK}
@@ -38957,13 +39058,14 @@ ${userProfile()}
 16. 不要等用户逐字复述人设才使用它。普通聊天只要话题自然碰到角色的生活、职业学业、兴趣、过去、关系、习惯或观点，就可以顺手带出一条真实资料，让角色有自己的生活痕迹；每轮最多自然带出一两点，禁止背档案。
 17. 在内部先完成“读人设再回复”：找出本轮最相关的三条资料，决定其中哪一条会影响事实答案、哪一条会影响态度、哪一条会影响说法。只输出最后聊天正文。
 18. 用户可能只按了聊天栏右侧的爱心，没有输入新文字。这表示“继续说下去”，不是让你重新回答上一条问题。此时必须顺着你刚刚那句话、当前情绪和关系自然续一句或几句，可以补充、黏人、吐槽、追问、转一个自然相关话题或只发符合人设的短反应；禁止重复上一轮原话，禁止假装用户又说了一遍旧消息。
-19. 格式是硬规则，和人设、活人感同等重要。普通文字只能输出真正会发给用户看的正文；绝不能把“[照片]、[图片]、[表情包]、表情包：、.gif 文件名、URL、JSON、代码块、格式说明”当作聊天文字发出来。需要发表情包时，只能另起一行输出一次 [[STICKER:表情包原名]]；需要处理转账时，只能保留规定的 [[TRANSFER:...]] 标记。不要自行发明任何其他括号标签。
+19. 格式是硬规则，和人设、活人感同等重要。普通文字只能输出真正会发给用户看的正文；绝不能把“[照片]、[图片]、[photo]、[image]、[picture]、[selfie]、[表情包]、表情包：、.gif 文件名、URL、JSON、代码块、格式说明”当作聊天文字发出来。需要发表情包时，只能另起一行输出一次 [[STICKER:表情包原名]]；确实要发送角色照片时，只能另起一行输出一次 [[PHOTO]]；需要处理转账时，只能保留规定的 [[TRANSFER:...]] 标记。不要自行发明任何其他括号标签。
+20. 媒体顺序必须和真实发送顺序完全一致。若一轮是“先说一句 → 发照片或表情包 → 再说一句”，就必须依次输出前置文字、单独一行的媒体标记、后置文字。媒体标记后面的文字属于媒体发送成功后的下一条消息，绝不能提前到照片或表情包前面；媒体没有成功发送时，也不能继续发后置文字。
 
 ${continuation?`【本轮是爱心续聊】
 用户没有新增文字，只是再次按下爱心让你继续说。紧接你上一条已发送消息自然往下聊，不要重新回答更早的用户消息，也不要说“你没说话”“怎么了”或解释按钮。
 
 `:""}${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开头/相同口癖/相同句式】\n${recentAssistant.map((line,i)=>`${i+1}. ${line}`).join("\n")}\n\n`:""}${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
-只输出这个角色此刻会发出的聊天正文，并严格遵守第19条格式硬规则。`;
+只输出这个角色此刻会发出的聊天正文，并严格遵守第19、20条格式与媒体顺序硬规则。`;
   }
 
   function getAPI(apiOverride){
@@ -39127,11 +39229,11 @@ ${continuation?`【本轮是爱心续聊】
       return token?`\n${token}\n`:"";
     });
 
-    // A normal chat reply is never allowed to expose fake media labels as visible text.
-    // Keep the actual sentence after the label, e.g. "[照片]叫哥哥" -> "叫哥哥".
+    // Fake photo labels are protocol boundaries, never visible text.
+    // Text after the marker must stay after the actual photo, e.g. "[photo]叫哥哥" -> PHOTO first, then "叫哥哥".
     text=text
-      .replace(/(?:\[\s*(?:照片|图片|相片|自拍)\s*\]|【\s*(?:照片|图片|相片|自拍)\s*】)\s*/gi,"")
-      .replace(/^(?:照片|图片|相片|自拍)\s*[:：]\s*/gim,"");
+      .replace(/(?:\[\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*\]|【\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*】|\(\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*\)|（\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*）|<\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*>)\s*/gi,"\n[[PHOTO]]\n")
+      .replace(/^(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*[:：]\s*/gim,"[[PHOTO]]\n");
 
     // If a bare sticker filename leaked on its own line, turn it into a real sticker or remove it.
     text=text.split(/\n/).map(line=>{
@@ -39145,7 +39247,8 @@ ${continuation?`【本轮是爱心续聊】
 
     // Every structured token must be on its own line; allow at most one sticker per reply.
     text=text.replace(/\s*(\[\[STICKER:[^\]\n]+\]\])\s*/gi,"\n$1\n");
-    let stickerSeen=false;
+    text=text.replace(/\s*(\[\[PHOTO\]\])\s*/gi,"\n$1\n");
+    let stickerSeen=false,photoSeen=false;
     const lines=[];
     text.split(/\n+/).forEach(raw=>{
       let line=clean(raw);
@@ -39153,6 +39256,10 @@ ${continuation?`【本轮是爱心续聊】
       if(/^\[\[STICKER:/i.test(line)){
         if(stickerSeen)return;
         stickerSeen=true;
+      }
+      if(/^\[\[PHOTO\]\]$/i.test(line)){
+        if(photoSeen)return;
+        photoSeen=true;
       }
       // Never show leftover protocol labels, file names or model scaffolding to the user.
       line=line
@@ -39313,7 +39420,7 @@ ${continuation?`【本轮是爱心续聊】
       const s=appState();
       s.lastMsgTime=Date.now();
       try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(_){ }
-      window.baobaoLastPersonaDebug={engine:"Living Persona Core v319",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
+      window.baobaoLastPersonaDebug={engine:"Living Persona Core v321",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
       return reply;
     }catch(error){
       if(typeof window.showToast==="function")window.showToast(clean(error&&error.message)||"回复失败",true);
@@ -39375,10 +39482,10 @@ ${continuation?`【本轮是爱心续聊】
   [80,260,700,1600,3600,7600,14000,24000].forEach(delay=>setTimeout(pin,delay));
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pin,{once:true});
   window.addEventListener("pageshow",()=>setTimeout(pin,0));
-  console.log("豹豹机 319：格式硬锁、爱心续聊与人设核心已启用");
+  console.log("豹豹机 321：媒体顺序硬锁与人设核心已启用");
 })();
 
-/* baobao-persona-debug-viewer-v319 */
+/* baobao-persona-debug-viewer-v321 */
 window.openPersonaDebugPanel = function(){
   try{
     const debug = (window.BaobaoPersonaEngine && typeof window.BaobaoPersonaEngine.getDebug === "function")
@@ -40180,15 +40287,15 @@ window.openPersonaDebugPanel = function(){
 })();
 
 
-/* baobao-chat-format-hard-lock-v319 */
+/* baobao-chat-format-hard-lock-v321 */
 (function(){
   "use strict";
-  if(window.__bbChatFormatHardLockV319)return;
-  window.__bbChatFormatHardLockV319=true;
+  if(window.__bbChatFormatHardLockV321)return;
+  window.__bbChatFormatHardLockV321=true;
 
   function install(){
     const current=window.requestChatReply;
-    if(typeof current!=="function"||current.__bbFormatHardLockV319)return;
+    if(typeof current!=="function"||current.__bbFormatHardLockV321)return;
     const wrapped=async function(){
       const reply=await current.apply(this,arguments);
       if(reply==null)return reply;
@@ -40198,14 +40305,15 @@ window.openPersonaDebugPanel = function(){
         // Keep wrapper chain intact; no second API call.
       }
       let text=String(reply||"")
-        .replace(/(?:\[\s*(?:照片|图片|相片|自拍)\s*\]|【\s*(?:照片|图片|相片|自拍)\s*】)\s*/gi,"")
+        .replace(/(?:\[\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*\]|【\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*】|\(\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*\)|（\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*）|<\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*>)\s*/gi,"\n[[PHOTO]]\n")
+        .replace(/^(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*[:：]\s*/gim,"[[PHOTO]]\n")
         .replace(/^```(?:text|markdown|json)?\s*/i,"")
         .replace(/```$/g,"")
         .replace(/\n{3,}/g,"\n\n")
         .trim();
       return text;
     };
-    wrapped.__bbFormatHardLockV319=true;
+    wrapped.__bbFormatHardLockV321=true;
     wrapped.__bbPrevious=current;
     window.requestChatReply=wrapped;
     try{requestChatReply=wrapped}catch(_){ }
@@ -40214,5 +40322,80 @@ window.openPersonaDebugPanel = function(){
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
   window.addEventListener("pageshow",()=>setTimeout(install,0));
   [250,900,2200,5000,9000,15000,26000].forEach(ms=>setTimeout(install,ms));
-  console.log("豹豹机 319：聊天格式硬锁已启用");
+  console.log("豹豹机 321：聊天格式与媒体顺序硬锁已启用");
+})();
+
+
+/* baobao-photo-boundary-v321 */
+(function(){
+  "use strict";
+  if(window.__bbPhotoBoundaryV321)return;
+  window.__bbPhotoBoundaryV321=true;
+
+  const MEDIA_LABEL_RE=/(?:\[\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*\]|【\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*】|\(\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*\)|（\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*）|<\s*(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*>)/gi;
+  const MEDIA_PREFIX_RE=/^(?:照片|图片|相片|自拍|photo|image|picture|selfie|pic)\s*[:：]\s*/gim;
+
+  function sanitize(value){
+    return String(value==null?"":value)
+      .replace(MEDIA_LABEL_RE,"")
+      .replace(MEDIA_PREFIX_RE,"")
+      .replace(/\n{3,}/g,"\n\n")
+      .trim();
+  }
+  function stateNow(){
+    try{return window.state||state||{}}catch(_){return window.state||{}}
+  }
+  function cleanList(list){
+    if(!Array.isArray(list))return false;
+    let changed=false;
+    for(let i=list.length-1;i>=0;i--){
+      const message=list[i];
+      if(!message||message.role!=="assistant"||String(message.type||"text").toLowerCase()!=="text")continue;
+      const before=String(message.content==null?"":message.content);
+      const after=sanitize(before);
+      if(after!==before){
+        changed=true;
+        if(after)message.content=after;
+        else list.splice(i,1);
+      }
+    }
+    return changed;
+  }
+  function migrate(){
+    const s=stateNow();
+    let changed=cleanList(s.chatMessages);
+    if(s.chatRecords&&typeof s.chatRecords==="object"){
+      Object.values(s.chatRecords).forEach(list=>{if(cleanList(list))changed=true});
+    }
+    if(!changed)return;
+    try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal();}catch(_){ }
+    try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();else if(typeof renderChatMessages==="function")renderChatMessages();}catch(_){ }
+    try{if(typeof window.renderChatList==="function")window.renderChatList();else if(typeof renderChatList==="function")renderChatList();}catch(_){ }
+  }
+  function sanitizeReply(value){
+    return String(value==null?"":value)
+      .replace(MEDIA_LABEL_RE,"\n[[PHOTO]]\n")
+      .replace(MEDIA_PREFIX_RE,"[[PHOTO]]\n")
+      .replace(/\s*(\[\[PHOTO\]\])\s*/gi,"\n$1\n")
+      .replace(/\n{3,}/g,"\n\n")
+      .trim();
+  }
+  function wrapRequest(){
+    const current=window.requestChatReply;
+    if(typeof current!=="function"||current.__bbRemovePhotoLabelV321)return;
+    const wrapped=async function(){
+      const reply=await current.apply(this,arguments);
+      return reply==null?reply:sanitizeReply(reply);
+    };
+    wrapped.__bbRemovePhotoLabelV321=true;
+    wrapped.__bbPrevious=current;
+    window.requestChatReply=wrapped;
+    try{requestChatReply=wrapped}catch(_){ }
+  }
+  function install(){wrapRequest();migrate();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  [100,400,1000,2500,6000,12000,22000,32000].forEach(ms=>setTimeout(install,ms));
+  window.BaobaoFormatSanitizerV320={sanitize,migrate};
+  console.log("豹豹机 321：[photo] 等标签已改为真实照片发送边界");
 })();

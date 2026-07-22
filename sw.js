@@ -1,5 +1,5 @@
-/* 豹豹机 319：格式硬锁与爱心续聊版。 */
-const CACHE_NAME = "baobao-shell-v319";
+/* 豹豹机 321：媒体顺序硬锁版。 */
+const CACHE_NAME = "baobao-shell-v321";
 const SHELL = [
   "./",
   "./index.html",
