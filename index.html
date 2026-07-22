@@ -1813,6 +1813,97 @@ API Key<br>
 
 <!-- index(315)：人设读取强化；每轮先从完整人物资料提取相关锚点，涉及角色生活、经历、习惯、偏好与关系时必须自然调用具体内容，不再只模仿语气。 -->
 <!-- index(316)：AI 生图新增“读取当前角色人设外貌”，可按角色外貌与气质自动生成头像、自拍、全身图和生活照。 -->
+<style id="bb-global-tap-highlight-fix-v353">
+  *, *::before, *::after{
+    -webkit-tap-highlight-color: transparent !important;
+    -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+  }
+  html, body{ -webkit-tap-highlight-color: transparent !important; }
+  #desktop, #desktop *{
+    -webkit-tap-highlight-color: transparent !important;
+  }
+  #desktop .app, #desktop .app *,
+  #desktop .icon, #desktop .icon *,
+  #desktop .dock, #desktop .dock-icon, #desktop .dock-icon *,
+  #desktop .dock-symbol, #desktop .dock-symbol *,
+  #desktop .sp-app, #desktop .sp-app-icon, #desktop .sp-app-label{
+    outline: none !important;
+    -webkit-touch-callout: none !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+  }
+  #desktop .app:active, #desktop .app:focus, #desktop .app:focus-visible,
+  #desktop .dock-icon:active, #desktop .dock-icon:focus, #desktop .dock-icon:focus-visible,
+  #desktop .icon:active, #desktop .icon:focus{
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    filter: none !important;
+  }
+</style>
+<script defer id="bb-global-tap-highlight-fix-v353-js">
+(function(){
+  "use strict";
+  if(window.__bbGlobalTapHighlightFixV353) return;
+  window.__bbGlobalTapHighlightFixV353 = true;
+
+  var TARGET_SELECTOR = ".app, .dock-icon, .sp-app, .sp-app-icon, [onclick]";
+
+  function clean(el){
+    if(!el || el.nodeType !== 1) return;
+    try{
+      el.style.setProperty("background", "transparent", "important");
+      el.style.setProperty("background-color", "transparent", "important");
+      el.style.setProperty("box-shadow", "none", "important");
+      el.style.setProperty("outline", "none", "important");
+      el.style.setProperty("filter", "none", "important");
+      el.style.setProperty("-webkit-tap-highlight-color", "rgba(0,0,0,0)", "important");
+    }catch(e){}
+  }
+
+  function cleanTarget(target){
+    if(!target) return;
+    clean(target);
+    var icon = target.querySelector ? target.querySelector(".icon, .dock-symbol, .sp-app-icon") : null;
+    if(icon) clean(icon);
+  }
+
+  function handler(e){
+    var t = e.target && e.target.closest ? e.target.closest(TARGET_SELECTOR) : null;
+    if(!t) return;
+    cleanTarget(t);
+    requestAnimationFrame(function(){
+      cleanTarget(t);
+      if(document.activeElement && document.activeElement !== document.body && document.activeElement.blur){
+        try{ document.activeElement.blur(); }catch(err){}
+      }
+    });
+    setTimeout(function(){ cleanTarget(t); }, 60);
+  }
+
+  ["touchstart","pointerdown","pointerup","pointercancel","touchend","touchcancel"].forEach(function(type){
+    document.addEventListener(type, handler, {capture:true, passive:true});
+  });
+
+  // 桌面重新渲染（切页/换图标）时也补一次，防止新生成的节点漏掉
+  var desktop = document.getElementById("desktop");
+  if(desktop && window.MutationObserver){
+    var mo = new MutationObserver(function(records){
+      records.forEach(function(record){
+        record.addedNodes.forEach(function(node){
+          if(node && node.nodeType === 1){
+            if(node.matches && node.matches(TARGET_SELECTOR)) clean(node);
+            if(node.querySelectorAll){
+              node.querySelectorAll(TARGET_SELECTOR).forEach(clean);
+            }
+          }
+        });
+      });
+    });
+    mo.observe(desktop, {childList:true, subtree:true});
+  }
+})();
+</script>
 </body>
 </html>
 
