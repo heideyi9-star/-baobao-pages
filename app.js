@@ -35634,3 +35634,529 @@ ${offline}
   window.addEventListener("pagehide",clearPress);
   window.addEventListener("blur",clearPress);
 })();
+
+/* ===== 豹豹机 301：查手机密码、角色决定是否给密码、秘密入口、首次空白生成 ===== */
+(function(){
+  "use strict";
+  if(window.__bbPhonePasswordV301)return;
+  window.__bbPhonePasswordV301=true;
+
+  const $=id=>document.getElementById(id);
+  const clean=value=>String(value==null?"":value).replace(/\s+/g," ").trim();
+  const esc=value=>String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+
+  const oldOpenSubjectPhone=window.openSubjectPhone;
+  const oldCloseSubjectPhone=window.closeSubjectPhone;
+  const oldOpenSubjectPhoneApp=window.openSubjectPhoneApp;
+  const oldPhoneGenerateData=window.bbPhoneGenerateData;
+  const oldPhoneLocalRefresh=window.bbPhoneLocalRefresh;
+  const oldPhoneClearCurrent=window.bbPhoneClearCurrent;
+
+  let entered="";
+  let lockPersonaId="";
+  let pendingApp="notes";
+  let replyBusy=false;
+  let bypassBlankGuard=false;
+
+  function personas(){
+    return window.state&&Array.isArray(state.personas)?state.personas:[];
+  }
+  function personaById(id){
+    return personas().find(person=>person&&String(person.id)===String(id))||null;
+  }
+  function currentPerson(){
+    const id=String(window.subjectPhoneCurrentId||lockPersonaId||"");
+    return personaById(id);
+  }
+  function save(){
+    try{
+      if(typeof window.saveLocal==="function")window.saveLocal();
+      else if(typeof saveLocal==="function")saveLocal();
+    }catch(error){}
+  }
+  function hash(value){
+    let result=2166136261;
+    for(const ch of String(value||"")){
+      result^=ch.charCodeAt(0);
+      result=Math.imul(result,16777619);
+    }
+    return result>>>0;
+  }
+  function securityStore(){
+    if(!window.state)return {};
+    if(!state.subjectPhoneSecurityV301||typeof state.subjectPhoneSecurityV301!=="object"||Array.isArray(state.subjectPhoneSecurityV301)){
+      state.subjectPhoneSecurityV301={};
+    }
+    return state.subjectPhoneSecurityV301;
+  }
+  function generatedStore(){
+    if(!window.state)return {};
+    if(!state.subjectPhoneManualGeneratedV301||typeof state.subjectPhoneManualGeneratedV301!=="object"||Array.isArray(state.subjectPhoneManualGeneratedV301)){
+      state.subjectPhoneManualGeneratedV301={};
+    }
+    return state.subjectPhoneManualGeneratedV301;
+  }
+  function derivePassword(person,salt){
+    const source=[person&&person.id,person&&person.name,person&&person.persona,person&&person.personality,salt||"owner-set"].join("|");
+    let number=(hash(source)%9000)+1000;
+    const bad=new Set([1111,1234,2222,3333,4444,5555,6666,7777,8888,9999]);
+    if(bad.has(number))number=((number+2731)%9000)+1000;
+    return String(number).padStart(4,"0");
+  }
+  function ensureSecurity(person){
+    if(!person)return null;
+    const store=securityStore();
+    const id=String(person.id);
+    let item=store[id];
+    if(!item||typeof item!=="object"){
+      item={
+        password:derivePassword(person,"first"),
+        ownerSet:true,
+        createdAt:Date.now(),
+        failed:0,
+        sneakCount:0,
+        lastWrongNotifyAt:0,
+        passwordVersion:1
+      };
+      store[id]=item;
+      save();
+    }
+    if(!/^\d{4}$/.test(String(item.password||""))){
+      item.password=derivePassword(person,"repair-"+Date.now());
+      item.passwordVersion=Number(item.passwordVersion||0)+1;
+      save();
+    }
+    return item;
+  }
+  function wasGenerated(person){
+    return !!(person&&generatedStore()[String(person.id)]===true);
+  }
+  function markGenerated(person,value){
+    if(!person)return;
+    const store=generatedStore();
+    if(value)store[String(person.id)]=true;
+    else delete store[String(person.id)];
+    save();
+  }
+
+  function injectStyle(){
+    if($("bbPhonePasswordStyleV301"))return;
+    const style=document.createElement("style");
+    style.id="bbPhonePasswordStyleV301";
+    style.textContent=`
+      #bbPhoneLockV301{position:absolute;inset:0;z-index:230;display:none;flex-direction:column;align-items:center;overflow:hidden;background:linear-gradient(180deg,#f7f7fa 0%,#eeeef3 100%);color:#17171a;-webkit-font-smoothing:antialiased}
+      #bbPhoneLockV301.show{display:flex}
+      .bb-phone-lock-back-v301{position:absolute;left:22px;top:calc(24px + env(safe-area-inset-top));width:44px;height:44px;border:0;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.72);color:#1c1c1e;font-size:34px;font-weight:300;line-height:1;box-shadow:0 7px 24px rgba(0,0,0,.05);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+      .bb-phone-lock-owner-v301{margin-top:calc(86px + env(safe-area-inset-top));display:flex;flex-direction:column;align-items:center;gap:10px}
+      .bb-phone-lock-avatar-v301{width:76px;height:76px;border-radius:24px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#dedee5;color:#777;font-size:26px;font-weight:800;box-shadow:0 10px 30px rgba(0,0,0,.1)}
+      .bb-phone-lock-avatar-v301 img{width:100%;height:100%;object-fit:cover;display:block}
+      .bb-phone-lock-name-v301{font-size:15px;font-weight:760;color:#707077}
+      .bb-phone-lock-title-v301{margin-top:27px;font-size:28px;font-weight:850;letter-spacing:-.6px}
+      .bb-phone-lock-sub-v301{margin-top:7px;font-size:13px;color:#8e8e93}
+      .bb-phone-dots-v301{height:30px;margin-top:24px;display:flex;align-items:center;justify-content:center;gap:17px}
+      .bb-phone-dot-v301{width:13px;height:13px;border:1.8px solid #29292d;border-radius:50%;box-sizing:border-box;transition:background .12s ease,transform .12s ease}
+      .bb-phone-dot-v301.on{background:#29292d;transform:scale(1.04)}
+      .bb-phone-lock-status-v301{height:25px;margin-top:9px;font-size:13px;color:#8e8e93;font-weight:650;text-align:center}
+      .bb-phone-lock-status-v301.error{color:#d6463d}
+      .bb-phone-keypad-v301{width:286px;display:grid;grid-template-columns:repeat(3,74px);justify-content:space-between;gap:16px 31px;margin-top:9px}
+      .bb-phone-key-v301{width:74px;height:74px;border:0;border-radius:50%;background:rgba(255,255,255,.82);color:#17171a;font-size:30px;font-weight:500;box-shadow:0 3px 12px rgba(0,0,0,.045);touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+      .bb-phone-key-v301:active{transform:scale(.94);background:#dddde4}
+      .bb-phone-key-v301.small{font-size:19px;font-weight:700;background:transparent;box-shadow:none;color:#66666d}
+      .bb-phone-secret-v301{position:absolute;right:24px;bottom:calc(20px + env(safe-area-inset-bottom));width:30px;height:30px;border:0;background:transparent;opacity:.2;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+      .bb-phone-secret-v301:before{content:"";width:7px;height:7px;border:1.5px solid #34343a;border-radius:50%;box-shadow:0 0 0 5px rgba(52,52,58,.07)}
+      #bbPhoneLockV301.shake .bb-phone-dots-v301{animation:bbPhoneShakeV301 .34s ease}
+      @keyframes bbPhoneShakeV301{0%,100%{transform:translateX(0)}25%{transform:translateX(-12px)}50%{transform:translateX(10px)}75%{transform:translateX(-7px)}}
+      .bb-phone-empty-v301{position:absolute;left:18px;right:18px;top:72px;bottom:calc(24px + env(safe-area-inset-bottom));z-index:20;border-radius:28px;background:rgba(248,248,251,.96);display:none;align-items:center;justify-content:center;text-align:center;padding:30px;box-sizing:border-box;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+      .bb-phone-empty-v301.show{display:flex}
+      .bb-phone-empty-icon-v301{width:62px;height:62px;margin:0 auto 18px;border-radius:21px;background:#1c1c1e;color:#fff;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:850}
+      .bb-phone-empty-title-v301{font-size:23px;font-weight:850;letter-spacing:-.4px}
+      .bb-phone-empty-desc-v301{max-width:255px;margin:9px auto 22px;color:#888890;font-size:13px;line-height:1.65}
+      .bb-phone-empty-btn-v301{height:48px;min-width:178px;border:0;border-radius:16px;background:#1c1c1e;color:#fff;padding:0 24px;font-size:15px;font-weight:800}
+      .bb-phone-app-empty-v301{min-height:62vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;box-sizing:border-box}
+      .bb-phone-app-empty-v301 .bb-phone-empty-desc-v301{margin-bottom:20px}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function injectUI(){
+    injectStyle();
+    if(!$("bbPhoneLockV301")){
+      const host=document.querySelector(".phone")||document.body;
+      const lock=document.createElement("div");
+      lock.id="bbPhoneLockV301";
+      lock.innerHTML=`
+        <button class="bb-phone-lock-back-v301" type="button" onclick="bbPhoneLockBackV301()">‹</button>
+        <div class="bb-phone-lock-owner-v301">
+          <div class="bb-phone-lock-avatar-v301" id="bbPhoneLockAvatarV301"></div>
+          <div class="bb-phone-lock-name-v301" id="bbPhoneLockNameV301">TA的手机</div>
+        </div>
+        <div class="bb-phone-lock-title-v301">输入密码</div>
+        <div class="bb-phone-lock-sub-v301">密码由手机主人设置</div>
+        <div class="bb-phone-dots-v301" id="bbPhoneDotsV301">
+          <i class="bb-phone-dot-v301"></i><i class="bb-phone-dot-v301"></i><i class="bb-phone-dot-v301"></i><i class="bb-phone-dot-v301"></i>
+        </div>
+        <div class="bb-phone-lock-status-v301" id="bbPhoneLockStatusV301">请输入四位密码</div>
+        <div class="bb-phone-keypad-v301">
+          ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="bb-phone-key-v301" type="button" onclick="bbPhonePassDigitV301('${n}')">${n}</button>`).join("")}
+          <button class="bb-phone-key-v301 small" type="button" onclick="bbPhoneLockBackV301()">返回</button>
+          <button class="bb-phone-key-v301" type="button" onclick="bbPhonePassDigitV301('0')">0</button>
+          <button class="bb-phone-key-v301 small" type="button" onclick="bbPhonePassDeleteV301()">删除</button>
+        </div>
+        <button class="bb-phone-secret-v301" type="button" aria-label="隐藏入口" onclick="bbPhoneSneakInV301()"></button>
+      `;
+      host.appendChild(lock);
+    }
+    const phonePanel=$("subjectPhonePanel");
+    if(phonePanel&&!$("bbPhoneEmptyV301")){
+      const empty=document.createElement("div");
+      empty.id="bbPhoneEmptyV301";
+      empty.className="bb-phone-empty-v301";
+      phonePanel.appendChild(empty);
+    }
+  }
+
+  function setStatus(text,error){
+    const node=$("bbPhoneLockStatusV301");
+    if(!node)return;
+    node.textContent=text||"";
+    node.classList.toggle("error",!!error);
+  }
+  function renderDots(){
+    const dots=$("bbPhoneDotsV301")?.querySelectorAll(".bb-phone-dot-v301")||[];
+    dots.forEach((dot,index)=>dot.classList.toggle("on",index<entered.length));
+  }
+  function populateOwner(person){
+    const avatar=$("bbPhoneLockAvatarV301");
+    const name=$("bbPhoneLockNameV301");
+    if(avatar){
+      avatar.innerHTML=person&&person.photo?`<img src="${esc(person.photo)}" alt="">`:esc(clean(person&&person.name).slice(0,1)||"未");
+    }
+    if(name)name.textContent=(person&&person.name?person.name:"TA")+"的手机";
+  }
+  function closeAllPhoneLayers(){
+    const lock=$("bbPhoneLockV301");
+    const phone=$("subjectPhonePanel");
+    const app=$("bbSubjectAppPanel");
+    const settings=$("bbspaSettingsSheet");
+    if(lock)lock.classList.remove("show");
+    if(phone)phone.style.display="none";
+    if(app)app.style.display="none";
+    if(settings)settings.classList.remove("show");
+  }
+  function showLock(person){
+    injectUI();
+    entered="";
+    lockPersonaId=String(person.id);
+    try{subjectPhoneCurrentId=person.id;}catch(error){}
+    window.subjectPhoneCurrentId=person.id;
+    ensureSecurity(person);
+    populateOwner(person);
+    renderDots();
+    setStatus("请输入四位密码",false);
+    const subjects=$("subjectsPanel");
+    const phone=$("subjectPhonePanel");
+    const app=$("bbSubjectAppPanel");
+    if(subjects)subjects.style.display="none";
+    if(phone)phone.style.display="none";
+    if(app)app.style.display="none";
+    $("bbPhoneLockV301")?.classList.add("show");
+  }
+
+  function syncPhoneHome(person){
+    if(!person)return;
+    const avatar=$("subjectPhoneAvatar");
+    const name=$("subjectPhoneName");
+    const location=$("subjectPhoneLocation");
+    if(avatar)avatar.innerHTML=person.photo?`<img src="${esc(person.photo)}" alt="">`:"";
+    if(name)name.textContent=person.name||"未命名";
+    if(location)location.textContent=(Array.isArray(person.tags)&&person.tags[0])||person.timezone||"未知定位";
+    const empty=$("bbPhoneEmptyV301");
+    if(empty){
+      const blank=!wasGenerated(person);
+      empty.classList.toggle("show",blank);
+      empty.innerHTML=blank?`
+        <div>
+          <div class="bb-phone-empty-icon-v301">···</div>
+          <div class="bb-phone-empty-title-v301">这台手机还是空白的</div>
+          <div class="bb-phone-empty-desc-v301">根据 ${esc(person.name||"TA")} 的人设和最近聊天生成手机里的内容。</div>
+          <button class="bb-phone-empty-btn-v301" type="button" onclick="bbPhoneGenerateAllV301()">生成手机内容</button>
+        </div>`:"";
+    }
+  }
+  function showPhoneHome(sneak){
+    const person=currentPerson()||personaById(lockPersonaId);
+    if(!person)return;
+    injectUI();
+    const sec=ensureSecurity(person);
+    if(sneak){sec.sneakCount=Number(sec.sneakCount||0)+1;sec.lastSneakAt=Date.now();save();}
+    $("bbPhoneLockV301")?.classList.remove("show");
+    $("subjectsPanel")&&( $("subjectsPanel").style.display="none" );
+    $("bbSubjectAppPanel")&&( $("bbSubjectAppPanel").style.display="none" );
+    const panel=$("subjectPhonePanel");
+    if(panel)panel.style.display="flex";
+    syncPhoneHome(person);
+  }
+
+  function chatHistoryText(person){
+    const list=window.state&&state.chatRecords&&Array.isArray(state.chatRecords[person.id])?state.chatRecords[person.id]:[];
+    return list.slice(-18).map(message=>{
+      const text=clean(message&&(message.transcript||message.content||message.text));
+      if(!text)return "";
+      return (message.role==="user"?"用户":person.name||"角色")+"："+text.slice(0,180);
+    }).filter(Boolean).join("\n");
+  }
+  function personaContext(person){
+    return [person.name,person.persona,person.personality,person.brief,Array.isArray(person.tags)?person.tags.join("、"):""].filter(Boolean).join("\n").slice(0,6000);
+  }
+  function localDecision(person,sec){
+    const context=(personaContext(person)+"\n"+chatHistoryText(person)).toLowerCase();
+    let score=0;
+    if(/恋人|情侣|男友|女友|爱人|老婆|老公|宝宝|宠|纵容|信任|温柔/.test(context))score+=3;
+    if(/喜欢你|爱你|想你|亲亲|抱抱|离不开/.test(context))score+=2;
+    if(/冷漠|警惕|多疑|隐私|秘密|防备|戒备|不信任/.test(context))score-=2;
+    score+=Math.min(2,Math.floor(Number(sec.failed||0)/2));
+    const roll=(hash(String(person.id)+"|"+sec.failed+"|"+Math.floor(Date.now()/3600000))%100)/100;
+    const give=score>=4?roll>.18:score>=2?roll>.55:false;
+    if(give){
+      const lines=[
+        `密码 ${sec.password}，别乱翻。`,
+        `行，${sec.password}。看完赶紧出来。`,
+        `给你，${sec.password}。不许笑我。`
+      ];
+      return {give:true,message:lines[hash(person.id+sec.failed)%lines.length],change:false};
+    }
+    const lines=[
+      "你刚是不是在试我手机密码？",
+      "又输错了。你到底想看什么？",
+      "别试了，我不会直接告诉你。",
+      "你动我手机了？先说理由。"
+    ];
+    return {give:false,message:lines[hash(person.id+"deny"+sec.failed)%lines.length],change:Number(sec.failed||0)>=3&&roll>.62};
+  }
+  function parseDecision(raw){
+    const text=String(raw||"");
+    const start=text.indexOf("{");
+    const end=text.lastIndexOf("}");
+    if(start<0||end<=start)return null;
+    try{
+      const value=JSON.parse(text.slice(start,end+1));
+      return {
+        give:value.give===true,
+        message:clean(value.message||value.reply||""),
+        change:value.change===true||value.changePassword===true
+      };
+    }catch(error){return null;}
+  }
+  async function decideWithRole(person,sec){
+    const fallback=localDecision(person,sec);
+    if(typeof window.sendChatCompletion!=="function")return fallback;
+    const prompt=[
+      `你就是角色“${person.name||"TA"}”本人。`,
+      "用户刚刚偷偷尝试进入你的手机，并且输错了锁屏密码。",
+      `这是第 ${Number(sec.failed||1)} 次输错。`,
+      "你要根据自己的人设、当前关系和最近聊天，决定要不要把真正的四位密码告诉用户。可以给，也可以不给，不要一律同意。",
+      "回复必须像真实私聊，简短、有脾气，不要提系统、功能、程序、判定或角色扮演。",
+      `如果决定给，message里必须自然包含真实密码 ${sec.password}。如果不给，绝对不能泄露任何数字或提示。`,
+      "只返回严格JSON：{\"give\":true或false,\"message\":\"一到两句自然消息\",\"change\":true或false}",
+      "change 只表示拒绝后是否因为警惕而重新设置新密码；若给出密码必须为false。",
+      "\n【人设】\n"+personaContext(person),
+      "\n【最近聊天】\n"+(chatHistoryText(person)||"暂无")
+    ].join("\n");
+    try{
+      const raw=await window.sendChatCompletion([
+        {role:"system",content:"只输出合法JSON，不要Markdown。"},
+        {role:"user",content:prompt}
+      ]);
+      const parsed=parseDecision(raw);
+      if(!parsed||!parsed.message)return fallback;
+      if(parsed.give&&!parsed.message.includes(sec.password))parsed.message+=(parsed.message?"\n":"")+`密码是 ${sec.password}。`;
+      if(parsed.give)parsed.change=false;
+      return parsed;
+    }catch(error){return fallback;}
+  }
+  function appendRoleMessage(person,text){
+    if(!window.state||!person)return;
+    if(!state.chatRecords||typeof state.chatRecords!=="object")state.chatRecords={};
+    const id=String(person.id);
+    const list=Array.isArray(state.chatRecords[id])?state.chatRecords[id]:(state.chatRecords[id]=[]);
+    const parts=String(text||"").split(/\n+/).map(clean).filter(Boolean).slice(0,2);
+    parts.forEach((part,index)=>list.push({
+      role:"assistant",
+      type:"text",
+      content:part,
+      time:Date.now()+index,
+      id:"msg_"+(Date.now()+index)+"_"+Math.random().toString(36).slice(2,8),
+      phonePasswordEventV301:true
+    }));
+    save();
+    try{if(typeof window.renderChatList==="function")window.renderChatList();}catch(error){}
+    try{window.BaobaoUnreadV289&&window.BaobaoUnreadV289.scan&&window.BaobaoUnreadV289.scan();}catch(error){}
+  }
+  async function notifyWrongPassword(person,sec){
+    if(replyBusy)return;
+    const now=Date.now();
+    if(now-Number(sec.lastWrongNotifyAt||0)<5000)return;
+    replyBusy=true;
+    sec.lastWrongNotifyAt=now;
+    save();
+    try{
+      const decision=await decideWithRole(person,sec);
+      if(!decision)return;
+      appendRoleMessage(person,decision.message);
+      setStatus(`${person.name||"TA"}给你发了消息`,false);
+      if(decision.change&&!decision.give){
+        sec.passwordVersion=Number(sec.passwordVersion||1)+1;
+        sec.password=derivePassword(person,"changed-"+sec.passwordVersion+"-"+Date.now());
+        sec.changedAt=Date.now();
+        save();
+      }
+    }finally{
+      replyBusy=false;
+    }
+  }
+
+  async function validatePassword(){
+    const person=currentPerson()||personaById(lockPersonaId);
+    if(!person)return;
+    const sec=ensureSecurity(person);
+    if(entered===String(sec.password)){
+      sec.failed=0;
+      sec.lastUnlockedAt=Date.now();
+      save();
+      setStatus("密码正确",false);
+      await sleep(170);
+      entered="";renderDots();showPhoneHome(false);
+      return;
+    }
+    sec.failed=Number(sec.failed||0)+1;
+    sec.lastFailedAt=Date.now();
+    save();
+    setStatus("密码不对",true);
+    const lock=$("bbPhoneLockV301");
+    lock?.classList.remove("shake");
+    void lock?.offsetWidth;
+    lock?.classList.add("shake");
+    notifyWrongPassword(person,sec);
+    await sleep(440);
+    entered="";
+    renderDots();
+  }
+
+  window.bbPhonePassDigitV301=function(digit){
+    if(entered.length>=4)return;
+    entered+=String(digit).replace(/\D/g,"").slice(0,1);
+    renderDots();
+    if(entered.length===4)validatePassword();
+  };
+  window.bbPhonePassDeleteV301=function(){
+    entered=entered.slice(0,-1);
+    renderDots();
+    setStatus("请输入四位密码",false);
+  };
+  window.bbPhoneLockBackV301=function(){
+    entered="";renderDots();
+    $("bbPhoneLockV301")?.classList.remove("show");
+    const subjects=$("subjectsPanel");
+    if(subjects)subjects.style.display="flex";
+  };
+  window.bbPhoneSneakInV301=function(){
+    entered="";renderDots();showPhoneHome(true);
+  };
+
+  window.openSubjectPhone=function(id){
+    const person=personaById(id);
+    if(!person)return;
+    closeAllPhoneLayers();
+    showLock(person);
+  };
+  window.closeSubjectPhone=function(){
+    closeAllPhoneLayers();
+    const subjects=$("subjectsPanel");
+    if(subjects)subjects.style.display="flex";
+  };
+
+  function showBlankApp(app){
+    const person=currentPerson();
+    if(!person)return;
+    pendingApp=app||"notes";
+    const panel=$("bbSubjectAppPanel");
+    const title=$("bbspaTitle");
+    const action=$("bbspaAction");
+    const body=$("bbspaBody");
+    const chat=$("bbspaChat");
+    if(title)title.textContent="手机内容";
+    if(action)action.innerHTML="";
+    if(chat)chat.classList.remove("show");
+    if(body)body.innerHTML=`
+      <div class="bb-phone-app-empty-v301">
+        <div>
+          <div class="bb-phone-empty-icon-v301">···</div>
+          <div class="bb-phone-empty-title-v301">这里还没有内容</div>
+          <div class="bb-phone-empty-desc-v301">点击生成后，才会根据 ${esc(person.name||"TA")} 的人设和聊天补全整台手机。</div>
+          <button class="bb-phone-empty-btn-v301" type="button" onclick="bbPhoneGenerateAllV301('${esc(pendingApp)}')">现在生成</button>
+        </div>
+      </div>`;
+    if(panel)panel.style.display="flex";
+  }
+
+  window.openSubjectPhoneApp=function(app){
+    const person=currentPerson();
+    if(!person)return;
+    pendingApp=app||"notes";
+    if(!bypassBlankGuard&&!wasGenerated(person)){
+      showBlankApp(pendingApp);
+      return;
+    }
+    return typeof oldOpenSubjectPhoneApp==="function"?oldOpenSubjectPhoneApp.apply(this,arguments):undefined;
+  };
+
+  async function generateAll(app){
+    const person=currentPerson();
+    if(!person)return;
+    pendingApp=app||pendingApp||"notes";
+    try{
+      bypassBlankGuard=true;
+      if(typeof oldOpenSubjectPhoneApp==="function")oldOpenSubjectPhoneApp(pendingApp);
+    }finally{
+      bypassBlankGuard=false;
+    }
+    try{
+      if(typeof oldPhoneGenerateData==="function")await oldPhoneGenerateData();
+      markGenerated(person,true);
+      syncPhoneHome(person);
+    }catch(error){
+      markGenerated(person,true);
+      syncPhoneHome(person);
+      if(typeof window.showToast==="function")window.showToast("生成失败："+clean(error&&error.message),true);
+    }
+  }
+  window.bbPhoneGenerateAllV301=function(app){return generateAll(app);};
+  window.bbPhoneGenerateData=function(){return generateAll(pendingApp||"notes");};
+  window.bbPhoneLocalRefresh=function(){
+    const person=currentPerson();
+    const result=typeof oldPhoneLocalRefresh==="function"?oldPhoneLocalRefresh.apply(this,arguments):undefined;
+    if(person){markGenerated(person,true);syncPhoneHome(person);}
+    return result;
+  };
+  window.bbPhoneClearCurrent=function(){
+    const person=currentPerson();
+    const result=typeof oldPhoneClearCurrent==="function"?oldPhoneClearCurrent.apply(this,arguments):undefined;
+    if(person){markGenerated(person,false);syncPhoneHome(person);}
+    return result;
+  };
+
+  function boot(){
+    injectUI();
+    const phone=$("subjectPhonePanel");
+    if(phone&&!phone.__bbPhoneHomeV301){
+      phone.__bbPhoneHomeV301=true;
+      phone.addEventListener("click",event=>{
+        if(event.target&&event.target.closest&&event.target.closest(".bb-phone-empty-btn-v301"))return;
+      });
+    }
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});
+  else boot();
+  window.addEventListener("pageshow",boot);
+})();
