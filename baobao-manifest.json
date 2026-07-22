@@ -1,7 +1,7 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机私人聊天空间 · 310 朋友圈归属与顺滑版",
+  "description": "豹豹机私人聊天空间 · 311 生图中转站与自动照片版",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -10,7 +10,7 @@
   "theme_color": "#f7f7f7",
   "icons": [
     {
-      "src": "./apple-touch-icon.png?v=310",
+      "src": "./apple-touch-icon.png?v=311",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

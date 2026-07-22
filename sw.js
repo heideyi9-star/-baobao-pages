@@ -1,5 +1,5 @@
-/* 豹豹机 310：朋友圈归属与点击卡顿修复。 */
-const CACHE_NAME = "baobao-shell-v310";
+/* 豹豹机 311：生图中转站、自动照片与表情包预览。 */
+const CACHE_NAME = "baobao-shell-v311";
 const SHELL = [
   "./",
   "./index.html",
@@ -70,7 +70,7 @@ self.addEventListener("fetch", event => {
 });
 
 
-/* 310：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
+/* 311：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
 function bbParsePush(event){
   if(!event.data)return {};
   try{return event.data.json()||{};}catch(error){

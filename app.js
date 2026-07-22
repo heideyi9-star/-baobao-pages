@@ -37907,3 +37907,472 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
   [120,700,2200].forEach(ms=>setTimeout(boot,ms));
 })();
+
+/* ===================================================================
+   豹豹机 311：生图中转站直连 + 角色主动发照片 + 表情包预览语义化
+   - 生图只请求用户填写的中转站，不再经过 localhost。
+   - 用户在私聊里向角色要照片时，角色会自动生成并发送。
+   - Chat 首页最后一条为表情包时显示“表情包：【名称】”，不显示图片 URL。
+=================================================================== */
+(function(){
+  "use strict";
+  if(window.__bbImageRelayAutoPhotoStickerPreviewV311)return;
+  window.__bbImageRelayAutoPhotoStickerPreviewV311=true;
+
+  const $=id=>document.getElementById(id);
+  const clean=value=>String(value==null?"":value).trim();
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  let photoHandling=false;
+
+  function appState(){
+    try{return window.state||state||{}}catch(_){return window.state||{}}
+  }
+  function currentPersona(){
+    const s=appState();
+    return window.currentChatPersona||
+      (Array.isArray(s.personas)?s.personas.find(p=>String(p.id)===String(s.activeChatId||"")):null)||{};
+  }
+  function imageConfig(override){
+    let api=override||{};
+    if(!override){
+      try{
+        api=typeof window.getImageAPI==="function"
+          ?window.getImageAPI()||{}
+          :JSON.parse(localStorage.getItem("imageAPI")||"{}");
+      }catch(_){api={}}
+    }
+    return {
+      provider:clean(api.provider),
+      endpoint:clean(api.endpoint),
+      key:clean(api.key),
+      model:clean(api.model)
+    };
+  }
+  function normalizeImageEndpoint(value){
+    let endpoint=clean(value).replace(/\/+$/g,"");
+    if(!endpoint)return "";
+    endpoint=endpoint.replace(/\/chat\/completions(?:\?.*)?$/i,"/images/generations");
+    if(/\/images\/generations(?:\?.*)?$/i.test(endpoint))return endpoint;
+    if(/\/v\d+(?:beta\d+)?$/i.test(endpoint)||/\/openai\/v\d+(?:beta\d+)?$/i.test(endpoint)){
+      return endpoint+"/images/generations";
+    }
+    if(/\/openai$/i.test(endpoint))return endpoint+"/v1/images/generations";
+    return endpoint+"/v1/images/generations";
+  }
+  function parseRelayError(data,raw,status){
+    const message=data?.error?.message||data?.error?.msg||data?.error||data?.message||data?.msg||data?.detail||raw;
+    return clean(message||("生图中转站返回错误 "+status)).slice(0,260);
+  }
+  function collectImageOutputs(payload){
+    const results=[];
+    const seen=new Set();
+    const add=value=>{
+      if(value==null)return;
+      if(Array.isArray(value)){value.forEach(add);return;}
+      if(typeof value==="string"){
+        const text=clean(value);
+        if(!text)return;
+        if(/^https?:\/\//i.test(text)||/^data:image\//i.test(text)){
+          if(!seen.has(text)){seen.add(text);results.push(text)}
+          return;
+        }
+        if(/^[A-Za-z0-9+/=\r\n]{300,}$/.test(text)){
+          const dataUrl="data:image/png;base64,"+text.replace(/\s+/g,"");
+          if(!seen.has(dataUrl)){seen.add(dataUrl);results.push(dataUrl)}
+          return;
+        }
+        const urlMatch=text.match(/https?:\/\/[^\s)\]}>"']+\.(?:png|jpe?g|webp)(?:\?[^\s)\]}>"']*)?/i);
+        if(urlMatch)add(urlMatch[0]);
+        return;
+      }
+      if(typeof value!=="object")return;
+      [
+        value.url,value.image_url,value.output_url,value.file_url,value.src,
+        value.b64_json,value.base64,value.image_base64,value.b64
+      ].forEach(add);
+      [
+        value.data,value.images,value.image,value.output,value.outputs,
+        value.result,value.results,value.artifacts,value.content
+      ].forEach(add);
+    };
+    [payload?.data,payload?.images,payload?.image,payload?.output,payload?.outputs,
+     payload?.result,payload?.results,payload?.artifacts,payload?.choices].forEach(add);
+    return results;
+  }
+  async function relayRequest(api,prompt,size,variant){
+    const endpoint=normalizeImageEndpoint(api.endpoint);
+    const body={prompt,n:1};
+    if(api.model)body.model=api.model;
+    if(size)body.size=size;
+    if(variant==="b64")body.response_format="b64_json";
+    if(variant==="url")body.response_format="url";
+    let response;
+    try{
+      response=await fetch(endpoint,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Accept":"application/json",
+          "Authorization":"Bearer "+api.key
+        },
+        body:JSON.stringify(body)
+      });
+    }catch(error){
+      throw new Error("无法连接生图中转站，请检查地址、网络或该站是否允许网页跨域调用");
+    }
+    const raw=await response.text();
+    let data={};
+    try{data=raw?JSON.parse(raw):{}}catch(_){data={raw}}
+    if(!response.ok){
+      const error=new Error(parseRelayError(data,raw,response.status));
+      error.status=response.status;
+      throw error;
+    }
+    const images=collectImageOutputs(data);
+    if(!images.length){
+      const error=new Error("中转站请求成功，但返回内容里没有找到图片");
+      error.status=response.status;
+      throw error;
+    }
+    return images;
+  }
+  async function generateViaRelay(prompt,options){
+    const api=imageConfig(options&&options.api);
+    if(!api.endpoint||!api.key||!api.model){
+      throw new Error("请先在设置 → API 设置 → 生图中转站中填写地址、Key 和模型");
+    }
+    const requestedSize=clean(options&&options.size)||"1024x1024";
+    const attempts=[
+      {size:requestedSize,variant:""},
+      {size:requestedSize,variant:"url"},
+      {size:requestedSize,variant:"b64"}
+    ];
+    if(requestedSize!=="1024x1024")attempts.push({size:"1024x1024",variant:""});
+    let lastError=null;
+    for(const attempt of attempts){
+      try{return await relayRequest(api,clean(prompt),attempt.size,attempt.variant)}
+      catch(error){
+        lastError=error;
+        const status=Number(error&&error.status||0);
+        if(status&&![400,404,405,415,422].includes(status))break;
+      }
+    }
+    throw lastError||new Error("生图失败");
+  }
+  function compressGeneratedSource(source){
+    if(!/^data:image\//i.test(clean(source)))return Promise.resolve(source);
+    return new Promise(resolve=>{
+      const image=new Image();
+      image.onload=()=>{
+        try{
+          const max=1280;
+          const naturalWidth=image.naturalWidth||image.width||1;
+          const naturalHeight=image.naturalHeight||image.height||1;
+          const scale=Math.min(1,max/Math.max(naturalWidth,naturalHeight));
+          const width=Math.max(1,Math.round(naturalWidth*scale));
+          const height=Math.max(1,Math.round(naturalHeight*scale));
+          const canvas=document.createElement("canvas");
+          canvas.width=width;canvas.height=height;
+          const context=canvas.getContext("2d",{alpha:false});
+          context.fillStyle="#fff";context.fillRect(0,0,width,height);
+          context.drawImage(image,0,0,width,height);
+          resolve(canvas.toDataURL("image/jpeg",.82));
+        }catch(_){resolve(source)}
+      };
+      image.onerror=()=>resolve(source);
+      image.src=source;
+    });
+  }
+  function persistAndRender(){
+    const s=appState();
+    try{
+      if(s.activeChatId&&s.chatRecords)s.chatRecords[s.activeChatId]=s.chatMessages;
+      if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal();
+    }catch(_){ }
+    try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();else if(typeof renderChatMessages==="function")renderChatMessages();}catch(_){ }
+    try{if(typeof window.renderChatList==="function")window.renderChatList();else if(typeof renderChatList==="function")renderChatList();}catch(_){ }
+  }
+  function appendAssistantMessage(type,content,extra){
+    const s=appState();
+    if(!Array.isArray(s.chatMessages))s.chatMessages=[];
+    const message={
+      id:"bb311_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),
+      role:"assistant",type,content,time:Date.now(),delivery:"received",
+      ...(extra||{})
+    };
+    s.chatMessages.push(message);
+    persistAndRender();
+    return message;
+  }
+  function setTyping(active){
+    try{if(typeof window.bbTypingBubbleV292==="function")window.bbTypingBubbleV292(!!active);}catch(_){ }
+    try{if(typeof window.bbSetNaturalTypingV250==="function")window.bbSetNaturalTypingV250(!!active);}catch(_){ }
+  }
+  function stylePrompt(prompt,style){
+    const map={
+      photo:"写实的 iPhone 随手拍照片，自然光线、真实皮肤和生活环境，不要文字、水印或边框。",
+      portrait:"真实人物头像照片，适合作为社交头像，自然皮肤，不要文字或水印。",
+      anime:"高质量二次元插画，人物细节完整，不要文字或水印。",
+      cinema:"电影感真实摄影，氛围光影和自然构图，不要文字或水印。",
+      none:""
+    };
+    const extra=map[clean(style)]||map.photo;
+    return clean(prompt)+(extra?"\n\n画面要求："+extra:"");
+  }
+  async function sendManualGeneratedImage(){
+    const prompt=clean($("bbImagePromptV308")?.value);
+    if(!prompt){if(typeof showToast==="function")showToast("请输入画面描述",true);return;}
+    const style=clean($("bbImageStyleV308")?.value)||"photo";
+    const size=clean($("bbImageSizeV308")?.value)||"1024x1024";
+    const sender=clean($("bbImageSenderV308")?.value)||"assistant";
+    const button=$("bbImageGenerateButtonV308");
+    if(button){button.disabled=true;button.textContent="生成中…";}
+    if(sender!=="user")setTyping(true);
+    try{
+      const images=await generateViaRelay(stylePrompt(prompt,style),{size});
+      const source=await compressGeneratedSource(images[0]);
+      const s=appState();
+      if(!Array.isArray(s.chatMessages))s.chatMessages=[];
+      s.chatMessages.push({
+        id:"bb311_manual_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+        role:sender==="user"?"user":"assistant",type:"image",content:source,
+        generated:true,generatedPrompt:prompt,time:Date.now(),delivery:sender==="user"?"sent":"received"
+      });
+      persistAndRender();
+      if(typeof window.closeBaobaoToolModal==="function")window.closeBaobaoToolModal();
+      if(typeof showToast==="function")showToast("图片已通过中转站生成并发送");
+    }catch(error){
+      if(typeof showToast==="function")showToast(clean(error&&error.message||error||"生成失败"),true);
+    }finally{
+      setTyping(false);
+      if(button){button.disabled=false;button.textContent="生成并发送";}
+    }
+  }
+
+  const PHOTO_REQUEST_RE=/(?:给我|发我|让我|想看|看看|来一张|来张|拍一张|拍张|发一张|发张|传一张|传张).{0,12}(?:照片|自拍|相片|图片|你现在的样子|你长什么样)|(?:照片|自拍|相片).{0,12}(?:发我|给我|来一张|来张|拍一张|拍张)|(?:让我看看你|想看看你|给我看看你|看看你现在)/i;
+  const PHOTO_NEGATIVE_RE=/(?:不要|别|不用|不想).{0,8}(?:照片|自拍|相片|图片)|(?:为什么|怎么|咋).{0,8}(?:发|拍).{0,5}(?:照片|自拍|图片)/i;
+  function latestPhotoRequest(){
+    const s=appState();
+    const list=Array.isArray(s.chatMessages)?s.chatMessages:[];
+    const message=list.slice().reverse().find(item=>item&&item.role==="user"&&!item.hiddenSystem&&!item.recalled);
+    if(!message||message.bbAutoPhotoHandledV311)return null;
+    const type=clean(message.type||"text").toLowerCase();
+    if(type!=="text")return null;
+    const text=clean(message.content||message.text);
+    if(!text||PHOTO_NEGATIVE_RE.test(text)||!PHOTO_REQUEST_RE.test(text))return null;
+    return {message,text};
+  }
+  function personaDescription(person){
+    const tags=Array.isArray(person.tags)?person.tags.join("、"):clean(person.tags);
+    return [
+      clean(person.name)&&"角色名："+clean(person.name),
+      clean(person.persona)&&"外貌与背景："+clean(person.persona).slice(0,2200),
+      clean(person.personality)&&"气质："+clean(person.personality).slice(0,1000),
+      tags&&"标签："+tags.slice(0,500)
+    ].filter(Boolean).join("\n");
+  }
+  function recentTextContext(){
+    const s=appState();
+    return (Array.isArray(s.chatMessages)?s.chatMessages:[])
+      .filter(message=>message&&!message.hiddenSystem&&["user","assistant"].includes(message.role)&&clean(message.type||"text")==="text")
+      .slice(-8)
+      .map(message=>(message.role==="user"?"用户":"角色")+"："+clean(message.content).slice(0,350))
+      .join("\n");
+  }
+  async function createPhotoPlan(person,requestText){
+    const fallback={
+      reply:"给你看。",
+      prompt:`一张由角色本人用 iPhone 临时拍下并发给亲近聊天对象的真实照片。${personaDescription(person)}\n用户的具体要求：${requestText}\n保持角色外貌与气质一致，像刚刚真实拍摄的生活照或自拍，构图自然，不要文字、水印、聊天界面或手机边框。`
+    };
+    if(typeof window.sendChatCompletion!=="function")return fallback;
+    try{
+      const raw=await window.sendChatCompletion([
+        {role:"system",content:`你负责为角色自动发送照片。根据角色资料、最近聊天和用户要求，只输出两行：\n回复：角色发照片前会说的一句自然短消息（最多24字，不要客服腔）\n画面：可直接交给生图模型的中文提示词，必须是角色本人刚拍的真实手机照片，写清外貌、服装、环境、动作、光线、镜头角度；不要文字水印。`},
+        {role:"user",content:`【角色】\n${personaDescription(person)||"未填写具体外貌，请保持同一位自然人物形象"}\n\n【最近聊天】\n${recentTextContext()||"暂无"}\n\n【用户要照片】\n${requestText}`}
+      ]);
+      const text=clean(raw);
+      const reply=(text.match(/回复\s*[:：]\s*([^\n]+)/i)||[])[1];
+      const prompt=(text.match(/画面\s*[:：]\s*([\s\S]+)/i)||[])[1];
+      return {
+        reply:clean(reply)||fallback.reply,
+        prompt:clean(prompt)||fallback.prompt
+      };
+    }catch(_){return fallback}
+  }
+  async function handlePhotoRequest(request){
+    if(photoHandling)return true;
+    const api=imageConfig();
+    if(!api.endpoint||!api.key||!api.model){
+      request.message.bbAutoPhotoHandledV311=false;
+      if(typeof showToast==="function")showToast("先在设置里填写生图中转站地址、Key 和模型",true);
+      return true;
+    }
+    photoHandling=true;
+    request.message.bbAutoPhotoHandledV311=true;
+    window.__baobaoReplyPending=true;
+    const button=$("chatReplyBtn");
+    if(button)button.classList.add("loading");
+    setTyping(true);
+    try{
+      const person=currentPersona();
+      const plan=await createPhotoPlan(person,request.text);
+      const images=await generateViaRelay(stylePrompt(plan.prompt,"photo"),{size:"1024x1024"});
+      const source=await compressGeneratedSource(images[0]);
+      setTyping(false);
+      if(clean(plan.reply)){
+        appendAssistantMessage("text",clean(plan.reply),{autoPhotoReplyV311:true});
+        await sleep(320);
+      }
+      appendAssistantMessage("image",source,{
+        generated:true,generatedPrompt:plan.prompt,autoPhotoReplyV311:true
+      });
+      try{
+        if(typeof window.baobaoNotifyIncomingReply==="function")window.baobaoNotifyIncomingReply(clean(plan.reply)||"[照片]");
+      }catch(_){ }
+      return true;
+    }catch(error){
+      request.message.bbAutoPhotoHandledV311=false;
+      if(typeof showToast==="function")showToast("照片生成失败："+clean(error&&error.message||error),true);
+      return true;
+    }finally{
+      setTyping(false);
+      photoHandling=false;
+      window.__baobaoReplyPending=false;
+      if(button)button.classList.remove("loading");
+    }
+  }
+  function installPhotoTrigger(){
+    const current=window.triggerAIReply;
+    if(typeof current!=="function"||current.__bbAutoPhotoV311)return;
+    const wrapped=async function(){
+      const request=latestPhotoRequest();
+      if(request)return handlePhotoRequest(request);
+      return current.apply(this,arguments);
+    };
+    wrapped.__bbAutoPhotoV311=true;
+    wrapped.__bbPrevious=current;
+    window.triggerAIReply=wrapped;
+    try{triggerAIReply=wrapped}catch(_){ }
+  }
+  function installPhotoButtonCapture(){
+    const button=$("chatReplyBtn");
+    if(!button||button.__bbAutoPhotoCaptureV311)return;
+    button.__bbAutoPhotoCaptureV311=true;
+    button.addEventListener("click",event=>{
+      const request=latestPhotoRequest();
+      if(!request)return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      handlePhotoRequest(request);
+    },true);
+  }
+
+  function stickerNameFor(message){
+    if(!message)return "表情包";
+    const direct=clean(message.name||message.stickerName||message.label);
+    if(direct&&direct!=="表情包")return direct;
+    const s=appState();
+    const source=clean(message.url||message.content||message.mediaSource||message.originalMedia);
+    const sticker=(Array.isArray(s.stickers)?s.stickers:[]).find(item=>
+      String(item.id||"")===String(message.stickerId||"")||
+      (source&&clean(item.url)===source)
+    );
+    return clean(sticker&&sticker.name)||direct||"表情包";
+  }
+  function stickerPreview(message){
+    return "表情包：【"+stickerNameFor(message).replace(/[【】]/g,"")+"】";
+  }
+  function lastVisibleMessage(list){
+    return (Array.isArray(list)?list:[]).slice().reverse().find(message=>message&&!message.hiddenSystem&&!message.recalled)||null;
+  }
+  function patchChatHomeStickerPreviews(){
+    const s=appState();
+    document.querySelectorAll("#chatRecentList .chat-recent-item").forEach(row=>{
+      const code=row.getAttribute("onclick")||"";
+      const match=code.match(/startPersonaChat\(['\"]([^'\"]+)/);
+      const id=match?match[1]:"";
+      if(!id)return;
+      const last=lastVisibleMessage(s.chatRecords&&s.chatRecords[id]);
+      if(!last)return;
+      const type=clean(last.type).toLowerCase();
+      const source=clean(last.content||last.url);
+      const knownSticker=(Array.isArray(s.stickers)?s.stickers:[]).some(item=>clean(item.url)&&clean(item.url)===source);
+      if(type!=="sticker"&&!knownSticker)return;
+      const preview=row.querySelector(".chat-recent-last");
+      if(preview)preview.textContent=stickerPreview(last);
+    });
+  }
+  function installChatListPreviewHook(){
+    const current=window.renderChatList;
+    if(typeof current!=="function"||current.__bbStickerPreviewV311)return;
+    const wrapped=function(){
+      const result=current.apply(this,arguments);
+      requestAnimationFrame(patchChatHomeStickerPreviews);
+      return result;
+    };
+    wrapped.__bbStickerPreviewV311=true;
+    wrapped.__bbPrevious=current;
+    window.renderChatList=wrapped;
+    try{renderChatList=wrapped}catch(_){ }
+  }
+
+  function updateImageRelayUI(){
+    const panel=$("imageAPI");
+    if(!panel)return;
+    const title=panel.querySelector("h1");
+    if(title)title.textContent="生图中转站";
+    const hint=title&&title.nextElementSibling;
+    if(hint)hint.textContent="填写支持 OpenAI /images/generations 的中转站。豹豹机会直接请求你填写的地址，不经过 localhost。";
+    const endpoint=$("imageEndpoint");
+    if(endpoint)endpoint.placeholder="https://你的中转站.com/v1（或完整 /images/generations）";
+    const provider=$("imageProvider");
+    if(provider)provider.placeholder="中转站备注，例如 Heliar / 自定义";
+  }
+  function installRelayOverrides(){
+    window.generateImageFromAPI=function(prompt,apiOverride){
+      return generateViaRelay(prompt,{api:apiOverride,size:"1024x1024"}).then(list=>list[0]);
+    };
+    window.runImageGeneration=async function(prompt){
+      const images=await generateViaRelay(prompt,{size:"1024x1024"});
+      const source=await compressGeneratedSource(images[0]);
+      appendAssistantMessage("image",source,{generated:true,generatedPrompt:prompt});
+      return source;
+    };
+    window.baobaoGenerateImageV308=sendManualGeneratedImage;
+    if(window.BaobaoImageGenerationV308){
+      window.BaobaoImageGenerationV308.generate=generateViaRelay;
+      window.BaobaoImageGenerationV308.endpointFor=normalizeImageEndpoint;
+    }
+    window.BaobaoImageGenerationV311={generate:generateViaRelay,endpointFor:normalizeImageEndpoint};
+    window.testImageAPI=async function(){
+      const api={
+        endpoint:clean($("imageEndpoint")?.value),
+        key:clean($("imageApiKey")?.value),
+        model:clean($("imageModel")?.value),
+        provider:clean($("imageProvider")?.value)
+      };
+      const prompt=clean($("imageTestPromptV309")?.value)||"一张真实的手机随手拍照片，自然光线，不要文字水印";
+      if(typeof showToast==="function")showToast("正在测试生图中转站…");
+      try{
+        await generateViaRelay(prompt,{api,size:"1024x1024"});
+        if(typeof showToast==="function")showToast("生图中转站连接成功");
+      }catch(error){
+        if(typeof showToast==="function")showToast(clean(error&&error.message||error||"测试失败"),true);
+      }
+    };
+  }
+
+  function install(){
+    installRelayOverrides();
+    updateImageRelayUI();
+    installPhotoTrigger();
+    installPhotoButtonCapture();
+    installChatListPreviewHook();
+    patchChatHomeStickerPreviews();
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  [100,500,1200,2800,6000,11000,18000,24000].forEach(delay=>setTimeout(install,delay));
+  console.log("豹豹机 311：生图中转站直连、角色自动发照片与表情包首页预览已启用");
+})();

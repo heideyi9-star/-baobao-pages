@@ -24,7 +24,7 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=310">
+<link rel="manifest" href="./baobao-manifest.json?v=311">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
@@ -150,8 +150,8 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
-<link rel="stylesheet" href="./app.css?v=310">
-<script defer src="./app.js?v=310"></script>
+<link rel="stylesheet" href="./app.css?v=311">
+<script defer src="./app.js?v=311"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -573,11 +573,11 @@ API Key<br>
 
 <div class="panel ios-settings" id="imageAPI">
 <span class="ios-back" onclick="closePanel('imageAPI')">‹</span>
-<h1>生图 API</h1>
-<div style="font-size:14px;color:#888;margin:10px 0;line-height:1.6">用于聊天生图，直接调用兼容 OpenAI /images/generations 的接口；与视觉识别完全分开。</div>
-<div class="card">服务商备注<br><input type="text" id="imageProvider" placeholder="生图站点 / OpenAI / 自定义"></div>
+<h1>生图中转站</h1>
+<div style="font-size:14px;color:#888;margin:10px 0;line-height:1.6">填写支持 OpenAI /images/generations 的中转站；网页直接请求填写的地址，不经过 localhost；与视觉识别完全分开。</div>
+<div class="card">中转站备注<br><input type="text" id="imageProvider" placeholder="例如 Heliar / 自定义中转站"></div>
 <div class="card">生图 API Key<br><input type="text" id="imageApiKey" placeholder="sk-xxxx"></div>
-<div class="card">生图接口地址<br><input type="text" id="imageEndpoint" placeholder="https://image.example.com/v1"></div>
+<div class="card">中转站地址<br><input type="text" id="imageEndpoint" placeholder="https://你的中转站.com/v1"></div>
 <div class="card">
 生图模型<br><input type="text" id="imageModel" placeholder="dall-e-3 / imagen / wanx">
 <div class="option secondary-option" onclick="fetchModelList('imageAPI')">拉取生图模型列表</div>
@@ -2194,3 +2194,4 @@ API Key<br>
 <template id="bb-lock-unlock-v284-script"></template>
 
 <!-- index(310)：修复角色朋友圈归属、隐藏反侦察大卡片，并移除每次点击扫描造成的卡顿。 -->
+<!-- index(311)：生图中转站直连、角色按聊天要求自动发照片、Chat 首页表情包显示名称。 -->
