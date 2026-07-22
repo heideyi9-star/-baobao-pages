@@ -3211,9 +3211,20 @@ function savePersonaArchive(){
       ...data
     });
   }
+  const savedPersona = state.personas.find(x => x.id === archiveEditingId) || state.personas[state.personas.length - 1] || null;
+  if(savedPersona && String(state.activeChatId || "") === String(savedPersona.id || "")){
+    window.currentChatPersona = savedPersona;
+    state.currentChatPersona = savedPersona;
+  }
+  if(savedPersona){
+    const cacheKey = String(savedPersona.id || savedPersona.name || "");
+    ["hceProfiles","hceEmotion","hceRelationship","hceRuntime"].forEach(storeName => {
+      if(state[storeName] && cacheKey) delete state[storeName][cacheKey];
+    });
+  }
   saveLocal();
   renderContactsQuickRow();
-  showToast(" 人设已保存");
+  showToast(" 人设已保存并重新读取");
   closeArchivePanel();
 }
 
@@ -3272,9 +3283,15 @@ function applyImportedPersonaData(raw){
   // 兼容 {spec:"chara_card_v2", data:{...}} 结构，以及本项目自己导出的扁平结构
   const d = (raw && raw.data && typeof raw.data === "object") ? raw.data : raw;
   const name = d.name || d.char_name || d.codename || "";
-  const persona = d.persona || d.description || d.background || "";
-  const personality = d.personality || d.traits || "";
-  const brief = d.brief || d.brief_persona || d.creator_notes || "";
+  const joinUnique = (...values) => [...new Set(values.flatMap(value => Array.isArray(value) ? value : [value]).map(value => String(value || "").trim()).filter(Boolean))].join("\n\n");
+  const persona = joinUnique(d.persona, d.description, d.background, d.scenario);
+  const personality = joinUnique(d.personality, d.traits);
+  const brief = joinUnique(
+    d.brief, d.brief_persona, d.creator_notes, d.system_prompt,
+    d.post_history_instructions,
+    d.mes_example ? "【对话示例】\n" + d.mes_example : "",
+    d.first_mes ? "【初始消息参考】\n" + d.first_mes : ""
+  );
   const timezone = d.timezone || "SYSTEM";
   const photo = d.photo || d.avatar || null;
   let tags = d.tags || d.tag || [];
@@ -38630,9 +38647,9 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   console.log("豹豹机 312：首页组件桌面限定与短信人设强化已启用");
 })();
 
-/* baobao-v313-strict-persona-core */
+/* baobao-v315-persona-reading-core */
 /* =========================================================
-   豹豹机 313｜人设硬锁核心
+   豹豹机 315｜人设读取与活人感核心
    - 清除旧聊天包装器对普通私聊的干扰
    - 原始人设/性格/补充设定拥有最高优先级
    - 历史 AI 回复只作为已发生事实，不作为口吻范本
@@ -38640,8 +38657,8 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
    ========================================================= */
 (function(){
   "use strict";
-  if(window.__bbStrictPersonaCoreV313)return;
-  window.__bbStrictPersonaCoreV313=true;
+  if(window.__bbStrictPersonaCoreV315)return;
+  window.__bbStrictPersonaCoreV315=true;
 
   const clean=value=>String(value==null?"":value).trim();
   const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number(value)||0));
@@ -38652,8 +38669,27 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   }
   function currentPersona(){
     const s=appState();
-    return window.currentChatPersona||s.currentChatPersona||
-      (Array.isArray(s.personas)?s.personas.find(item=>String(item&&item.id||"")===String(s.activeChatId||"")):null)||{};
+    const list=Array.isArray(s.personas)?s.personas:[];
+    const ids=[
+      s.activeChatId,
+      window.currentChatPersona&&window.currentChatPersona.id,
+      s.currentChatPersona&&s.currentChatPersona.id
+    ].map(value=>String(value||"")).filter(Boolean);
+    let live=null;
+    for(const id of ids){
+      live=list.find(item=>item&&String(item.id||"")===id);
+      if(live)break;
+    }
+    if(!live){
+      const name=clean((window.currentChatPersona&&window.currentChatPersona.name)||(s.currentChatPersona&&s.currentChatPersona.name));
+      if(name)live=list.find(item=>item&&clean(item.name)===name)||null;
+    }
+    if(live){
+      window.currentChatPersona=live;
+      s.currentChatPersona=live;
+      return live;
+    }
+    return window.currentChatPersona||s.currentChatPersona||{};
   }
   function personaKey(person=currentPersona()){
     return String(person.id||person.wechatId||person.wechat||person.name||"default");
@@ -38693,6 +38729,44 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     ];
     return chunks.filter(Boolean).join("\n\n");
   }
+  function personaAnchorLines(person=currentPersona(),latest=""){
+    const raw=[
+      person.persona,person.personality,person.brief,person.setting,person.prompt,person.bio,
+      Array.isArray(person.tags)?person.tags.join("、"):person.tags
+    ].map(clean).filter(Boolean).join("\n");
+    if(!raw)return [];
+    const query=clean(latest);
+    const queryTerms=(query.match(/[\u4e00-\u9fff]{2,8}|[A-Za-z0-9_]{2,}/g)||[])
+      .filter(term=>!/^(?:什么|怎么|为什么|这个|那个|意思|哪里|哪儿|知道|觉得|可以|没有)$/.test(term));
+    const seen=new Set();
+    const lines=raw
+      .replace(/[。！？；]/g,match=>match+"\n")
+      .split(/\n+/)
+      .map(line=>clean(line.replace(/^[\s\-—•·*#\d.、）)]+/,"")))
+      .filter(line=>line.length>=3&&line.length<=420)
+      .filter(line=>{if(seen.has(line))return false;seen.add(line);return true;});
+    const scoreLine=line=>{
+      let score=0;
+      if(/(?:身份|职业|工作|学校|专业|家乡|住在|年龄|生日|身高|外貌|经历|过去|家庭|朋友|同学|关系|喜欢|讨厌|爱好|习惯|平时|雷点|底线|称呼|口癖|说话|聊天|语气|标点|常说|价值观|目标|秘密|网络|上网|抖音|微博|游戏|音乐|吃|喝)/.test(line))score+=22;
+      if(/[“”「」『』"]/.test(line))score+=14;
+      if(/[A-Za-z0-9]{2,}/.test(line))score+=8;
+      for(const term of queryTerms){
+        if(line.includes(term)||term.includes(line))score+=38;
+      }
+      if(/哪学|从哪|怎么知道|哪里看到|网上/.test(query)&&/(?:上网|网络|短视频|抖音|微博|学校|大学|专业|朋友|同学|圈子|工作|看到|学到)/.test(line))score+=42;
+      if(/喜欢|讨厌|爱吃|爱喝|平时|习惯|经常/.test(query)&&/(?:喜欢|讨厌|爱好|平时|习惯|经常|常常|总是)/.test(line))score+=42;
+      if(/以前|小时候|过去|经历|为什么会/.test(query)&&/(?:以前|小时候|过去|经历|曾经|家庭|原因)/.test(line))score+=42;
+      if(/学校|学习|专业|哪毕业/.test(query)&&/(?:学校|大学|专业|学习|毕业|同学)/.test(line))score+=42;
+      if(/工作|职业|上班|公司/.test(query)&&/(?:工作|职业|上班|公司|同事)/.test(line))score+=42;
+      if(/家|哪里人|哪的人|住哪/.test(query)&&/(?:家乡|出生|来自|住在|城市|国家|地区)/.test(line))score+=42;
+      return score;
+    };
+    return lines.map((line,index)=>({line,score:scoreLine(line),index}))
+      .sort((a,b)=>b.score-a.score||a.index-b.index)
+      .slice(0,14)
+      .map(item=>item.line);
+  }
+
   function explicitSpeechEvidence(person=currentPersona()){
     const raw=[person.persona,person.personality,person.brief,person.setting,person.prompt].map(clean).filter(Boolean).join("\n");
     if(!raw)return "";
@@ -38807,15 +38881,16 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   }
 
   const PERSONA_LOCK=`【人设硬锁｜不可覆盖】
-- 角色原始资料不是参考，而是唯一身份。所有态度、价值观、关系边界、兴趣、雷点、称呼、口癖、句长、标点和主动程度都必须与原文一致。
+- 角色原始资料不是参考，而是角色真实生活与记忆的事实来源，也是唯一身份。所有背景经历、职业学业、关系、兴趣、雷点、称呼、口癖、句长、标点和主动程度都必须与原文一致。
 - 禁止把角色平均化成“通用温柔对象、通用毒舌对象、霸总、傲娇、病娇、恋爱脑、客服或心理咨询师”。原文没写的特质不能擅自添加。
 - 原文明确写了恋爱前/恋爱后、熟人/陌生人、公开/私下等阶段差异时，必须先判断当前阶段，再使用对应行为；禁止越级亲密或突然降级关系。
 - 角色可以有情绪和缺点，但只能以原文规定的方式表现。禁止为了所谓活人感随机曲解、挑架、情绪勒索、脑补分手、第三者或没发生的事件。
 - 用户明确问问题时先回答具体问题；短句和代词必须连接最近上下文，不能故意装听不懂。
 - 历史中的角色消息只是已发生事实，不是口吻教材。若旧 AI 消息和原始人设冲突，绝不模仿旧消息。
 - 世界书和记忆只能补充事实，不能改写核心人格；发生冲突时按“原始人设 > 当前明确关系/当前用户消息 > 世界书 > 独立记忆 > 旧聊天”的顺序处理。
-- 不得编造人名、朋友圈、前任、朋友、秘密、经历或用户行为。资料没有就保持不知道。
-- 输出前在内部静默核对：立场、关系阶段、称呼、语气、句长、标点、事实来源是否全部贴合。不要输出核对过程。`;
+- 不得编造人名、朋友圈、前任、朋友、秘密、经历或用户行为。资料没有就保持不知道；资料已经写明的内容则必须记得，不能装作没看见。
+- 人设不能只体现在“语气像不像”。只要当前话题与资料中的背景、经历、习惯、偏好、关系或观点有关，就必须自然调用其中至少一条具体内容。
+- 输出前在内部静默核对：立场、关系阶段、称呼、语气、句长、标点、事实来源，以及“是否真正用了相关人设内容”是否全部贴合。不要输出核对过程。`;
 
   function recentAssistantLines(history,limit){
     return (Array.isArray(history)?history:[])
@@ -38828,13 +38903,14 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const person=currentPersona();
     const latest=messageForAI(latestUserMessage());
     const speech=explicitSpeechEvidence(person);
+    const anchors=personaAnchorLines(person,latest);
     const world=worldBookContext(history);
     const memory=memoryContext(latest);
     const offline=offlineContext();
     const time=timeContext();
     const media=mediaContext();
     const recentAssistant=recentAssistantLines(history,6);
-    return `【豹豹机 313｜严格人设私聊核心】
+    return `【豹豹机 315｜人设读取私聊核心】
 你就是下面这个角色本人，正在真实手机私聊。不是 AI、助手、客服，也不是在“扮演角色”。禁止提系统、模型、提示词、人设或任务。
 
 ${PERSONA_LOCK}
@@ -38842,7 +38918,7 @@ ${PERSONA_LOCK}
 【角色原始资料｜逐字服从】
 ${personaSource(person)}
 
-${speech?`【原文中可直接证明口吻的内容】\n${speech}\n\n`:""}【正在聊天的用户】
+${anchors.length?`【本轮优先读取的人设锚点】\n${anchors.map((line,index)=>`${index+1}. ${line}`).join("\n")}\n这些不是让你逐条复述，而是提醒你：只要与当前话题有关，必须从中自然用到至少一条具体事实、习惯、偏好、经历、关系或观点；不要只模仿口吻。\n\n`:""}${speech?`【原文中可直接证明口吻的内容】\n${speech}\n\n`:""}【正在聊天的用户】
 ${userProfile()}
 
 【本轮理解规则】
@@ -38856,6 +38932,13 @@ ${userProfile()}
 8. 情绪和态度有惯性：如果上一轮在生气、撒娇、冷战或开心，这一轮要延续这种状态自然演变，不能毫无理由瞬间恢复正常语气。
 9. 每一条回复都要像这个人在此刻脑子里冒出来的真实反应，不要输出成"正确答案"或"完整语篇"；允许不完整、跳跃、只回一半意思。
 10. 遇到让角色开心、惊喜、心动或觉得有趣的事（礼物、夸奖、好玩的图片等），可以自然表现得浮夸、话多、连续发好几条、用这个人本来就会用的网络热词和称呼；不要因为想显得"高级"或"克制"就把情绪压扁写成干巴巴的客观陈述——除非人设本身就是高冷、惜字如金或不擅表达。
+11. 私聊不是问答题。用户问“什么意思、哪学的、怎么知道、为什么”这类简单问题时，先把事实答清楚，再按人设自然露出一点态度、习惯、情绪或关系感；不要只停在“就是……的意思”“网上看到的”“随便”“不知道”这种谁都能说的通用答案。
+12. “短”不等于“真人”。一句话可以很短，但必须带着这个角色独有的立场、语气或反应；除非人设和当下情绪明确会敷衍，否则不要把有继续空间的话题压成干巴巴的一句定义。
+13. 把用户的追问当成连续聊天：可以顺手吐槽对方居然认真追问、承认自己乱学梗、补一个来源细节、接回上一句，或按人设反问一句；只能选择角色真的会做的方式，禁止统一套用调侃、撒娇或反问。
+14. 输出前再做一次“去替换检验”：如果把角色名换成任何人，这句话仍完全成立，说明太泛。应在不编造事实的前提下，把说法改成更符合该角色的措辞、节奏和态度。
+15. 角色必须像记得自己的人生。用户问到“你平时、你以前、你为什么、你在哪学的、你怎么知道、你喜欢什么、你认识谁、你做什么”等内容时，先查完整人物资料和本轮人设锚点；资料有答案就直接按资料回答，禁止用“网上看到的、随便、不知道”糊弄过去。
+16. 不要等用户逐字复述人设才使用它。普通聊天只要话题自然碰到角色的生活、职业学业、兴趣、过去、关系、习惯或观点，就可以顺手带出一条真实资料，让角色有自己的生活痕迹；每轮最多自然带出一两点，禁止背档案。
+17. 在内部先完成“读人设再回复”：找出本轮最相关的三条资料，决定其中哪一条会影响事实答案、哪一条会影响态度、哪一条会影响说法。只输出最后聊天正文。
 
 ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开头/相同口癖/相同句式】\n${recentAssistant.map((line,i)=>`${i+1}. ${line}`).join("\n")}\n\n`:""}${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
 只输出这个角色此刻会发出的聊天正文。`;
@@ -38891,7 +38974,7 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
     const copy=(Array.isArray(messages)?messages:[]).map(message=>message&&typeof message==="object"?{...message}:message);
     if(!isRoleGeneration(copy))return copy;
     const system=copy.find(message=>message&&message.role==="system");
-    const lock=`【统一人设硬锁 313】\n${PERSONA_LOCK}\n本任务中已经提供的角色资料就是唯一角色来源。不要用通用恋爱、毒舌、傲娇、卑微挽回或客服模板补齐空白。输出必须在语气、标点、称呼、关系阶段和价值观上与资料一致。`;
+    const lock=`【统一人设硬锁 315】\n${PERSONA_LOCK}\n本任务中已经提供的角色资料就是唯一角色来源。不要用通用恋爱、毒舌、傲娇、卑微挽回或客服模板补齐空白。输出必须在语气、标点、称呼、关系阶段和价值观上与资料一致。`;
     if(system)system.content=lock+"\n\n"+clean(system.content);
     else copy.unshift({role:"system",content:lock});
     return copy;
@@ -38969,6 +39052,91 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
       .replace(/\n{3,}/g,"\n\n")
       .trim();
   }
+  function personaRawText(person=currentPersona()){
+    return [person.persona,person.personality,person.brief,person.setting,person.prompt,person.bio,tagsOf(person)]
+      .map(clean).filter(Boolean).join("\n");
+  }
+  function isExplicitlyTerse(person=currentPersona()){
+    return /寡言|话少|少话|惜字如金|不爱说话|沉默寡言|极少回复|高冷且少言/.test(personaRawText(person));
+  }
+  function distinctivePersonaTokens(lines){
+    const stop=new Set(["角色","人物","性格","说话","聊天","用户","自己","比较","喜欢","讨厌","平时","不会","可以","关系","时候","一个","这个","那个","什么","怎么","因为","但是","没有","非常","特别","以及","可能"]);
+    const out=[];
+    for(const line of lines||[]){
+      const words=line.match(/[A-Za-z0-9_]{2,}|[\u4e00-\u9fff]{2,8}/g)||[];
+      for(const word of words){
+        if(stop.has(word)||word.length<2)continue;
+        if(!out.includes(word))out.push(word);
+        if(out.length>=80)return out;
+      }
+    }
+    return out;
+  }
+  function groundingQuality(reply,history){
+    const person=currentPersona();
+    const latest=clean(messageForAI(latestUserMessage()));
+    const anchors=personaAnchorLines(person,latest);
+    const text=cleanReply(reply);
+    const compact=text.replace(/\s+/g,"");
+    const personalIntent=/(?:你|你们|自己|平时|以前|小时候|过去|哪学|在哪学|怎么知道|从哪看|哪里看到|为什么会|喜欢什么|讨厌什么|爱吃|爱喝|工作|职业|学校|专业|家里|哪里人|住哪|生日|年龄|身高|经历|习惯|认识谁|叫什么|怎么称呼)/.test(latest);
+    const raw=personaRawText(person);
+    let score=0;
+    const reasons=[];
+    const tokens=distinctivePersonaTokens(anchors);
+    const overlap=tokens.filter(token=>compact.includes(token)).slice(0,8);
+    const generic=/^(?:就是|因为|网上|刷到|看到|听说|随便|不知道|不清楚|没什么|还行|一般|好的意思|网上看到的|网上学的)[\s\S]{0,16}$/;
+    if(personalIntent&&raw.length>=20&&anchors.length){
+      if(generic.test(compact)){
+        score+=48;
+        reasons.push("用通用答案代替了角色自己的资料");
+      }else if(overlap.length===0&&compact.length<=28){
+        score+=32;
+        reasons.push("没有落地任何相关人设锚点");
+      }
+    }
+    if(/(?:哪学|在哪学|怎么知道|从哪看|哪里看到)/.test(latest)&&anchors.some(line=>/(?:学校|大学|专业|朋友|同学|工作|上网|网络|抖音|微博|短视频|圈子|看到|学到)/.test(line))&&overlap.length===0){
+      score+=30;
+      reasons.push("资料中有来源线索却没有调用");
+    }
+    return {score:clamp(score,0,100),reasons,anchors,overlap};
+  }
+
+  function livingQuality(reply,history){
+    const text=cleanReply(reply);
+    const compact=text.replace(/\s+/g,"");
+    const latest=clean(messageForAI(latestUserMessage()));
+    const terse=isExplicitlyTerse();
+    let score=0;
+    const reasons=[];
+
+    // 这些答案可能“没错”，但几乎没有任何人物辨识度，是截图里最明显的死板来源。
+    const flatExact=/^(?:就是)?(?:好(?:的)?意思|不好(?:的)?意思|可以(?:的)?意思|网上看到的|网上学的|刷到的|随便|不知道|不清楚|没什么|还行|一般|嗯|哦|行|好的|知道了|没事)[。！？!?…]*$/;
+    if(flatExact.test(compact)){
+      score+=terse?22:48;
+      reasons.push("只有通用答案，没有角色态度");
+    }
+    if(/(?:什么意思|什么梗|哪学的|在哪学的|怎么知道|从哪看|哪里看到|为什么)/.test(latest) && compact.length<=10){
+      score+=terse?10:30;
+      reasons.push("追问只得到过短定义式回答");
+    }
+    if(/^(?:就是|因为|网上|随便|不知道|不清楚|没什么)/.test(compact) && compact.length<=14 && !/[，、；…？！!?]/.test(compact)){
+      score+=terse?8:20;
+      reasons.push("句子像独立问答，不像连续私聊");
+    }
+
+    const recent=(Array.isArray(history)?history:[]).filter(m=>m&&m.role==="assistant").slice(-4).map(m=>clean(m.content));
+    const shortFlatCount=recent.filter(line=>line.replace(/\s+/g,"").length<=10).length;
+    if(shortFlatCount>=3 && compact.length<=10){
+      score+=18;
+      reasons.push("连续多轮都过短，聊天节奏被压扁");
+    }
+    if(recent.some(line=>clean(line)===text)){
+      score+=28;
+      reasons.push("重复旧回复");
+    }
+    return {score:clamp(score,0,100),reasons};
+  }
+
   async function strictRequest(){
     const history=visibleHistory(26);
     if(!history.length)return null;
@@ -38979,18 +39147,28 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
     const prompt=strictSystemPrompt(history);
 
     async function attemptOnce(){
-      let lastReply="",lastScore=100;
+      let lastReply="",lastScore=100,lastAiScore=100,lastLiving={score:100,reasons:[]},lastGrounding={score:100,reasons:[],anchors:[],overlap:[]};
       for(let round=0; round<4; round++){
         const messages=[{role:"system",content:prompt}];
         if(round>0){
-          messages.push({role:"system",content:`上一版回复AI腔过重或不贴人设（评分${lastScore}/100，要求低于20才合格）。请完全重写：更短、更口语、更像真实私聊，严格服从角色说话习惯；禁止关心作息、提供帮助、礼貌解释和长段落。`});
+          const groundingFailed=lastGrounding.score>=20;
+          const reasonText=(groundingFailed?lastGrounding.reasons:lastLiving.reasons||[]).join("、")||"人物辨识度不够";
+          const rewriteRule=groundingFailed
+            ? `上一版没有真正读取角色资料（人设落地评分${lastGrounding.score}/100：${reasonText}）。先在内部从【完整人物资料】和【本轮优先读取的人设锚点】找出与用户最新消息最相关的三条具体内容，再重写。资料有明确答案必须直接采用；资料没有明确答案才可以说不知道，且不能编造。最终回复至少自然落地一个相关的人设事实、习惯、偏好、经历、关系或观点，不要只模仿语气，也不要把档案整段背出来。上一版：${lastReply}`
+            : lastLiving.score>=20
+              ? `上一版虽然可能答对了，但太像无个性的问答（活人感评分${lastLiving.score}/100：${reasonText}）。保留需要回答的事实，完全按角色原始资料重写，让角色本人出现在措辞、节奏、态度或顺手的后一句里。不要只回定义，不要强行卖萌、撒娇、调侃或反问，不要编造经历；通常1到3条自然消息即可。上一版：${lastReply}`
+              : `上一版AI腔过重或不贴人设（AI腔评分${lastAiScore}/100）。完全重写：更口语、更像真实私聊，严格服从角色说话习惯；不要安慰模板、建议、总结、礼貌解释或完整作文。上一版：${lastReply}`;
+          messages.push({role:"system",content:rewriteRule});
         }
         messages.push(...history);
         const raw=await cleanCompletion(messages);
         lastReply=cleanReply(raw);
         const hasRealContent=/[\u4e00-\u9fffA-Za-z0-9]/.test(lastReply);
-        lastScore=(window.BaobaoPersonaEngine&&typeof window.BaobaoPersonaEngine.aiStyleScore==="function")?window.BaobaoPersonaEngine.aiStyleScore(lastReply):0;
-        if(!hasRealContent)lastScore=100; // 整条回复只剩标点/空白，强制判定不合格，进入重写
+        lastAiScore=(window.BaobaoPersonaEngine&&typeof window.BaobaoPersonaEngine.aiStyleScore==="function")?window.BaobaoPersonaEngine.aiStyleScore(lastReply):0;
+        lastLiving=livingQuality(lastReply,history);
+        lastGrounding=groundingQuality(lastReply,history);
+        lastScore=Math.max(lastAiScore,lastLiving.score,lastGrounding.score);
+        if(!hasRealContent)lastScore=100;
         if(lastScore<20)break;
       }
       if(!lastReply)throw new Error("接口返回了空回复");
@@ -39009,7 +39187,7 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
       const s=appState();
       s.lastMsgTime=Date.now();
       try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(_){ }
-      window.baobaoLastPersonaDebug={engine:"Strict Persona Core v313",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,checkedAt:new Date().toISOString()};
+      window.baobaoLastPersonaDebug={engine:"Living Persona Core v315",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
       return reply;
     }catch(error){
       if(typeof window.showToast==="function")window.showToast(clean(error&&error.message)||"回复失败",true);
@@ -39048,8 +39226,8 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
     return parts.length?parts:["嗯"];
   }
 
-  cleanCompletion.__bbStrictPersonaV313=true;
-  strictRequest.__bbStrictPersonaV313=true;
+  cleanCompletion.__bbStrictPersonaV315=true;
+  strictRequest.__bbStrictPersonaV315=true;
   strictRequest.__bbSingleChatCoreV307=true;
   strictRequest.__memoryV2=true;
   strictRequest.__worldBookV230=true;
@@ -39064,17 +39242,17 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
     window.BaobaoPersonaEngine.splitHumanMessages=splitByPersona;
     window.BaobaoPersonaEngine.buildPersonaPrompt=()=>strictSystemPrompt(visibleHistory(26));
     window.BaobaoPersonaEngine.getDebug=()=>window.baobaoLastPersonaDebug||null;
-    window.BaobaoStrictPersonaV313={request:strictRequest,complete:cleanCompletion,prompt:()=>strictSystemPrompt(visibleHistory(26)),split:splitByPersona};
+    window.BaobaoStrictPersonaV315={request:strictRequest,complete:cleanCompletion,prompt:()=>strictSystemPrompt(visibleHistory(26)),split:splitByPersona,quality:(reply)=>livingQuality(reply,visibleHistory(26)),grounding:(reply)=>groundingQuality(reply,visibleHistory(26)),anchors:()=>personaAnchorLines(currentPersona(),messageForAI(latestUserMessage()))};
   }
 
   pin();
   [80,260,700,1600,3600,7600,14000,24000].forEach(delay=>setTimeout(pin,delay));
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pin,{once:true});
   window.addEventListener("pageshow",()=>setTimeout(pin,0));
-  console.log("豹豹机 313：严格人设硬锁核心已启用");
+  console.log("豹豹机 315：人设读取与活人感核心已启用");
 })();
 
-/* baobao-persona-debug-viewer-v313 */
+/* baobao-persona-debug-viewer-v315 */
 window.openPersonaDebugPanel = function(){
   try{
     const debug = (window.BaobaoPersonaEngine && typeof window.BaobaoPersonaEngine.getDebug === "function")

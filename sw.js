@@ -1,5 +1,5 @@
-/* 豹豹机 313：严格人设硬锁核心。 */
-const CACHE_NAME = "baobao-shell-v313";
+/* 豹豹机 315：人设读取强化核心。 */
+const CACHE_NAME = "baobao-shell-v315";
 const SHELL = [
   "./",
   "./index.html",
