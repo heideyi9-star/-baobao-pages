@@ -41942,3 +41942,237 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("pageshow",install);
   [0,50,150,400,900,1800,3500,6000,10000].forEach(function(ms){setTimeout(install,ms)});
 })();
+
+
+/* baobao-page1-final-lock-v332 */
+(function(){
+  "use strict";
+  if(window.__bbPage1FinalLockV332)return;
+  window.__bbPage1FinalLockV332=true;
+
+  var STYLE_ID="bbPage1FinalLockV332Style";
+  var scheduled=false;
+
+  function cssText(){return `
+    html body #desktop:not(.page-two-mode) .desk-scroll{
+      padding-top:94px!important;
+      padding-bottom:62px!important;
+    }
+    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+      display:block!important;
+      position:relative!important;
+      width:calc(100% + 52px)!important;
+      max-width:none!important;
+      margin:14px 0 16px -26px!important;
+      padding:0!important;
+      transform:none!important;
+      z-index:15!important;
+    }
+    html body #desktop.page-two-mode .desk-scroll > #photoWidget.bb-page1-showcase{
+      display:none!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-shell{
+      width:100%!important;
+      border-radius:40px!important;
+      padding:28px 28px 24px!important;
+      background:rgba(255,255,255,.68)!important;
+      border:1px solid rgba(255,255,255,.82)!important;
+      box-shadow:0 14px 32px rgba(0,0,0,.055)!important;
+      -webkit-backdrop-filter:blur(18px)!important;
+      backdrop-filter:blur(18px)!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-head{
+      display:grid!important;
+      grid-template-columns:98px minmax(0,1fr) auto!important;
+      align-items:center!important;
+      gap:18px!important;
+      min-height:96px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-left,
+    html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
+      width:98px!important;height:98px!important;min-width:98px!important;min-height:98px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
+      width:30px!important;height:30px!important;right:-5px!important;bottom:-5px!important;font-size:12px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-line1{gap:16px!important;align-items:center!important;}
+    html body #desktop:not(.page-two-mode) .bb-showcase-temp{min-width:78px!important;padding:12px 16px!important;font-size:18px!important;border-radius:18px!important;}
+    html body #desktop:not(.page-two-mode) .bb-showcase-title{font-size:21px!important;letter-spacing:.5px!important;}
+    html body #desktop:not(.page-two-mode) .bb-showcase-sub{margin-top:14px!important;font-size:14px!important;line-height:1.48!important;}
+    html body #desktop:not(.page-two-mode) .bb-showcase-date{padding-top:58px!important;font-size:14px!important;}
+    html body #desktop:not(.page-two-mode) .bb-showcase-grid{
+      display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important;margin-top:22px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
+      width:100%!important;height:148px!important;min-height:148px!important;border-radius:14px!important;overflow:hidden!important;
+      transform:none!important;rotate:none!important;clip-path:none!important;margin:0!important;padding:0!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo img{
+      width:100%!important;height:100%!important;object-fit:cover!important;transform:none!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-footer,
+    html body #desktop:not(.page-two-mode) .bb-showcase-pill{height:70px!important;}
+    html body #desktop:not(.page-two-mode) .bb-showcase-footer{margin-top:22px!important;padding:0 24px!important;}
+    html body #desktop:not(.page-two-mode) .bb-showcase-actions{gap:28px!important;}
+    html body #desktop:not(.page-two-mode) .bb-showcase-action{width:28px!important;height:28px!important;font-size:28px!important;}
+    html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
+      display:block!important;width:100%!important;margin:10px 0 0!important;padding:0!important;overflow:hidden!important;
+    }
+    html body #desktop:not(.page-two-mode) .apps-page{
+      padding-top:12px!important;row-gap:32px!important;
+    }
+    html body #desktop:not(.page-two-mode) .apps-page > .app{
+      transform:scale(1.04)!important;transform-origin:center top!important;background:transparent!important;box-shadow:none!important;
+    }
+    html body #desktop:not(.page-two-mode) .dots{
+      margin-top:14px!important;margin-bottom:0!important;
+    }
+    html body #desktop:not(.page-two-mode) .dock{
+      top:auto!important;bottom:10px!important;
+    }
+    html body #desktop .apps-page > .app,
+    html body #desktop .apps-page > .app .icon,
+    html body #desktop .apps-page > .app img,
+    html body #desktop .apps-page > .app svg{
+      -webkit-user-select:none!important;user-select:none!important;-webkit-user-drag:none!important; -webkit-touch-callout:none!important;
+      -webkit-tap-highlight-color:transparent!important;
+    }
+    html body #desktop .apps-page > .app::before,
+    html body #desktop .apps-page > .app::after,
+    html body #desktop .apps-page > .app .icon::before,
+    html body #desktop .apps-page > .app .icon::after{
+      content:none!important;display:none!important;background:transparent!important;box-shadow:none!important;
+    }
+  `}
+
+  function ensureStyle(){
+    var style=document.getElementById(STYLE_ID);
+    if(!style){
+      style=document.createElement('style');
+      style.id=STYLE_ID;
+      style.textContent=cssText();
+    }else if(style.textContent!==cssText()){
+      style.textContent=cssText();
+    }
+    document.head.appendChild(style);
+  }
+
+  function stopNative(e){
+    var t=e.target;
+    if(!t||!t.closest)return;
+    var hit=t.closest('#desktop .apps-page > .app, #desktop .dock .app-tabbar-item, #desktop .dock .dock-app, #desktop .app, #desktop .icon');
+    if(!hit)return;
+    if(e.type==='dragstart' || e.type==='selectstart' || e.type==='contextmenu'){
+      e.preventDefault();
+    }
+  }
+
+  function cleanDesktop(){
+    var desktop=document.getElementById('desktop');
+    if(!desktop)return;
+    desktop.querySelectorAll('.apps-page > .app').forEach(function(app){
+      app.setAttribute('draggable','false');
+      app.style.background='transparent';
+      app.style.boxShadow='none';
+      app.style.webkitTapHighlightColor='transparent';
+      app.style.webkitTouchCallout='none';
+      app.style.webkitUserSelect='none';
+      app.style.userSelect='none';
+      app.style.outline='none';
+      app.classList.remove('bb-v300-pressing','bb-v302-pressing','pressed','pressing');
+      app.querySelectorAll('*').forEach(function(node){
+        try{node.setAttribute('draggable','false')}catch(err){}
+        try{node.style.webkitUserDrag='none'}catch(err){}
+        try{node.style.webkitTouchCallout='none'}catch(err){}
+        try{node.style.webkitTapHighlightColor='transparent'}catch(err){}
+        try{node.style.userSelect='none'}catch(err){}
+      });
+    });
+  }
+
+  function lockShowcase(){
+    var desktop=document.getElementById('desktop');
+    if(!desktop || desktop.classList.contains('page-two-mode'))return;
+    var widget=document.getElementById('photoWidget');
+    if(!widget)return;
+    widget.classList.add('bb-page1-showcase');
+    var scroll=desktop.querySelector('.desk-scroll');
+    var viewport=scroll&&scroll.querySelector(':scope > .pages-viewport');
+    if(scroll && viewport && widget.nextElementSibling!==viewport){
+      scroll.insertBefore(widget, viewport);
+    }
+    var shell=widget.querySelector('.bb-showcase-shell');
+    if(shell){
+      shell.style.padding='28px 28px 24px';
+      shell.style.borderRadius='40px';
+    }
+    var grid=widget.querySelector('.bb-showcase-grid');
+    if(grid){
+      grid.style.marginTop='22px';
+      grid.style.gap='14px';
+    }
+    widget.querySelectorAll('.bb-showcase-grid > .photo-slot.bb-showcase-photo').forEach(function(slot){
+      slot.style.height='148px';
+      slot.style.minHeight='148px';
+      slot.style.borderRadius='14px';
+    });
+  }
+
+  function enforce(){
+    ensureStyle();
+    cleanDesktop();
+    lockShowcase();
+  }
+
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(function(){scheduled=false;enforce()});
+  }
+
+  function install(){
+    enforce();
+    ['dragstart','selectstart','contextmenu'].forEach(function(type){
+      if(!document.__bbV332NativeBlock){
+        document.addEventListener(type,stopNative,true);
+      }
+    });
+    document.__bbV332NativeBlock=true;
+    if(!document.head.__bbV332Observer){
+      document.head.__bbV332Observer=new MutationObserver(schedule);
+      document.head.__bbV332Observer.observe(document.head,{childList:true,subtree:false});
+    }
+    var desktop=document.getElementById('desktop');
+    if(desktop && !desktop.__bbV332Observer){
+      desktop.__bbV332Observer=new MutationObserver(schedule);
+      desktop.__bbV332Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    }
+  }
+
+  if(typeof window.renderPages==='function' && !window.renderPages.__bbV332Wrap){
+    var oldRenderPages=window.renderPages;
+    var wrapped=function(){
+      var res=oldRenderPages.apply(this,arguments);
+      schedule();
+      return res;
+    };
+    wrapped.__bbV332Wrap=true;
+    window.renderPages=wrapped;
+  }
+  if(typeof window.goToPage==='function' && !window.goToPage.__bbV332Wrap){
+    var oldGoToPage=window.goToPage;
+    var wrappedGo=function(){
+      var res=oldGoToPage.apply(this,arguments);
+      schedule();
+      return res;
+    };
+    wrappedGo.__bbV332Wrap=true;
+    window.goToPage=wrappedGo;
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',function(){setTimeout(install,0)});
+  [0,60,180,420,900,1800,3600,6000,10000].forEach(function(ms){setTimeout(install,ms)});
+})();

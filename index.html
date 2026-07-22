@@ -30,7 +30,7 @@
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=331",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=332",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
