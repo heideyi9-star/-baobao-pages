@@ -37683,3 +37683,186 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   window.BaobaoImageGenerationV308={generate,open:window.openBaobaoImageGeneratorV308,endpointFor};
   console.log("豹豹机 308：生图 API 已接入聊天工具箱");
 })();
+
+/* baobao-image-prompt-and-desktop-layout-v309-script */
+(function(){
+  "use strict";
+  if(window.__bbImagePromptDesktopV309)return;
+  window.__bbImagePromptDesktopV309=true;
+
+  const $=id=>document.getElementById(id);
+  const clean=v=>String(v==null?"":v).trim();
+  const DRAFT_KEY="bb_image_prompt_draft_v309";
+
+  function injectStyle(){
+    if($("bbImagePromptDesktopV309Style"))return;
+    const style=document.createElement("style");
+    style.id="bbImagePromptDesktopV309Style";
+    style.textContent=`
+      /* 首页英文组件移动到两排 App 下方，Apps 会自动补到原来的位置 */
+      #desktop .desk-scroll>#deskIns{
+        position:relative!important;
+        z-index:18!important;
+        margin:7px 0 5px!important;
+        padding:11px 12px!important;
+        min-height:54px!important;
+        border-radius:18px!important;
+        background:rgba(255,255,255,.58)!important;
+        -webkit-backdrop-filter:blur(20px)!important;
+        backdrop-filter:blur(20px)!important;
+        box-shadow:0 5px 18px rgba(0,0,0,.025)!important;
+        display:flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        line-height:1.45!important;
+      }
+      #desktop .pages-viewport{margin-bottom:0!important}
+      #desktop .pages-viewport+#deskIns{margin-top:5px!important}
+      #desktop #deskIns+.photo-widget+.hidden-input+.dots,
+      #desktop #deskIns~.dots{margin-top:3px!important}
+
+      /* 生图提示词在设置页和聊天面板里都清楚显示 */
+      #imageAPI .bb-image-prompt-v309-card textarea{
+        width:100%!important;
+        min-height:128px!important;
+        resize:vertical!important;
+        border:1.5px solid rgba(0,0,0,.12)!important;
+        border-radius:14px!important;
+        padding:13px!important;
+        background:#fff!important;
+        color:#1c1c1e!important;
+        font-size:16px!important;
+        line-height:1.55!important;
+        outline:none!important;
+        box-sizing:border-box!important;
+      }
+      #imageAPI .bb-image-prompt-v309-hint{font-size:12px;color:#999;line-height:1.55;margin-top:7px}
+      #bbToolModal .bb-image-prompt-v309-label{
+        display:block!important;
+        margin:2px 0 8px!important;
+        color:#222!important;
+        font-size:14px!important;
+        font-weight:800!important;
+      }
+      #bbToolModal #bbImagePromptV308{
+        display:block!important;
+        width:100%!important;
+        min-height:148px!important;
+        max-height:260px!important;
+        padding:14px!important;
+        color:#1c1c1e!important;
+        background:#fff!important;
+        border:1.5px solid rgba(0,0,0,.15)!important;
+        border-radius:15px!important;
+        font-size:16px!important;
+        line-height:1.55!important;
+        opacity:1!important;
+        visibility:visible!important;
+        box-sizing:border-box!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function moveDesktopInsBelowApps(){
+    const desk=$("desktop");
+    const viewport=desk&&desk.querySelector(".desk-scroll>.pages-viewport");
+    const ins=$("deskIns");
+    if(!viewport||!ins)return;
+    if(viewport.nextElementSibling!==ins)viewport.insertAdjacentElement("afterend",ins);
+  }
+
+  function ensureSettingsPrompt(){
+    const panel=$("imageAPI");
+    if(!panel)return;
+    let card=panel.querySelector(".bb-image-prompt-v309-card");
+    if(!card){
+      card=document.createElement("div");
+      card.className="card bb-image-prompt-v309-card";
+      card.innerHTML=`
+        <div class="field-label" style="font-weight:800;color:#333;margin-bottom:8px">生图提示词</div>
+        <textarea id="imageTestPromptV309" maxlength="1200" placeholder="在这里描述想生成的画面，例如：雨夜街头，黑发少年撑伞回头，电影感，冷色调，不要文字"></textarea>
+        <div class="bb-image-prompt-v309-hint">下方“测试生图”会使用这里的提示词；聊天工具箱里的“生图”也会自动带入上次填写的内容。</div>`;
+      const firstAction=[...panel.children].find(node=>node.classList&&node.classList.contains("option"));
+      if(firstAction)panel.insertBefore(card,firstAction);else panel.appendChild(card);
+    }
+    const textarea=$("imageTestPromptV309");
+    if(textarea){
+      if(!textarea.value)textarea.value=localStorage.getItem(DRAFT_KEY)||"";
+      if(!textarea.dataset.bbV309Bound){
+        textarea.dataset.bbV309Bound="1";
+        textarea.addEventListener("input",()=>localStorage.setItem(DRAFT_KEY,textarea.value));
+      }
+    }
+  }
+
+  function decorateGeneratorPrompt(){
+    const textarea=$("bbImagePromptV308");
+    if(!textarea)return;
+    if(!textarea.previousElementSibling||!textarea.previousElementSibling.classList.contains("bb-image-prompt-v309-label")){
+      const label=document.createElement("label");
+      label.className="bb-image-prompt-v309-label";
+      label.htmlFor="bbImagePromptV308";
+      label.textContent="生图提示词";
+      textarea.parentNode.insertBefore(label,textarea);
+    }
+    if(!textarea.value)textarea.value=localStorage.getItem(DRAFT_KEY)||"";
+    if(!textarea.dataset.bbV309Bound){
+      textarea.dataset.bbV309Bound="1";
+      textarea.addEventListener("input",()=>localStorage.setItem(DRAFT_KEY,textarea.value));
+    }
+  }
+
+  function wrapGeneratorOpen(){
+    const current=window.openBaobaoImageGeneratorV308;
+    if(typeof current!=="function"||current.__bbV309Wrapped)return;
+    const wrapped=function(){
+      const result=current.apply(this,arguments);
+      setTimeout(decorateGeneratorPrompt,0);
+      setTimeout(decorateGeneratorPrompt,90);
+      return result;
+    };
+    wrapped.__bbV309Wrapped=true;
+    wrapped.__bbV309Original=current;
+    window.openBaobaoImageGeneratorV308=wrapped;
+    window.openImagePromptEdit=wrapped;
+    if(window.BaobaoImageGenerationV308)window.BaobaoImageGenerationV308.open=wrapped;
+  }
+
+  function installTestPrompt(){
+    if(!window.BaobaoImageGenerationV308||typeof window.BaobaoImageGenerationV308.generate!=="function")return;
+    window.testImageAPI=async function(){
+      const api={
+        endpoint:clean($("imageEndpoint")?.value),
+        key:clean($("imageApiKey")?.value),
+        model:clean($("imageModel")?.value),
+        provider:clean($("imageProvider")?.value)
+      };
+      const prompt=clean($("imageTestPromptV309")?.value)||clean(localStorage.getItem(DRAFT_KEY))||"一只可爱的橘猫，简洁插画风，不要文字";
+      localStorage.setItem(DRAFT_KEY,prompt);
+      if(typeof showToast==="function")showToast(" 正在按提示词测试生图接口…");
+      try{
+        await window.BaobaoImageGenerationV308.generate(prompt,{api,size:"1024x1024"});
+        if(typeof showToast==="function")showToast(" 生图接口连接成功");
+      }catch(error){
+        if(typeof showToast==="function")showToast(" "+clean(error&&error.message||error||"测试失败"),true);
+      }
+    };
+  }
+
+  function install(){
+    injectStyle();
+    moveDesktopInsBelowApps();
+    ensureSettingsPrompt();
+    wrapGeneratorOpen();
+    installTestPrompt();
+    decorateGeneratorPrompt();
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  [250,700,1500,3000,6000,10000,16000].forEach(delay=>setTimeout(install,delay));
+  const desktop=$("desktop");
+  if(desktop)new MutationObserver(()=>requestAnimationFrame(moveDesktopInsBelowApps)).observe(desktop,{childList:true,subtree:true});
+  console.log("豹豹机 309：生图提示词框与首页组件位置已修复");
+})();

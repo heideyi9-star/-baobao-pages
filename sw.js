@@ -1,5 +1,5 @@
-/* 豹豹机 308：接入聊天生图 API，并保留此前全部功能。 */
-const CACHE_NAME = "baobao-shell-v308";
+/* 豹豹机 309：补充生图提示词框并调整首页组件位置。 */
+const CACHE_NAME = "baobao-shell-v309";
 const SHELL = [
   "./",
   "./index.html",
@@ -70,7 +70,7 @@ self.addEventListener("fetch", event => {
 });
 
 
-/* 293：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
+/* 309：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
 function bbParsePush(event){
   if(!event.data)return {};
   try{return event.data.json()||{};}catch(error){
