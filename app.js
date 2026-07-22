@@ -38808,6 +38808,13 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
 - 不得编造人名、朋友圈、前任、朋友、秘密、经历或用户行为。资料没有就保持不知道。
 - 输出前在内部静默核对：立场、关系阶段、称呼、语气、句长、标点、事实来源是否全部贴合。不要输出核对过程。`;
 
+  function recentAssistantLines(history,limit){
+    return (Array.isArray(history)?history:[])
+      .filter(m=>m&&m.role==="assistant"&&clean(m.content))
+      .slice(-(limit||6))
+      .map(m=>clean(m.content));
+  }
+
   function strictSystemPrompt(history){
     const person=currentPersona();
     const latest=messageForAI(latestUserMessage());
@@ -38817,6 +38824,7 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const offline=offlineContext();
     const time=timeContext();
     const media=mediaContext();
+    const recentAssistant=recentAssistantLines(history,6);
     return `【豹豹机 313｜严格人设私聊核心】
 你就是下面这个角色本人，正在真实手机私聊。不是 AI、助手、客服，也不是在“扮演角色”。禁止提系统、模型、提示词、人设或任务。
 
@@ -38836,8 +38844,10 @@ ${userProfile()}
 5. 多条消息用换行分隔，不编号。条数不要固定；寡言角色通常1到2条，表达欲强或情绪高时可自然增加，但不要写成整齐台词稿。
 6. 如果人物资料里规定无标点、特定称呼、常用梗、错字或句号习惯，严格保持；没有规定时才使用自然口语。
 7. 不要为了“正确”“体贴”擅自劝导、总结、教育、安慰或提供方案，除非这个角色确实会这么做。
+8. 情绪和态度有惯性：如果上一轮在生气、撒娇、冷战或开心，这一轮要延续这种状态自然演变，不能毫无理由瞬间恢复正常语气。
+9. 每一条回复都要像这个人在此刻脑子里冒出来的真实反应，不要输出成"正确答案"或"完整语篇"；允许不完整、跳跃、只回一半意思。
 
-${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
+${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开头/相同口癖/相同句式】\n${recentAssistant.map((line,i)=>`${i+1}. ${line}`).join("\n")}\n\n`:""}${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
 只输出这个角色此刻会发出的聊天正文。`;
   }
 
@@ -38899,27 +38909,45 @@ ${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】
       return clean(result);
     }
 
-    let response;
-    try{
-      response=await fetch(normalizeEndpoint(api.endpoint),{
-        method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":"Bearer "+api.key},
-        body:JSON.stringify({
-          model:clean(api.model)||"gpt-3.5-turbo",
-          messages:finalMessages,
-          temperature,
-          top_p:.9,
-          max_tokens:1800,
-          stream:false
-        })
-      });
-    }catch(_){throw new Error("连接失败：检查网络、API 地址或浏览器跨域权限")}
-    const raw=await response.text();
-    let data={};try{data=raw?JSON.parse(raw):{}}catch(_){ }
-    if(!response.ok)throw new Error(clean(data&&data.error&&data.error.message||data&&data.message||raw||`接口错误 ${response.status}`).slice(0,220));
-    const result=responseText(data);
-    if(!result)throw new Error("接口返回了空内容，请检查模型与接口兼容性");
-    return result;
+    const maxAttempts=3;
+    let lastErr=null;
+    for(let attempt=0; attempt<maxAttempts; attempt++){
+      let response;
+      try{
+        response=await fetch(normalizeEndpoint(api.endpoint),{
+          method:"POST",
+          headers:{"Content-Type":"application/json","Authorization":"Bearer "+api.key},
+          body:JSON.stringify({
+            model:clean(api.model)||"gpt-3.5-turbo",
+            messages:finalMessages,
+            temperature,
+            top_p:.9,
+            max_tokens:1800,
+            stream:false
+          })
+        });
+      }catch(_){
+        lastErr=new Error("连接失败：检查网络、API 地址或浏览器跨域权限");
+        if(attempt<maxAttempts-1){await new Promise(r=>setTimeout(r,800+attempt*800));continue;}
+        throw lastErr;
+      }
+      const raw=await response.text();
+      let data={};try{data=raw?JSON.parse(raw):{}}catch(_){ }
+      if(!response.ok){
+        lastErr=new Error(clean(data&&data.error&&data.error.message||data&&data.message||raw||`接口错误 ${response.status}`).slice(0,220));
+        const retryable=response.status===429||response.status>=500;
+        if(retryable&&attempt<maxAttempts-1){await new Promise(r=>setTimeout(r,900+attempt*900));continue;}
+        throw lastErr;
+      }
+      const result=responseText(data);
+      if(!result){
+        lastErr=new Error("接口返回了空内容，请检查模型与接口兼容性");
+        if(attempt<maxAttempts-1){await new Promise(r=>setTimeout(r,700+attempt*700));continue;}
+        throw lastErr;
+      }
+      return result;
+    }
+    throw lastErr||new Error("接口请求失败");
   }
   function cleanReply(value){
     return clean(value)
@@ -38932,17 +38960,40 @@ ${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】
       .trim();
   }
   async function strictRequest(){
+    const history=visibleHistory(26);
+    if(!history.length)return null;
+    const pending=(Array.isArray(appState().chatMessages)?appState().chatMessages:[])
+      .filter(message=>message&&message.type==="image"&&message._visionPromise&&!message.visionDesc)
+      .map(message=>message._visionPromise);
+    if(pending.length)await Promise.race([Promise.allSettled(pending),new Promise(resolve=>setTimeout(resolve,3200))]);
+    const prompt=strictSystemPrompt(history);
+
+    async function attemptOnce(){
+      let lastReply="",lastScore=100;
+      for(let round=0; round<4; round++){
+        const messages=[{role:"system",content:prompt}];
+        if(round>0){
+          messages.push({role:"system",content:`上一版回复AI腔过重或不贴人设（评分${lastScore}/100，要求低于20才合格）。请完全重写：更短、更口语、更像真实私聊，严格服从角色说话习惯；禁止关心作息、提供帮助、礼貌解释和长段落。`});
+        }
+        messages.push(...history);
+        const raw=await cleanCompletion(messages);
+        lastReply=cleanReply(raw);
+        lastScore=(window.BaobaoPersonaEngine&&typeof window.BaobaoPersonaEngine.aiStyleScore==="function")?window.BaobaoPersonaEngine.aiStyleScore(lastReply):0;
+        if(lastScore<20)break;
+      }
+      if(!lastReply)throw new Error("接口返回了空回复");
+      return lastReply;
+    }
+
     try{
-      const history=visibleHistory(26);
-      if(!history.length)return null;
-      const pending=(Array.isArray(appState().chatMessages)?appState().chatMessages:[])
-        .filter(message=>message&&message.type==="image"&&message._visionPromise&&!message.visionDesc)
-        .map(message=>message._visionPromise);
-      if(pending.length)await Promise.race([Promise.allSettled(pending),new Promise(resolve=>setTimeout(resolve,3200))]);
-      const prompt=strictSystemPrompt(history);
-      const raw=await cleanCompletion([{role:"system",content:prompt},...history]);
-      const reply=cleanReply(raw);
-      if(!reply)throw new Error("接口返回了空回复");
+      let reply;
+      try{
+        reply=await attemptOnce();
+      }catch(firstErr){
+        // 网络/接口层临时性失败：安静重试一次，而不是直接提示失败
+        await new Promise(r=>setTimeout(r,1200));
+        reply=await attemptOnce();
+      }
       const s=appState();
       s.lastMsgTime=Date.now();
       try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(_){ }
