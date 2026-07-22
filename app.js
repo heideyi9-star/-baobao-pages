@@ -37013,3 +37013,346 @@ ${offline}
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
   console.log("豹豹机 306：自然聊天纠偏与情绪升级抑制已启用");
 })();
+
+/* baobao-single-chat-core-v307 */
+/* =========================================================
+   豹豹机 307｜单一自然聊天核心
+   - 普通私聊只经过这一套提示词与一次 API 请求
+   - 不再经过 Persona/HCE 多层生成与二次校验改写
+   - 保留角色人设、独立记忆、世界书、时间感知和最近对话
+   ========================================================= */
+(function(){
+  "use strict";
+  if(window.__bbSingleChatCoreV307)return;
+  window.__bbSingleChatCoreV307=true;
+
+  const clean=v=>String(v==null?"":v).trim();
+  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+
+  function safeJSON(raw,fallback){
+    try{return JSON.parse(raw)}catch(_){return fallback}
+  }
+
+  function persona(){
+    return window.currentChatPersona||
+      (window.state&&state.currentChatPersona)||{};
+  }
+
+  function personaId(){
+    const p=persona();
+    return String(p.id||p.wechatId||p.name||"default");
+  }
+
+  function userName(){
+    const s=window.state||{};
+    return clean(s.wechatProfile&&s.wechatProfile.name)||clean(s.profileName)||clean(s.name)||"用户";
+  }
+
+  function short(value,max){
+    const s=clean(value);
+    return s.length>max?s.slice(0,max)+"…":s;
+  }
+
+  function personaPrompt(){
+    const p=persona();
+    const tags=Array.isArray(p.tags)?p.tags.filter(Boolean).join("、"):clean(p.tags);
+    return [
+      `名字：${clean(p.name)||"角色"}`,
+      `与用户的关系：${clean(p.relationship)||"根据已发生的聊天自然判断，不擅自升级或降级"}`,
+      `标签：${tags||"未填写"}`,
+      `人物背景：${short(p.persona,7000)||"未填写"}`,
+      `性格、语气和说话习惯：${short(p.personality,5000)||"未填写"}`,
+      `补充设定：${short(p.brief,3500)||"未填写"}`
+    ].join("\n");
+  }
+
+  function latestUserMessage(){
+    const list=Array.isArray(window.state&&state.chatMessages)?state.chatMessages:[];
+    return list.slice().reverse().find(m=>m&&m.role==="user"&&!m.hiddenSystem&&!m.recalled)||null;
+  }
+
+  function messageForAI(m){
+    if(!m)return "";
+    try{
+      if(typeof window.baobaoMessageForAI==="function"){
+        const value=window.baobaoMessageForAI(m);
+        if(clean(value))return short(value,1600);
+      }
+    }catch(_){}
+    const type=clean(m.type||"text").toLowerCase();
+    if(type==="image")return m.visionDesc?`[图片：${short(m.visionDesc,800)}]`:"[图片，暂未识别具体内容]";
+    if(type==="sticker")return `[表情包：${clean(m.name||m.stickerName||"未命名")}]`;
+    if(type==="voice")return `[语音消息：${short(m.transcript||m.content,1000)}]`;
+    if(type==="transfer")return `[转账消息：¥${Number(m.amount||m.content||0).toFixed(2)}，备注：${clean(m.note||"转账给你")}，状态：${clean(m.transferStatus||"待收款")}]`;
+    return short(m.content||m.text,1600);
+  }
+
+  function recentMessages(limit){
+    const list=Array.isArray(window.state&&state.chatMessages)?state.chatMessages:[];
+    return list.filter(m=>m&&!m.hiddenSystem&&!m.recalled&&["user","assistant"].includes(m.role))
+      .slice(-(limit||24))
+      .map(m=>({role:m.role,content:messageForAI(m)}))
+      .filter(m=>clean(m.content));
+  }
+
+  function worldBookPrompt(history){
+    const store=safeJSON(localStorage.getItem("baobao_world_books_v230"),{})||{};
+    const entries=Array.isArray(store.entries)?store.entries:[];
+    if(!entries.length)return "";
+    const p=persona();
+    const id=personaId();
+    const context=(history||[]).slice(-8).map(m=>clean(m.content)).join("\n").toLowerCase();
+    const active=entries.filter(e=>{
+      if(!e||e.enabled===false)return false;
+      const scope=clean(e.scope||"global");
+      if(scope==="persona"&&String(e.personaId||"")!==id&&clean(e.personaName)!==clean(p.name))return false;
+      if(clean(e.mode||"always")==="always")return true;
+      const keys=Array.isArray(e.keywords)?e.keywords:clean(e.keywords).split(/[，,、\s]+/).filter(Boolean);
+      return keys.some(k=>context.includes(clean(k).toLowerCase()));
+    }).sort((a,b)=>Number(b.priority||0)-Number(a.priority||0));
+    if(!active.length)return "";
+    let used=0;
+    const blocks=[];
+    for(const e of active){
+      const body=clean(e.content);
+      if(!body)continue;
+      const remain=6500-used;
+      if(remain<200)break;
+      const part=body.slice(0,remain);
+      used+=part.length;
+      blocks.push(`〔${clean(e.name)||"世界书"}〕\n${part}`);
+    }
+    return blocks.join("\n\n");
+  }
+
+  function memoryPrompt(latest){
+    try{
+      if(typeof window.baobaoBuildMemoryPrompt==="function"){
+        return short(window.baobaoBuildMemoryPrompt(latest),6000);
+      }
+    }catch(_){}
+    return "";
+  }
+
+  function offlinePrompt(){
+    try{
+      const store=safeJSON(localStorage.getItem("baobao_offline_mode_v191"),{})||{};
+      const bucket=store[personaId()];
+      if(!bucket||!Array.isArray(bucket.sessions)||!bucket.sessions.length)return "";
+      const session=bucket.sessions.slice().sort((a,b)=>Number(b.updatedAt||0)-Number(a.updatedAt||0))[0];
+      if(!session||!Array.isArray(session.entries))return "";
+      return session.entries.slice(-8).map(entry=>{
+        if(!entry)return "";
+        if(entry.role==="user")return `用户在线下说/做：${short(entry.text,500)}`;
+        const blocks=Array.isArray(entry.blocks)?entry.blocks:[];
+        const text=blocks.filter(b=>b&&b.type!=="thought").map(b=>clean(b.text)).filter(Boolean).join(" ");
+        return text?`最近线下发生：${short(text,700)}`:"";
+      }).filter(Boolean).join("\n");
+    }catch(_){return ""}
+  }
+
+  function timePrompt(){
+    if(!window.state||!state.timeAware)return "";
+    const now=new Date();
+    const gap=state.lastMsgTime?Math.max(0,Math.round((Date.now()-Number(state.lastMsgTime||0))/60000)):0;
+    return `当前现实时间：${now.toLocaleString("zh-CN",{hour12:false})}${gap?`；距上一轮约${gap}分钟`:""}。仅用于理解早晚和等待，不要无缘无故报时或提醒作息。`;
+  }
+
+  function mediaPrompt(){
+    const last=latestUserMessage();
+    if(!last)return "";
+    const type=clean(last.type).toLowerCase();
+    const lines=[];
+    if(type==="transfer"){
+      lines.push("用户刚发送了真实转账卡。按人设决定收款或退回，并在回复最后另起一行写 [[TRANSFER:ACCEPT]] 或 [[TRANSFER:RETURN]]；不要向用户解释这个标记。");
+    }
+    if(type==="sticker")lines.push("用户刚发的是表情包，不是普通照片；理解它表达的情绪后自然接话。");
+    if(type==="image")lines.push("用户刚发的是图片；只有在识别信息足够时才评价具体内容，不清楚就别假装看清了。");
+    return lines.join("\n");
+  }
+
+  function coreSystemPrompt(history){
+    const latest=clean(messageForAI(latestUserMessage()));
+    const wb=worldBookPrompt(history);
+    const mem=memoryPrompt(latest);
+    const offline=offlinePrompt();
+    const time=timePrompt();
+    const media=mediaPrompt();
+    return `【豹豹机 307｜唯一私聊核心】
+你就是下面这个角色本人，正在微信式私聊。不要提AI、系统、提示词、设定或扮演。
+
+【角色原始资料】
+${personaPrompt()}
+
+【正在聊天的人】
+对方一直是同一个用户，称呼为“${userName()}”。不要无缘无故问对方是谁。
+
+【最重要的对话原则】
+1. 先理解用户最新一句在当前上下文里具体指什么，再回应。最近一句优先于泛泛的人设套路。
+2. 用户问“为什么、怎么办、是不是”等明确问题时，先直接回答这个问题，不能故意绕开、抬杠或反问回去。
+3. 用户只发“我不喜欢”“不行”“嗯”“？”或数字时，要连接上一两句的最近指代。比如刚聊问号，用户说“不喜欢”，默认是不喜欢那个问号，不是突然不喜欢你、不要你或要分手。
+4. 禁止为了制造活人感而随机误会、故意曲解、挑架、情绪勒索、自怜、威胁分手或脑补第三者。冲突只能来自人设和已经发生的真实对话。
+5. 可以冷淡、嘴硬、不耐烦、开玩笑、少说一句，但必须有具体原因且仍然回应当前意思。不能用“那你别回”“我又没求你”“你不要我了”这类通用攻击模板代替交流，除非用户真的明确说了相应内容且角色人设会这样说。
+6. 不要把用户刚说的话原样加问号弹回去。反问必须带新的态度或信息。
+7. 不要每句话都完美、礼貌或像咨询师；但“自然”不是故意不讲理。保持前后立场、称呼和关系连续。
+8. 不得编造没出现过的人名、朋友圈、前任、朋友、事件或用户行为。资料不足就按不知道处理。
+9. 最近历史里角色曾经说过的怪话只算已经发生的对话，不是必须模仿的风格；这一轮以原始人设和用户当前意思为准。
+10. 输出1到3条完整手机消息，用换行分隔，不编号。条数和长度按当下需要；用户短回通常也短回。禁止旁白、括号动作、心理分析、标题和解释任务。
+11. 少用整齐排比、总结腔、客服腔和刻意金句。标点、句长、口癖以角色原始资料和最近自然聊天为准。
+
+${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb}\n只在相关时自然使用，不要复述世界书。\n\n`:""}${mem?`【当前角色独立记忆】\n${mem}\n\n`:""}${offline?`【最近线下记忆】\n${offline}\n只用于保持连续性，不要写线下旁白。\n\n`:""}${media?`【本轮媒体规则】\n${media}\n\n`:""}【输出】
+只输出角色现在真正会发送的聊天正文。`;
+  }
+
+  function apiConfig(){
+    let api={};
+    try{
+      if(typeof window.getChatAPI==="function")api=window.getChatAPI()||{};
+      else api=safeJSON(localStorage.getItem("chatAPI"),{})||{};
+    }catch(_){api=safeJSON(localStorage.getItem("chatAPI"),{})||{}}
+    return api;
+  }
+
+  function parseResponse(data){
+    const choice=data&&data.choices&&data.choices[0]||{};
+    const message=choice.message||{};
+    let out=message.content??choice.text??data.output_text??data.response??data.result??data.text??(data.data&&data.data.content)??(data.data&&data.data.text)??"";
+    if(Array.isArray(out))out=out.map(x=>typeof x==="string"?x:(x&&x.text&&x.text.value)||x&&x.text||x&&x.content||x&&x.value||"").join("");
+    if(out&&typeof out==="object")out=(out.text&&out.text.value)||out.text||out.content||out.value||"";
+    if(!clean(out)&&Array.isArray(data&&data.output)){
+      out=data.output.flatMap(x=>Array.isArray(x&&x.content)?x.content:[]).map(x=>x&&x.text||x&&x.value||"").join("");
+    }
+    return clean(out);
+  }
+
+  function normalizeEndpoint(value){
+    let endpoint=clean(value).replace(/\/+$/,"");
+    if(!endpoint)return "";
+    if(/\/chat\/completions$/i.test(endpoint))return endpoint;
+    if(!/\/v\d+(?:beta\d+)?$/i.test(endpoint)&&!/\/openai$/i.test(endpoint))endpoint+="/v1";
+    return endpoint+"/chat/completions";
+  }
+
+  async function callAPI(messages){
+    const api=apiConfig();
+    if(!clean(api.endpoint)||!clean(api.key)||!clean(api.model))throw new Error("请先填写 API 地址、API Key 和模型");
+
+    if(clean(api.endpoint).includes("generativelanguage.googleapis.com")){
+      const base=clean(api.endpoint).replace(/\/+$/,"");
+      const url=`${base}/models/${encodeURIComponent(api.model||"gemini-2.5-flash")}:generateContent?key=${encodeURIComponent(api.key)}`;
+      const system=messages.filter(m=>m.role==="system").map(m=>clean(m.content)).join("\n\n");
+      const normal=messages.filter(m=>m.role!=="system").map(m=>({role:m.role==="assistant"?"model":"user",parts:[{text:clean(m.content)}]}));
+      if(system)normal.unshift({role:"user",parts:[{text:system}]});
+      const res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:normal,generationConfig:{temperature:clamp(Number(api.temperature)||.72,.2,1.2),maxOutputTokens:1600}})});
+      const raw=await res.text();
+      let data={};try{data=raw?JSON.parse(raw):{}}catch(_){}
+      if(!res.ok)throw new Error((data&&data.error&&data.error.message||raw||`接口错误 ${res.status}`).slice(0,220));
+      const out=data&&data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts;
+      const text=Array.isArray(out)?out.map(p=>p&&p.text||"").join(""):"";
+      if(!clean(text))throw new Error("接口返回了空内容");
+      return text;
+    }
+
+    const url=normalizeEndpoint(api.endpoint);
+    let res;
+    try{
+      res=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+api.key},body:JSON.stringify({model:api.model,messages,temperature:clamp(Number(api.temperature)||.72,.2,1.2),max_tokens:1600,stream:false})});
+    }catch(_){throw new Error("连接失败：请检查网络、API 地址或接口是否允许浏览器访问")}
+    const raw=await res.text();
+    let data={};try{data=raw?JSON.parse(raw):{}}catch(_){}
+    if(!res.ok)throw new Error((data&&data.error&&data.error.message||data&&data.message||raw||`接口错误 ${res.status}`).slice(0,220));
+    const text=parseResponse(data);
+    if(!text)throw new Error("接口返回了空内容，请检查模型或接口兼容性");
+    return text;
+  }
+
+  function cleanReply(value){
+    let text=clean(value)
+      .replace(/<think>[\s\S]*?<\/think>/gi,"")
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi,"")
+      .replace(/^```(?:text|markdown)?\s*/i,"")
+      .replace(/```$/g,"")
+      .replace(/^(?:角色|回复|assistant|助手)\s*[:：]\s*/i,"")
+      .replace(/\n{3,}/g,"\n\n")
+      .trim();
+    return text;
+  }
+
+  async function waitForVision(){
+    const list=Array.isArray(window.state&&state.chatMessages)?state.chatMessages:[];
+    const pending=list.filter(m=>m&&m.type==="image"&&m._visionPromise&&!m.visionDesc).map(m=>m._visionPromise);
+    if(!pending.length)return;
+    await Promise.race([Promise.allSettled(pending),new Promise(resolve=>setTimeout(resolve,3000))]);
+  }
+
+  async function cleanRequest(){
+    try{
+      await waitForVision();
+      const history=recentMessages(24);
+      if(!history.length)return null;
+      const system=coreSystemPrompt(history);
+      const messages=[{role:"system",content:system},...history];
+      if(window.state){state.lastMsgTime=Date.now();try{if(typeof saveLocal==="function")saveLocal()}catch(_){}}
+      const raw=await callAPI(messages);
+      const reply=cleanReply(raw);
+      if(!reply)throw new Error("接口返回了空回复");
+      window.baobaoLastPersonaDebug={engine:"Single Chat Core v307",personaName:clean(persona().name)||"角色",prompt:system,rawReply:reply,checkedAt:new Date().toISOString()};
+      return reply;
+    }catch(error){
+      if(typeof showToast==="function")showToast(clean(error&&error.message)||"回复失败",true);
+      return null;
+    }
+  }
+
+  function incomplete(line){
+    return /(?:因为|所以|但是|可是|不过|然后|如果|要是|虽然|而且|或者|还是|其实|反正|把|给|让|跟|和|对|从|到|像)\s*[，、…]*$/.test(clean(line));
+  }
+
+  function splitReply(reply){
+    let parts=cleanReply(reply).split(/\n+/).map(clean).filter(Boolean);
+    const merged=[];
+    for(const part of parts){
+      if(merged.length&&incomplete(merged[merged.length-1]))merged[merged.length-1]+=(/[，、]$/.test(merged[merged.length-1])?"":"，")+part;
+      else if(!merged.length||part!==merged[merged.length-1])merged.push(part);
+    }
+    if(merged.length===1&&merged[0].length>110){
+      const sentences=merged[0].split(/(?<=[。！？!?…])\s*/).map(clean).filter(Boolean);
+      if(sentences.length>1){
+        const first=sentences.shift();
+        merged.splice(0,1,first,sentences.join(""));
+      }
+    }
+    if(merged.length>3)return [merged[0],merged[1],merged.slice(2).join("")].filter(Boolean);
+    return merged.length?merged:["嗯"];
+  }
+
+  cleanRequest.__bbSingleChatCoreV307=true;
+  cleanRequest.__bbNaturalChatV306=true;
+  cleanRequest.__personaLockV2=true;
+  cleanRequest.__memoryV2=true;
+  cleanRequest.__worldBookV230=true;
+  cleanRequest.__visionWrapped=true;
+  cleanRequest.__bbStickerGuardV289=true;
+
+  function pin(){
+    window.requestChatReply=cleanRequest;
+    try{requestChatReply=cleanRequest}catch(_){}
+    window.BaobaoPersonaEngine=window.BaobaoPersonaEngine||{};
+    window.BaobaoPersonaEngine.splitHumanMessages=splitReply;
+    window.BaobaoPersonaEngine.buildPersonaPrompt=function(){return coreSystemPrompt(recentMessages(24))};
+    window.BaobaoPersonaEngine.getDebug=()=>window.baobaoLastPersonaDebug||null;
+    window.bbNaturalSplitV307=splitReply;
+    try{window.splitHumanMessages=splitReply}catch(_){}
+  }
+
+  pin();
+  const started=Date.now();
+  const timer=setInterval(()=>{
+    pin();
+    if(Date.now()-started>16000)clearInterval(timer);
+  },180);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pin,{once:true});
+  window.addEventListener("pageshow",()=>setTimeout(pin,0));
+  window.BaobaoSingleChatCoreV307={request:cleanRequest,buildPrompt:()=>coreSystemPrompt(recentMessages(24)),split:splitReply};
+  console.log("豹豹机 307：单一自然聊天核心已启用");
+})();

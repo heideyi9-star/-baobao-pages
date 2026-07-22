@@ -1,5 +1,5 @@
-/* 豹豹机 306：自然聊天纠偏，并保留跨页面通知与线下修复。 */
-const CACHE_NAME = "baobao-shell-v306";
+/* 豹豹机 307：单一自然聊天核心，并保留此前全部功能。 */
+const CACHE_NAME = "baobao-shell-v307";
 const SHELL = [
   "./",
   "./index.html",
