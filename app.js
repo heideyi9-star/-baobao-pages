@@ -36489,3 +36489,527 @@ ${offline}
   window.addEventListener("pageshow",boot);
   setTimeout(boot,300);
 })();
+
+/* ===== 豹豹机 305：跨页面消息跳转与线下模式防卡死 ===== */
+(function(){
+  "use strict";
+  if(window.__bbCrossLayerRouteFixV305)return;
+  window.__bbCrossLayerRouteFixV305=true;
+
+  const $=id=>document.getElementById(id);
+  let routeBusy=false;
+  let guardUntil=0;
+  let lastRouteId="";
+  let offlineObserver=null;
+
+  function personas(){
+    return window.state&&Array.isArray(state.personas)?state.personas:[];
+  }
+  function personById(id){
+    const key=String(id||"");
+    return personas().find(person=>person&&String(person.id)===key)||null;
+  }
+  function activeChatId(explicit){
+    const direct=String(explicit||"").trim();
+    if(direct&&personById(direct))return direct;
+    const banner=$("baobaoMessageBanner");
+    const fromBanner=String(banner&&banner.dataset&&banner.dataset.bbChatIdV305||"");
+    if(fromBanner&&personById(fromBanner))return fromBanner;
+    const remembered=String(window.__bbLastIncomingChatIdV305||"");
+    if(remembered&&personById(remembered))return remembered;
+    const active=String(window.state&&state.activeChatId||"");
+    if(active&&personById(active))return active;
+    const current=String(window.currentChatPersona&&window.currentChatPersona.id||"");
+    if(current&&personById(current))return current;
+    const phone=String(window.subjectPhoneCurrentId||"");
+    if(phone&&personById(phone))return phone;
+    return "";
+  }
+  function safeCall(name){
+    try{
+      const fn=window[name];
+      if(typeof fn==="function")return fn.apply(window,[].slice.call(arguments,1));
+    }catch(error){}
+  }
+  function stripTransientStyle(node){
+    if(!node)return;
+    ["pointer-events","visibility","opacity","transform","animation","touch-action","z-index"].forEach(prop=>node.style.removeProperty(prop));
+    node.removeAttribute("inert");
+    node.removeAttribute("aria-hidden");
+  }
+  function hideClass(id){
+    const node=$(id);
+    if(!node)return;
+    node.classList.remove("show","active","open");
+    stripTransientStyle(node);
+  }
+  function hideDisplay(id){
+    const node=$(id);
+    if(!node)return;
+    node.classList.remove("show","active","open");
+    node.style.display="none";
+    stripTransientStyle(node);
+  }
+  function hidePhoneLayers(){
+    safeCall("bbPhoneHideSettings");
+    hideClass("bbspaSettingsSheet");
+    hideClass("bbspaChat");
+    hideClass("bbPhoneLockV301");
+    hideClass("bbPhoneEmptyV301");
+    hideDisplay("bbSubjectAppPanel");
+    hideDisplay("subjectPhonePanel");
+    hideDisplay("subjectsPanel");
+  }
+  function hideToolLayers(){
+    safeCall("closeBaobaoTools");
+    safeCall("closeBaobaoToolModal");
+    safeCall("closeBaobaoStickerPicker");
+    safeCall("closeBaobaoMediaViewerV212");
+    hideClass("bbToolBackdrop");
+    hideClass("bbToolSheet");
+    hideClass("bbToolModal");
+    hideClass("bbStickerPicker");
+    hideClass("bbMediaViewerV212");
+    const legacy=$("tools");
+    if(legacy)legacy.style.display="none";
+  }
+  function hideGeneralLayers(){
+    safeCall("closeInnerVoicePanel");
+    hideClass("innerVoiceOverlay");
+    hideClass("bbRoleMomentPanelV297");
+    hideDisplay("personaSelectPanel");
+    hideDisplay("friendSearchPanel");
+    hideDisplay("stateCard");
+    hideDisplay("stateCardBackdrop");
+    document.querySelectorAll(".panel").forEach(panel=>{
+      if(panel&&panel.id!=="chatRoom")panel.style.display="none";
+    });
+  }
+  function hideSmsLayer(){
+    try{safeCall("closeSmsApp");}catch(error){}
+    hideClass("baobaoSmsApp");
+  }
+  function hideOfflineLayer(){
+    const page=$("baobaoOfflineMode");
+    if(page){
+      page.classList.remove("show");
+      page.style.display="none";
+      page.style.pointerEvents="none";
+    }
+    document.body.classList.remove("bb-offline-route-v305");
+  }
+  function closeForChatRoute(){
+    hidePhoneLayers();
+    hideSmsLayer();
+    hideToolLayers();
+    hideGeneralLayers();
+    hideOfflineLayer();
+    document.body.classList.remove("bb-chat-closed-v277");
+  }
+  function closeForOfflineRoute(){
+    hidePhoneLayers();
+    hideSmsLayer();
+    hideToolLayers();
+    hideGeneralLayers();
+    const banner=$("baobaoMessageBanner");
+    if(banner)banner.classList.remove("show");
+  }
+
+  function addClickShield(){
+    let shield=$("bbRouteClickShieldV305");
+    if(!shield){
+      shield=document.createElement("div");
+      shield.id="bbRouteClickShieldV305";
+      (document.querySelector(".phone")||document.body).appendChild(shield);
+    }
+    shield.classList.add("show");
+    clearTimeout(shield.__bbTimer);
+    shield.__bbTimer=setTimeout(()=>shield.classList.remove("show"),460);
+  }
+
+  function ensureChatSurface(id){
+    const person=personById(id);
+    if(!person)return false;
+    try{if(typeof window.renderWeChatApp==="function")window.renderWeChatApp();}catch(error){}
+    const demo=$("chatDemo");
+    const room=$("chatRoom");
+    if(demo){
+      demo.style.display="block";
+      demo.style.visibility="visible";
+      demo.style.pointerEvents="auto";
+      demo.removeAttribute("inert");
+      demo.removeAttribute("aria-hidden");
+    }
+    try{if(typeof window.switchAppTab==="function")window.switchAppTab("tabChat");}catch(error){}
+    try{
+      if(typeof window.startPersonaChat==="function")window.startPersonaChat(person.id);
+    }catch(error){
+      window.currentChatPersona=person;
+      if(window.state){
+        state.activeChatId=person.id;
+        state.chatRecords=state.chatRecords||{};
+        state.chatRecords[person.id]=Array.isArray(state.chatRecords[person.id])?state.chatRecords[person.id]:[];
+        state.chatMessages=state.chatRecords[person.id];
+      }
+    }
+    if(room){
+      room.style.display="block";
+      room.style.visibility="visible";
+      room.style.opacity="1";
+      room.style.pointerEvents="auto";
+      room.removeAttribute("inert");
+      room.removeAttribute("aria-hidden");
+      room.classList.add("bb-chat-is-active");
+    }
+    document.querySelector(".phone")?.classList.add("bb-private-chat-visible");
+    try{if(typeof window.updateChatHead==="function")window.updateChatHead(person);}catch(error){}
+    try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();}catch(error){}
+    requestAnimationFrame(()=>{
+      const wrap=$("chatMsgs");
+      if(wrap)wrap.scrollTop=wrap.scrollHeight;
+    });
+    return true;
+  }
+
+  function routeToChat(explicitId){
+    const id=activeChatId(explicitId);
+    if(!id)return false;
+    const now=Date.now();
+    if(routeBusy&&lastRouteId===id&&now<guardUntil)return true;
+    routeBusy=true;
+    lastRouteId=id;
+    guardUntil=now+700;
+    addClickShield();
+    closeForChatRoute();
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      ensureChatSurface(id);
+      setTimeout(()=>{
+        closeForChatRoute();
+        ensureChatSurface(id);
+        routeBusy=false;
+      },120);
+    }));
+    return true;
+  }
+  window.bbRouteToChatV305=routeToChat;
+
+  function decorateBanner(id){
+    const person=personById(id);
+    const banner=$("baobaoMessageBanner");
+    if(!banner||!person)return;
+    banner.dataset.bbChatIdV305=String(person.id);
+    const name=$("baobaoMessageBannerName");
+    const avatar=$("baobaoMessageBannerAvatar");
+    if(name)name.textContent=person.name||"新消息";
+    if(avatar){
+      avatar.innerHTML=person.photo?'<img src="'+String(person.photo).replace(/"/g,"&quot;")+'" alt="">':String(person.name||"豹").slice(0,1);
+    }
+  }
+
+  function installNotifyHook(){
+    const original=window.baobaoNotifyIncomingReply;
+    if(typeof original==="function"&&!original.__bbRouteV305){
+      const wrapped=function(message,options){
+        const explicit=options&&typeof options==="object"?(options.chatId||options.personaId):"";
+        const id=activeChatId(explicit);
+        if(id){
+          window.__bbLastIncomingChatIdV305=id;
+          decorateBanner(id);
+        }
+        const result=original.apply(this,arguments);
+        setTimeout(()=>decorateBanner(id||activeChatId()),0);
+        return result;
+      };
+      wrapped.__bbRouteV305=true;
+      wrapped.__bbPrevious=original;
+      window.baobaoNotifyIncomingReply=wrapped;
+    }
+    const show=window.showIncomingBanner;
+    if(typeof show==="function"&&!show.__bbRouteV305){
+      const wrapped=function(message,options){
+        const explicit=options&&typeof options==="object"?(options.chatId||options.personaId):"";
+        const id=activeChatId(explicit);
+        if(id)window.__bbLastIncomingChatIdV305=id;
+        const result=show.apply(this,arguments);
+        setTimeout(()=>decorateBanner(id||activeChatId()),0);
+        return result;
+      };
+      wrapped.__bbRouteV305=true;
+      wrapped.__bbPrevious=show;
+      window.showIncomingBanner=wrapped;
+    }
+  }
+
+  function onBannerClick(event){
+    const target=event.target&&event.target.closest?event.target.closest("#baobaoMessageBanner"):null;
+    if(!target)return;
+    event.preventDefault();
+    event.stopPropagation();
+    if(typeof event.stopImmediatePropagation==="function")event.stopImmediatePropagation();
+    const id=String(target.dataset.bbChatIdV305||window.__bbLastIncomingChatIdV305||activeChatId());
+    target.classList.remove("show");
+    routeToChat(id);
+  }
+
+  function protectChatComposer(){
+    const bar=document.querySelector("#chatRoom .chat-input-bar");
+    if(!bar||bar.__bbNoClickThroughV305)return;
+    bar.__bbNoClickThroughV305=true;
+    ["pointerdown","pointerup","touchstart","touchend","click"].forEach(type=>{
+      bar.addEventListener(type,event=>{
+        if(Date.now()<guardUntil)return;
+        event.stopPropagation();
+      },type.startsWith("touch")?{passive:true}:false);
+    });
+  }
+
+  function normalizeOfflinePage(){
+    const page=$("baobaoOfflineMode");
+    if(!page||!page.classList.contains("show"))return;
+    closeForOfflineRoute();
+    document.body.classList.add("bb-offline-route-v305");
+    page.style.display="flex";
+    page.style.visibility="visible";
+    page.style.opacity="1";
+    page.style.pointerEvents="auto";
+    page.style.touchAction="auto";
+    page.style.zIndex="5200";
+    page.removeAttribute("inert");
+    page.removeAttribute("aria-hidden");
+    page.querySelectorAll(".bb-offline-modal-mask:not(.show)").forEach(mask=>{
+      mask.style.display="none";
+      mask.style.pointerEvents="none";
+    });
+  }
+  function observeOffline(){
+    const page=$("baobaoOfflineMode");
+    if(!page||page.__bbObservedV305)return;
+    page.__bbObservedV305=true;
+    offlineObserver=new MutationObserver(()=>{
+      if(page.classList.contains("show"))requestAnimationFrame(normalizeOfflinePage);
+      else document.body.classList.remove("bb-offline-route-v305");
+    });
+    offlineObserver.observe(page,{attributes:true,attributeFilter:["class"]});
+  }
+  function installOfflineHook(){
+    const open=window.openOfflineMode;
+    if(typeof open==="function"&&!open.__bbRouteV305){
+      const wrapped=function(){
+        closeForOfflineRoute();
+        document.body.classList.add("bb-offline-route-v305");
+        const result=open.apply(this,arguments);
+        requestAnimationFrame(normalizeOfflinePage);
+        setTimeout(normalizeOfflinePage,120);
+        return result;
+      };
+      wrapped.__bbRouteV305=true;
+      wrapped.__bbPrevious=open;
+      window.openOfflineMode=wrapped;
+      if(window.BaobaoOfflineMode)window.BaobaoOfflineMode.open=wrapped;
+    }
+    const close=window.closeOfflineMode;
+    if(typeof close==="function"&&!close.__bbRouteV305){
+      const wrapped=function(){
+        const result=close.apply(this,arguments);
+        document.body.classList.remove("bb-offline-route-v305");
+        const page=$("baobaoOfflineMode");
+        if(page){page.classList.remove("show");page.style.display="none";page.style.pointerEvents="none";}
+        return result;
+      };
+      wrapped.__bbRouteV305=true;
+      wrapped.__bbPrevious=close;
+      window.closeOfflineMode=wrapped;
+    }
+  }
+
+  function handleServiceWorkerMessage(event){
+    const data=event&&event.data||{};
+    if(data.type==="BAOBAO_OPEN_CHAT"){
+      routeToChat(String(data.chatId||data.personaId||""));
+    }
+  }
+  function handleUrlRoute(){
+    try{
+      const params=new URLSearchParams(location.search);
+      const id=params.get("bbPushChat");
+      if(!id)return;
+      window.__bbLastIncomingChatIdV305=String(id);
+      setTimeout(()=>routeToChat(id),260);
+      params.delete("bbPushChat");
+      const next=location.pathname+(params.toString()?"?"+params.toString():"")+location.hash;
+      history.replaceState(null,"",next);
+    }catch(error){}
+  }
+
+  function injectStyle(){
+    if($("bbCrossLayerRouteStyleV305"))return;
+    const style=document.createElement("style");
+    style.id="bbCrossLayerRouteStyleV305";
+    style.textContent=`
+      #bbRouteClickShieldV305{position:fixed;inset:0;z-index:2147483646;display:none;background:transparent;pointer-events:auto;touch-action:none}
+      #bbRouteClickShieldV305.show{display:block}
+      #bbspaSettingsSheet:not(.show),#bbToolBackdrop:not(.show),#bbToolSheet:not(.show),#bbToolModal:not(.show),#bbStickerPicker:not(.show),#innerVoiceOverlay:not(.show){pointer-events:none!important}
+      body.bb-offline-route-v305 #chatRoom .chat-input-bar,
+      body.bb-offline-route-v305 #bbToolBackdrop,
+      body.bb-offline-route-v305 #bbToolSheet,
+      body.bb-offline-route-v305 #bbToolModal,
+      body.bb-offline-route-v305 #bbStickerPicker{display:none!important;pointer-events:none!important}
+      #baobaoOfflineMode.show{display:flex!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;z-index:5200!important}
+      #baobaoOfflineMode.show .bb-offline-head,
+      #baobaoOfflineMode.show .bb-offline-feed,
+      #baobaoOfflineMode.show .bb-offline-composer{pointer-events:auto!important}
+      #chatRoom[style*="display: block"]{pointer-events:auto!important;visibility:visible!important}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function boot(){
+    injectStyle();
+    installNotifyHook();
+    installOfflineHook();
+    observeOffline();
+    protectChatComposer();
+  }
+
+  document.addEventListener("click",onBannerClick,true);
+  if("serviceWorker" in navigator)navigator.serviceWorker.addEventListener("message",handleServiceWorkerMessage);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{boot();handleUrlRoute();},{once:true});
+  else{boot();handleUrlRoute();}
+  window.addEventListener("pageshow",()=>{boot();handleUrlRoute();});
+  [100,350,900,1800,4200,8500].forEach(ms=>setTimeout(boot,ms));
+})();
+
+/* baobao-v306-natural-chat-coherence-fix */
+(function(){
+  "use strict";
+  if(window.__bbNaturalChatCoherenceV306)return;
+  window.__bbNaturalChatCoherenceV306=true;
+
+  const RULES=`【自然私聊纠偏｜最高优先级】
+1. 不要为了表现“真人感”而故意唱反调、曲解用户、无缘无故攻击或把小矛盾升级。先接住用户这句话真正问的内容，再决定态度。
+2. 普通抱怨、追问、反话、数字、单字和语气词，都不能自动脑补成抛弃、拉黑或分手。只有上下文真的在谈关系结束时才回应分手，而且要回应具体矛盾，禁止套用自怜或情绪勒索台词。
+3. 禁止把“你不要我了”“那就分手”“你让我不舒服所以就不要我”“我应该很高兴吗”之类话当通用防御句；除非人物设定和完整上下文都明确需要，否则换成更具体、更自然的反应。
+4. 遇到“111”“嗯”“？”这类含糊短消息，可以回“啥”“？”“你说什么”，也可以暂时不延伸；不要凭空编一段感情冲突。
+5. 前后立场必须连贯。不要上一条还在要求解释，下一条突然认定用户不要自己；不要为了制造情绪连续性而反复控诉同一件事。
+6. 一轮通常发1到3条，总字数通常不超过70字。情绪激动也不要连续发四五条像台词稿一样的控诉。
+7. 可以冷淡、嘴硬、不耐烦，但不能把“不完美感”写成PUA、情绪勒索或故意不讲理。用户明确要求戏剧化冲突时除外。
+8. 回复必须围绕最近一两轮真实对话，不借题发挥，不把关系状态、朋友圈或记忆中没有发生的事硬塞进来。`;
+
+  function text(v){return String(v==null?"":v).trim();}
+  function stateNow(){try{return window.state||state||{}}catch(_){return window.state||{}}}
+  function personaNow(){return window.currentChatPersona||{};}
+  function latestUserText(){
+    const list=Array.isArray(stateNow().chatMessages)?stateNow().chatMessages:[];
+    for(let i=list.length-1;i>=0;i--){
+      const msg=list[i];
+      if(!msg||msg.role!=="user")continue;
+      const type=String(msg.type||"text").toLowerCase();
+      if(type!=="text")return type==="image"?"[用户发送了一张图片]":text(msg.content||msg.caption||"");
+      return text(msg.content||msg.text||"");
+    }
+    return "";
+  }
+  function recentDialogue(limit){
+    const list=Array.isArray(stateNow().chatMessages)?stateNow().chatMessages:[];
+    return list.filter(m=>m&&!m.recalled&&["user","assistant"].includes(m.role))
+      .slice(-(limit||12)).map(m=>`${m.role==="user"?"用户":"角色"}：${text(typeof window.baobaoMessageForAI==="function"?window.baobaoMessageForAI(m):(m.content||m.text||""))}`)
+      .filter(Boolean).join("\n");
+  }
+  function personaBlock(){
+    const p=personaNow();
+    return `名字：${text(p.name)||"角色"}\n背景：${text(p.persona)||"未填写"}\n性格与说话习惯：${text(p.personality)||"未填写"}\n补充：${text(p.brief)||"未填写"}`;
+  }
+  function isPrivateChatRequest(messages){
+    if(!Array.isArray(messages))return false;
+    const sys=messages.filter(m=>m&&m.role==="system").map(m=>text(m.content)).join("\n");
+    const positive=/HCE\s*v3|真人聊天内核|正在手机私聊|当前角色完整人设|角色回复校验器|贴人设要求/.test(sys);
+    const negative=/心声生成器|内心活动生成器|朋友圈|独立NPC|短信NPC|只输出合法JSON|视觉识别|头像选择|手机内容生成器/.test(sys);
+    return positive&&!negative;
+  }
+
+  function installPromptGuard(){
+    const current=window.sendChatCompletion;
+    if(typeof current!=="function"||current.__bbNaturalChatV306)return;
+    const wrapped=async function(messages,apiOverride){
+      if(isPrivateChatRequest(messages)){
+        const copy=messages.map(m=>m&&typeof m==="object"?{...m}:m);
+        const firstSystem=copy.find(m=>m&&m.role==="system");
+        if(firstSystem)firstSystem.content=text(firstSystem.content)+"\n\n"+RULES;
+        else copy.unshift({role:"system",content:RULES});
+        return current.call(this,copy,apiOverride);
+      }
+      return current.apply(this,arguments);
+    };
+    wrapped.__bbNaturalChatV306=true;
+    wrapped.__bbPrevious=current;
+    window.sendChatCompletion=wrapped;
+  }
+
+  const DRAMA_RE=/(你(?:就|是不是|干脆).{0,10}(?:不要我|不爱我|抛弃我)|那就分手|行吧[，, ]*分手|你让我.{0,14}就不要我|我应该.{0,8}(?:高兴|开心).{0,2}[?？]|随时能跑的狗|不需要随时能跑|你就不要我了|反正你.{0,8}不要我|求之不得|遵命|被宝宝拴住)/;
+  const SCRIPT_RE=/(?:^|\n).{0,25}(?:你不要我了|那就分手|我应该很高兴).*(?:\n|$)/;
+  function needsRewrite(reply,user){
+    const value=text(reply),u=text(user);
+    if(!value)return false;
+    const lines=value.split(/\n+/).filter(Boolean);
+    if(DRAMA_RE.test(value)||SCRIPT_RE.test(value))return true;
+    if(/^\d{1,8}$/.test(u)&&value.length>24)return true;
+    if(lines.length>3&&/(不舒服|分手|不要|烦|生气|难受|失望)/.test(value))return true;
+    if(/我应该.{0,12}[?？]/.test(value))return true;
+    return false;
+  }
+
+  async function rewriteNaturally(candidate){
+    if(typeof window.sendChatCompletion!=="function")return candidate;
+    const user=latestUserText();
+    const prompt=`你是私聊回复纠偏器。只重写候选回复，不解释任务。\n\n${RULES}\n\n【角色】\n${personaBlock()}\n\n【最近对话】\n${recentDialogue(12)||"暂无"}\n\n【用户最新消息】\n${user||"暂无"}\n\n【需要纠偏的候选回复】\n${text(candidate)}\n\n要求：保留角色真正的脾气和立场，但去掉无依据的分手脑补、自怜、情绪勒索、重复控诉和台词感。直接回应当前问题。输出1到3行手机消息，不编号，不加引号。`;
+    try{
+      const fixed=await window.sendChatCompletion([
+        {role:"system",content:"你只负责把不自然的角色私聊改得像真人，保持人设，不添加新事实。"},
+        {role:"user",content:prompt}
+      ]);
+      return text(fixed)||candidate;
+    }catch(_){return candidate;}
+  }
+
+  function installReplyGuard(){
+    const current=window.requestChatReply;
+    if(typeof current!=="function"||current.__bbNaturalChatV306)return;
+    const wrapped=async function(){
+      const result=await current.apply(this,arguments);
+      if(!result)return result;
+      const user=latestUserText();
+      if(needsRewrite(result,user))return await rewriteNaturally(result);
+      return result;
+    };
+    wrapped.__bbNaturalChatV306=true;
+    wrapped.__bbPrevious=current;
+    window.requestChatReply=wrapped;
+  }
+
+  function naturalSplit(reply){
+    let value=text(reply).replace(/^```[a-z]*\s*/i,"").replace(/```$/g,"").trim();
+    let parts=value.split(/\n+/).map(text).filter(Boolean);
+    parts=parts.filter((line,index)=>index===0||line!==parts[index-1]);
+    if(parts.length===1&&parts[0].length>95){
+      const sentences=parts[0].split(/(?<=[。！？!?…])\s*/).map(text).filter(Boolean);
+      if(sentences.length>1){
+        parts=[sentences[0],sentences.slice(1).join("")];
+      }
+    }
+    if(parts.length>3){
+      parts=[parts[0],parts[1],parts.slice(2).join("")];
+    }
+    return parts.length?parts:["嗯"];
+  }
+  function installSplitter(){
+    window.BaobaoPersonaEngine=window.BaobaoPersonaEngine||{};
+    window.BaobaoPersonaEngine.splitHumanMessages=naturalSplit;
+    window.bbNaturalSplitV306=naturalSplit;
+  }
+
+  function boot(){installPromptGuard();installReplyGuard();installSplitter();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  [80,260,700,1500,3200,6500,10000].forEach(ms=>setTimeout(boot,ms));
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+  console.log("豹豹机 306：自然聊天纠偏与情绪升级抑制已启用");
+})();

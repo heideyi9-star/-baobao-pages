@@ -1,5 +1,5 @@
-/* 豹豹机 304：取消本地生成兜底，查手机、短信与心声只使用对话 API。 */
-const CACHE_NAME = "baobao-shell-v304";
+/* 豹豹机 306：自然聊天纠偏，并保留跨页面通知与线下修复。 */
+const CACHE_NAME = "baobao-shell-v306";
 const SHELL = [
   "./",
   "./index.html",
@@ -105,17 +105,23 @@ self.addEventListener("push",event=>{
 self.addEventListener("notificationclick",event=>{
   event.notification.close();
   const data=event.notification.data||{};
-  const url=new URL(data.url||"./",self.location.origin);
-  if(data.chatId)url.searchParams.set("bbPushChat",String(data.chatId));
+  const chatId=String(data.chatId||data.personaId||"");
+  const url=new URL(data.url||"./",self.registration.scope);
+  if(chatId)url.searchParams.set("bbPushChat",chatId);
   event.waitUntil(self.clients.matchAll({type:"window",includeUncontrolled:true}).then(async list=>{
     for(const client of list){
       try{
         const current=new URL(client.url);
-        if(current.origin===url.origin){
-          await client.focus();
-          client.postMessage({type:"BAOBAO_PUSH_RECEIVED",chatId:String(data.chatId||"")});
-          return;
-        }
+        if(current.origin!==url.origin)continue;
+        await client.focus();
+        try{
+          if(typeof client.navigate==="function"){
+            await client.navigate(url.href);
+            return;
+          }
+        }catch(error){}
+        client.postMessage({type:"BAOBAO_OPEN_CHAT",chatId});
+        return;
       }catch(error){}
     }
     return self.clients.openWindow(url.href);

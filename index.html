@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<!-- index(304)：取消本地生成兜底，查手机与心声改为手动 API 生成。 -->
+<!-- index(306)：修复聊天过度脑补、情绪升级、分手套话与多条控诉，增强上下文连贯性。 -->
 <meta name="apple-mobile-web-app-title" content="斑斑豹">
 <script id="bb-early-start-v274">
 (function(){
@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=304">
+<link rel="manifest" href="./baobao-manifest.json?v=306">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=304",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=306",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -150,8 +150,10 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
-<link rel="stylesheet" href="./app.css?v=304">
-<script defer src="./app.js?v=304"></script>
+<link rel="stylesheet" href="./app.css?v=306">
+<script defer src="./app.js?v=306"></script>
+<script defer src="./baobao-v307-drama-lock-persona-fix.js?v=307"></script>
+<script defer src="./baobao-v308-remove-humandna-avatar-page.js?v=308"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
