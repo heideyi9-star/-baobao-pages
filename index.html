@@ -24,7 +24,7 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=317">
+<link rel="manifest" href="./baobao-manifest.json?v=319">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
@@ -150,8 +150,8 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
-<link rel="stylesheet" href="./app.css?v=317">
-<script defer src="./app.js?v=317"></script>
+<link rel="stylesheet" href="./app.css?v=319">
+<script defer src="./app.js?v=319"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -2217,3 +2217,7 @@ API Key<br>
 <!-- index(312)：首页文字组件仅在桌面显示；短信改为进入会话后才调用 API，并强化人设、世界书、独立记忆与说话样本。 -->
 
 <!-- index(317)：修复松散表情包格式，AI 若输出“[表情包] 名称”也会转回真正表情包；生图新增帅图优化与内置提示词。 -->
+
+<!-- index(318)：爱心按钮在角色刚创建、用户尚未发过消息时不会生成；聊过一句后每次按都会让角色自然续聊，极长聊天才提示清理。 -->
+
+<!-- index(319)：聊天格式硬锁；表情包、照片等媒体标记不会再掉成可见文字，长对话提示改为“他已经说太多话了，你回复一下吧”。 -->

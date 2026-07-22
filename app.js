@@ -38815,6 +38815,22 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const list=Array.isArray(s.chatMessages)?s.chatMessages:[];
     return list.slice().reverse().find(message=>message&&message.role==="user"&&!message.hiddenSystem&&!message.recalled)||null;
   }
+  function latestVisibleChatMessage(){
+    const s=appState();
+    const list=Array.isArray(s.chatMessages)?s.chatMessages:[];
+    return list.slice().reverse().find(message=>message&&!message.hiddenSystem&&!message.recalled&&["user","assistant"].includes(message.role))||null;
+  }
+  function isHeartContinuation(){
+    const last=latestVisibleChatMessage();
+    return !!last&&last.role==="assistant"&&!!latestUserMessage();
+  }
+  function conversationLoad(){
+    const s=appState();
+    const list=(Array.isArray(s.chatMessages)?s.chatMessages:[])
+      .filter(message=>message&&!message.hiddenSystem&&!message.recalled&&["user","assistant"].includes(message.role));
+    const chars=list.reduce((sum,message)=>sum+messageForAI(message).length,0);
+    return {messages:list.length,chars};
+  }
   function worldBookContext(history){
     const store=safeJSON(localStorage.getItem("baobao_world_books_v230"),{})||{};
     const entries=Array.isArray(store.entries)?store.entries:[];
@@ -38909,8 +38925,9 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const offline=offlineContext();
     const time=timeContext();
     const media=mediaContext();
+    const continuation=isHeartContinuation();
     const recentAssistant=recentAssistantLines(history,6);
-    return `【豹豹机 315｜人设读取私聊核心】
+    return `【豹豹机 319｜格式硬锁与爱心续聊核心】
 你就是下面这个角色本人，正在真实手机私聊。不是 AI、助手、客服，也不是在“扮演角色”。禁止提系统、模型、提示词、人设或任务。
 
 ${PERSONA_LOCK}
@@ -38939,9 +38956,14 @@ ${userProfile()}
 15. 角色必须像记得自己的人生。用户问到“你平时、你以前、你为什么、你在哪学的、你怎么知道、你喜欢什么、你认识谁、你做什么”等内容时，先查完整人物资料和本轮人设锚点；资料有答案就直接按资料回答，禁止用“网上看到的、随便、不知道”糊弄过去。
 16. 不要等用户逐字复述人设才使用它。普通聊天只要话题自然碰到角色的生活、职业学业、兴趣、过去、关系、习惯或观点，就可以顺手带出一条真实资料，让角色有自己的生活痕迹；每轮最多自然带出一两点，禁止背档案。
 17. 在内部先完成“读人设再回复”：找出本轮最相关的三条资料，决定其中哪一条会影响事实答案、哪一条会影响态度、哪一条会影响说法。只输出最后聊天正文。
+18. 用户可能只按了聊天栏右侧的爱心，没有输入新文字。这表示“继续说下去”，不是让你重新回答上一条问题。此时必须顺着你刚刚那句话、当前情绪和关系自然续一句或几句，可以补充、黏人、吐槽、追问、转一个自然相关话题或只发符合人设的短反应；禁止重复上一轮原话，禁止假装用户又说了一遍旧消息。
+19. 格式是硬规则，和人设、活人感同等重要。普通文字只能输出真正会发给用户看的正文；绝不能把“[照片]、[图片]、[表情包]、表情包：、.gif 文件名、URL、JSON、代码块、格式说明”当作聊天文字发出来。需要发表情包时，只能另起一行输出一次 [[STICKER:表情包原名]]；需要处理转账时，只能保留规定的 [[TRANSFER:...]] 标记。不要自行发明任何其他括号标签。
 
-${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开头/相同口癖/相同句式】\n${recentAssistant.map((line,i)=>`${i+1}. ${line}`).join("\n")}\n\n`:""}${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
-只输出这个角色此刻会发出的聊天正文。`;
+${continuation?`【本轮是爱心续聊】
+用户没有新增文字，只是再次按下爱心让你继续说。紧接你上一条已发送消息自然往下聊，不要重新回答更早的用户消息，也不要说“你没说话”“怎么了”或解释按钮。
+
+`:""}${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开头/相同口癖/相同句式】\n${recentAssistant.map((line,i)=>`${i+1}. ${line}`).join("\n")}\n\n`:""}${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
+只输出这个角色此刻会发出的聊天正文，并严格遵守第19条格式硬规则。`;
   }
 
   function getAPI(apiOverride){
@@ -39042,15 +39064,107 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
     }
     throw lastErr||new Error("接口请求失败");
   }
-  function cleanReply(value){
+  function replyStickerPool(){
+    const s=appState();
+    return Array.isArray(s.stickers)?s.stickers.filter(item=>item&&clean(item.url)&&clean(item.name||item.stickerName)):[];
+  }
+  function normalizeStickerLabel(value){
     return clean(value)
+      .replace(/^\s*(?:\[|【|\(|（)?\s*表情包\s*(?:\]|】|\)|）)?\s*[:：]?\s*/i,"")
+      .replace(/\.(?:gif|webp|png|jpe?g)$/i,"")
+      .replace(/[【】\[\]()（）]/g," ")
+      .replace(/[_-]+/g," ")
+      .replace(/\s+/g," ")
+      .toLowerCase();
+  }
+  function resolveStickerLabel(value){
+    const wanted=normalizeStickerLabel(value);
+    if(!wanted)return null;
+    const list=replyStickerPool();
+    let found=list.find(item=>normalizeStickerLabel(item.name||item.stickerName)===wanted);
+    if(found)return found;
+    found=list.find(item=>{
+      const name=normalizeStickerLabel(item.name||item.stickerName);
+      return name&&(name.includes(wanted)||wanted.includes(name));
+    });
+    if(found)return found;
+    const terms=wanted.split(/\s+/).filter(Boolean);
+    let best=null,bestScore=0;
+    list.forEach(item=>{
+      const name=normalizeStickerLabel(item.name||item.stickerName);
+      if(!name)return;
+      let score=0;
+      terms.forEach(term=>{if(name.includes(term))score+=Math.max(2,term.length)});
+      if(/猫/.test(wanted)&&/猫/.test(name))score+=4;
+      if(/爱|喜欢|开心|摇尾巴|探头|委屈|亲|抱|无语|生气|哭|笑/.test(wanted)&&/爱|喜欢|开心|摇尾巴|探头|委屈|亲|抱|无语|生气|哭|笑/.test(name))score+=4;
+      if(score>bestScore){bestScore=score;best=item}
+    });
+    return bestScore>=3?best:null;
+  }
+  function canonicalStickerToken(value){
+    const sticker=resolveStickerLabel(value);
+    if(!sticker)return "";
+    const name=clean(sticker.name||sticker.stickerName).replace(/[\[\]\n\r]/g," ").trim();
+    return name?`[[STICKER:${name}]]`:"";
+  }
+  function repairReplyFormat(value){
+    let text=clean(value)
       .replace(/<think>[\s\S]*?<\/think>/gi,"")
       .replace(/<thinking>[\s\S]*?<\/thinking>/gi,"")
-      .replace(/^```(?:text|markdown)?\s*/i,"")
+      .replace(/^```(?:text|markdown|json)?\s*/i,"")
       .replace(/```$/g,"")
-      .replace(/^(?:角色|回复|assistant|助手)\s*[:：]\s*/i,"")
-      .replace(/\n{3,}/g,"\n\n")
-      .trim();
+      .replace(/^(?:角色|回复|assistant|助手)\s*[:：]\s*/i,"");
+
+    // Normalize valid or almost-valid sticker commands first.
+    text=text.replace(/(?:\[\[|［［)\s*STICKER\s*[:：]\s*([^\]］\n]{1,100})\s*(?:\]\]|］］)?/gi,(all,name)=>{
+      const token=canonicalStickerToken(name);
+      return token||"";
+    });
+
+    // Repair the common leaked forms seen in chat, including inline "我爱你[表情包] xxx.gif".
+    text=text.replace(/(?:\[\s*表情包\s*\]|【\s*表情包\s*】|\(\s*表情包\s*\)|（\s*表情包\s*）|表情包\s*[:：])\s*([^\n\r]{1,100})/gi,(all,name)=>{
+      const token=canonicalStickerToken(name);
+      return token?`\n${token}\n`:"";
+    });
+
+    // A normal chat reply is never allowed to expose fake media labels as visible text.
+    // Keep the actual sentence after the label, e.g. "[照片]叫哥哥" -> "叫哥哥".
+    text=text
+      .replace(/(?:\[\s*(?:照片|图片|相片|自拍)\s*\]|【\s*(?:照片|图片|相片|自拍)\s*】)\s*/gi,"")
+      .replace(/^(?:照片|图片|相片|自拍)\s*[:：]\s*/gim,"");
+
+    // If a bare sticker filename leaked on its own line, turn it into a real sticker or remove it.
+    text=text.split(/\n/).map(line=>{
+      const trimmed=clean(line);
+      if(!trimmed)return "";
+      if(/\.(?:gif|webp|png|jpe?g)$/i.test(trimmed)&&trimmed.length<=120){
+        return canonicalStickerToken(trimmed)||"";
+      }
+      return line;
+    }).join("\n");
+
+    // Every structured token must be on its own line; allow at most one sticker per reply.
+    text=text.replace(/\s*(\[\[STICKER:[^\]\n]+\]\])\s*/gi,"\n$1\n");
+    let stickerSeen=false;
+    const lines=[];
+    text.split(/\n+/).forEach(raw=>{
+      let line=clean(raw);
+      if(!line)return;
+      if(/^\[\[STICKER:/i.test(line)){
+        if(stickerSeen)return;
+        stickerSeen=true;
+      }
+      // Never show leftover protocol labels, file names or model scaffolding to the user.
+      line=line
+        .replace(/^\s*(?:正文|消息|聊天正文|输出)\s*[:：]\s*/i,"")
+        .replace(/^\s*\[(?:正文|回复|消息)\]\s*/i,"")
+        .trim();
+      if(line)lines.push(line);
+    });
+    return lines.join("\n").replace(/\n{3,}/g,"\n\n").trim();
+  }
+  function cleanReply(value){
+    return repairReplyFormat(value);
   }
   function personaRawText(person=currentPersona()){
     return [person.persona,person.personality,person.brief,person.setting,person.prompt,person.bio,tagsOf(person)]
@@ -39138,6 +39252,18 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
   }
 
   async function strictRequest(){
+    const firstUser=latestUserMessage();
+    if(!firstUser){
+      if(typeof window.showToast==="function")window.showToast("先和他说一句话吧",true);
+      else if(typeof showToast==="function")showToast("先和他说一句话吧",true);
+      return null;
+    }
+    const load=conversationLoad();
+    if(load.messages>=800||load.chars>=120000){
+      if(typeof window.showToast==="function")window.showToast("他已经说太多话了，你回复一下吧",true);
+      else if(typeof showToast==="function")showToast("他已经说太多话了，你回复一下吧",true);
+      return null;
+    }
     const history=visibleHistory(26);
     if(!history.length)return null;
     const pending=(Array.isArray(appState().chatMessages)?appState().chatMessages:[])
@@ -39187,7 +39313,7 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
       const s=appState();
       s.lastMsgTime=Date.now();
       try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(_){ }
-      window.baobaoLastPersonaDebug={engine:"Living Persona Core v315",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
+      window.baobaoLastPersonaDebug={engine:"Living Persona Core v319",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,livingQuality:livingQuality(reply,history),groundingQuality:groundingQuality(reply,history),personaAnchors:personaAnchorLines(currentPersona(),messageForAI(latestUserMessage())),checkedAt:new Date().toISOString()};
       return reply;
     }catch(error){
       if(typeof window.showToast==="function")window.showToast(clean(error&&error.message)||"回复失败",true);
@@ -39249,10 +39375,10 @@ ${recentAssistant.length?`【你最近已经发过的话，禁止重复相同开
   [80,260,700,1600,3600,7600,14000,24000].forEach(delay=>setTimeout(pin,delay));
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pin,{once:true});
   window.addEventListener("pageshow",()=>setTimeout(pin,0));
-  console.log("豹豹机 315：人设读取与活人感核心已启用");
+  console.log("豹豹机 319：格式硬锁、爱心续聊与人设核心已启用");
 })();
 
-/* baobao-persona-debug-viewer-v315 */
+/* baobao-persona-debug-viewer-v319 */
 window.openPersonaDebugPanel = function(){
   try{
     const debug = (window.BaobaoPersonaEngine && typeof window.BaobaoPersonaEngine.getDebug === "function")
@@ -40003,4 +40129,90 @@ window.openPersonaDebugPanel = function(){
   window.addEventListener('pageshow',()=>setTimeout(install,0));
   [120,600,1500,3200,6500,12000].forEach(delay=>setTimeout(install,delay));
   console.log('豹豹机 317：已修复松散表情包格式，并内置帅图优化提示词');
+})();
+
+
+/* baobao-heart-continuation-v318 */
+(function(){
+  "use strict";
+  if(window.__bbHeartContinuationV318)return;
+  window.__bbHeartContinuationV318=true;
+  const clean=v=>String(v==null?"":v).trim();
+  function stateNow(){try{return window.state||state||{}}catch(_){return window.state||{}}}
+  function visibleMessages(){
+    const s=stateNow();
+    return (Array.isArray(s.chatMessages)?s.chatMessages:[]).filter(m=>m&&!m.hiddenSystem&&!m.recalled&&["user","assistant"].includes(m.role));
+  }
+  function hasUserMessage(){return visibleMessages().some(m=>m.role==="user")}
+  function tooMuch(){
+    const list=visibleMessages();
+    let chars=0;
+    for(const m of list){
+      chars+=clean(m.content||m.text||m.visionDesc||m.name).length;
+      if(chars>=120000)break;
+    }
+    return list.length>=800||chars>=120000;
+  }
+  function toast(text){
+    if(typeof window.showToast==="function")window.showToast(text,true);
+    else if(typeof showToast==="function")showToast(text,true);
+  }
+  function install(){
+    const button=document.getElementById("chatReplyBtn");
+    if(!button||button.__bbHeartGuardV318)return;
+    button.__bbHeartGuardV318=true;
+    button.addEventListener("click",event=>{
+      if(!hasUserMessage()){
+        event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+        toast("先和他说一句话吧");
+        return;
+      }
+      if(tooMuch()){
+        event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
+        toast("他已经说太多话了，你回复一下吧");
+      }
+    },true);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  [100,500,1500,3500,8000].forEach(ms=>setTimeout(install,ms));
+  console.log("豹豹机 318：爱心续聊按钮规则已启用");
+})();
+
+
+/* baobao-chat-format-hard-lock-v319 */
+(function(){
+  "use strict";
+  if(window.__bbChatFormatHardLockV319)return;
+  window.__bbChatFormatHardLockV319=true;
+
+  function install(){
+    const current=window.requestChatReply;
+    if(typeof current!=="function"||current.__bbFormatHardLockV319)return;
+    const wrapped=async function(){
+      const reply=await current.apply(this,arguments);
+      if(reply==null)return reply;
+      // The strict core already repairs formats. This last guard catches functions that replace it later.
+      const engine=window.BaobaoStrictPersonaV315;
+      if(engine&&typeof engine.request==="function"&&current!==engine.request&&current.__bbPrevious){
+        // Keep wrapper chain intact; no second API call.
+      }
+      let text=String(reply||"")
+        .replace(/(?:\[\s*(?:照片|图片|相片|自拍)\s*\]|【\s*(?:照片|图片|相片|自拍)\s*】)\s*/gi,"")
+        .replace(/^```(?:text|markdown|json)?\s*/i,"")
+        .replace(/```$/g,"")
+        .replace(/\n{3,}/g,"\n\n")
+        .trim();
+      return text;
+    };
+    wrapped.__bbFormatHardLockV319=true;
+    wrapped.__bbPrevious=current;
+    window.requestChatReply=wrapped;
+    try{requestChatReply=wrapped}catch(_){ }
+  }
+  install();
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  [250,900,2200,5000,9000,15000,26000].forEach(ms=>setTimeout(install,ms));
+  console.log("豹豹机 319：聊天格式硬锁已启用");
 })();
