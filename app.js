@@ -41090,13 +41090,13 @@ window.updateArchiveChatStyleHintV324=function(){
 })();
 
 
-/* baobao-page1-single-layout-v340 */
+/* baobao-page1-single-layout-v341 */
 (function(){
   "use strict";
-  if(window.__bbPage1SingleLayoutV340)return;
-  window.__bbPage1SingleLayoutV340=true;
+  if(window.__bbPage1SingleLayoutV341)return;
+  window.__bbPage1SingleLayoutV341=true;
 
-  var STYLE_ID='bbPage1SingleLayoutV340Style';
+  var STYLE_ID='bbPage1SingleLayoutV341Style';
   var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
   var scheduled=false;
 
@@ -41121,13 +41121,13 @@ window.updateArchiveChatStyleHintV324=function(){
       display:none!important;
     }
 
-    /* 按用户要求：上方组件再缩小 10px */
+    /* 按用户要求：上方组件再缩小 20px */
     html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
       display:block!important;
       position:relative!important;
-      width:calc(100% + 34px)!important;
+      width:calc(100% + 14px)!important;
       max-width:none!important;
-      margin:0 0 -35px -17px!important;
+      margin:0 0 -35px -7px!important;
       padding:0!important;
       transform:translateY(-25px)!important;
       z-index:15!important;
@@ -41299,7 +41299,7 @@ window.updateArchiveChatStyleHintV324=function(){
       left:12px!important;
       right:12px!important;
       top:auto!important;
-      bottom:-1px!important;
+      bottom:4px!important;
       width:auto!important;
       height:92px!important;
       margin:0!important;
@@ -41336,7 +41336,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
 
     /* 设置/美化打开后不与桌面叠加 */
-    html body.bb-v340-panel-open #desktop{
+    html body.bb-v341-panel-open #desktop{
       visibility:hidden!important;
       opacity:0!important;
       pointer-events:none!important;
@@ -41377,7 +41377,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function syncPanelState(){
     var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
-    document.body.classList.toggle('bb-v340-panel-open',open);
+    document.body.classList.toggle('bb-v341-panel-open',open);
   }
 
   function applyInline(){
@@ -41398,8 +41398,8 @@ window.updateArchiveChatStyleHintV324=function(){
       scroll.insertBefore(widget,viewport);
     }
     if(widget){
-      widget.style.setProperty('width','calc(100% + 34px)','important');
-      widget.style.setProperty('margin','0 0 -35px -17px','important');
+      widget.style.setProperty('width','calc(100% + 14px)','important');
+      widget.style.setProperty('margin','0 0 -35px -7px','important');
       widget.style.setProperty('transform','translateY(-25px)','important');
     }
     if(viewport){
@@ -41423,7 +41423,7 @@ window.updateArchiveChatStyleHintV324=function(){
       dock.style.setProperty('left','12px','important');
       dock.style.setProperty('right','12px','important');
       dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','-1px','important');
+      dock.style.setProperty('bottom','4px','important');
       dock.style.setProperty('height','92px','important');
       dock.style.setProperty('transform','none','important');
       dock.style.setProperty('z-index','80','important');
@@ -41444,27 +41444,27 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function wrapPanelFns(){
     var oldOpen=window.openPanel;
-    if(typeof oldOpen==='function'&&!oldOpen.__bbV340){
+    if(typeof oldOpen==='function'&&!oldOpen.__bbV341){
       var wrappedOpen=function(){
-        document.body.classList.add('bb-v340-panel-open');
+        document.body.classList.add('bb-v341-panel-open');
         var result=oldOpen.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,30);
         return result;
       };
-      wrappedOpen.__bbV340=true;
+      wrappedOpen.__bbV341=true;
       window.openPanel=wrappedOpen;
       try{openPanel=wrappedOpen}catch(e){}
     }
     var oldClose=window.closePanel;
-    if(typeof oldClose==='function'&&!oldClose.__bbV340){
+    if(typeof oldClose==='function'&&!oldClose.__bbV341){
       var wrappedClose=function(){
         var result=oldClose.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,40);
         return result;
       };
-      wrappedClose.__bbV340=true;
+      wrappedClose.__bbV341=true;
       window.closePanel=wrappedClose;
       try{closePanel=wrappedClose}catch(e){}
     }
@@ -41476,14 +41476,14 @@ window.updateArchiveChatStyleHintV324=function(){
     enforce();
     PANEL_IDS.forEach(function(id){
       var panel=document.getElementById(id);
-      if(!panel||panel.__bbV340Observed)return;
-      panel.__bbV340Observed=true;
+      if(!panel||panel.__bbV341Observed)return;
+      panel.__bbV341Observed=true;
       new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
     });
     var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV340Observer){
-      desktop.__bbV340Observer=new MutationObserver(schedule);
-      desktop.__bbV340Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    if(desktop&&!desktop.__bbV341Observer){
+      desktop.__bbV341Observer=new MutationObserver(schedule);
+      desktop.__bbV341Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
     }
   }
 
