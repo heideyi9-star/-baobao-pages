@@ -35398,3 +35398,239 @@ ${offline}
   [60,220,600,1400,3200,6500,10000].forEach(ms=>setTimeout(boot,ms));
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
 })();
+
+
+/* =========================================================
+   bb-ios-desktop-icon-ghost-click-fix-v300
+   修复 iOS/PWA 桌面图标被系统当作图片长按预览后留下灰黑残影，
+   同时避免残影盖住设置等 App，保留短按打开与长按编辑。
+   ========================================================= */
+(function(){
+  "use strict";
+  if(window.__bbIosDesktopIconGhostClickFixV300)return;
+  window.__bbIosDesktopIconGhostClickFixV300=true;
+
+  const STYLE_ID="bbIosDesktopIconGhostClickFixV300Style";
+  const APP_SELECTOR="#desktop .apps-page > .app";
+  let active=null;
+  let pressTimer=0;
+  let longPressed=false;
+  let moved=false;
+
+  function injectStyle(){
+    if(document.getElementById(STYLE_ID))return;
+    const style=document.createElement("style");
+    style.id=STYLE_ID;
+    style.textContent=`
+      #desktop,
+      #desktop .pages-viewport,
+      #desktop .pages-container,
+      #desktop .apps-page,
+      #desktop .app,
+      #desktop .app .icon,
+      #desktop .app .icon *,
+      #desktop .dock,
+      #desktop .dock *{
+        -webkit-touch-callout:none !important;
+        -webkit-user-select:none !important;
+        user-select:none !important;
+        -webkit-user-drag:none !important;
+        -webkit-tap-highlight-color:transparent !important;
+      }
+      #desktop .app,
+      #desktop .app .icon{
+        touch-action:manipulation !important;
+      }
+      #desktop .app img,
+      #desktop .icon img{
+        pointer-events:none !important;
+        -webkit-user-drag:none !important;
+        -webkit-touch-callout:none !important;
+      }
+      #desktop .app.bb-v300-pressing .icon{
+        transform:scale(.96) !important;
+        transition:transform .10s ease-out !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function appFrom(target){
+    const app=target&&target.closest&&target.closest(APP_SELECTOR);
+    return app&&app.isConnected?app:null;
+  }
+
+  function appInfo(app){
+    if(!app||!app.parentElement)return null;
+    const page=app.parentElement;
+    const index=Array.prototype.indexOf.call(page.children,app);
+    if(index<0)return null;
+    return {app,index,page2:page.classList.contains("page2-only")};
+  }
+
+  function sanitize(root){
+    const scope=root&&root.querySelectorAll?root:document;
+    const nodes=[];
+    if(scope.matches&&scope.matches(APP_SELECTOR))nodes.push(scope);
+    scope.querySelectorAll&&scope.querySelectorAll(APP_SELECTOR).forEach(node=>nodes.push(node));
+    nodes.forEach(app=>{
+      app.setAttribute("draggable","false");
+      app.style.webkitUserDrag="none";
+      app.style.webkitTouchCallout="none";
+      app.querySelectorAll("img,svg,*").forEach(node=>{
+        try{node.setAttribute("draggable","false");}catch(error){}
+        try{node.style.webkitUserDrag="none";}catch(error){}
+        try{node.style.webkitTouchCallout="none";}catch(error){}
+      });
+    });
+  }
+
+  function clearPress(){
+    if(pressTimer){clearTimeout(pressTimer);pressTimer=0;}
+    if(active&&active.app)active.app.classList.remove("bb-v300-pressing");
+    active=null;
+    longPressed=false;
+    moved=false;
+  }
+
+  function begin(app,x,y,pointerKind){
+    clearPress();
+    const info=appInfo(app);
+    if(!info)return;
+    active={...info,x:Number(x)||0,y:Number(y)||0,pointerKind:pointerKind||"touch",started:Date.now()};
+    app.classList.add("bb-v300-pressing");
+    pressTimer=setTimeout(()=>{
+      if(!active||moved)return;
+      longPressed=true;
+      active.app.classList.remove("bb-v300-pressing");
+      try{
+        if(active.page2&&typeof window.openIconEditP2==="function")window.openIconEditP2(active.index);
+        else if(!active.page2&&typeof window.openIconEdit==="function")window.openIconEdit(active.index);
+      }catch(error){
+        console.warn("桌面图标长按编辑打开失败",error);
+      }
+    },650);
+  }
+
+  function move(x,y){
+    if(!active)return;
+    const dx=(Number(x)||0)-active.x;
+    const dy=(Number(y)||0)-active.y;
+    if(Math.hypot(dx,dy)>11){
+      moved=true;
+      if(pressTimer){clearTimeout(pressTimer);pressTimer=0;}
+      active.app&&active.app.classList.remove("bb-v300-pressing");
+    }
+  }
+
+  function finish(){
+    if(!active)return;
+    const info=active;
+    if(pressTimer){clearTimeout(pressTimer);pressTimer=0;}
+    info.app&&info.app.classList.remove("bb-v300-pressing");
+    const shouldOpen=!moved&&!longPressed&&!(typeof deskIsSwipe!=="undefined"&&deskIsSwipe);
+    active=null;
+    longPressed=false;
+    moved=false;
+    if(!shouldOpen)return;
+    requestAnimationFrame(()=>{
+      try{
+        if(info.page2){
+          const item=window.state&&Array.isArray(state.page2Apps)?state.page2Apps[info.index]:null;
+          if(typeof window.handleAppActionP2==="function")window.handleAppActionP2(item);
+          else if(item&&typeof window.openAppModal==="function")window.openAppModal(item.label);
+        }else{
+          const item=window.state&&Array.isArray(state.page1Apps)?state.page1Apps[info.index]:null;
+          if(typeof window.handleAppAction==="function")window.handleAppAction(item);
+        }
+      }catch(error){
+        console.warn("桌面 App 打开失败",error);
+      }
+    });
+  }
+
+  /* 阻断旧的匿名 pointer 监听，避免一次短按执行两次；触摸由下方 touch 监听接管。 */
+  document.addEventListener("pointerdown",event=>{
+    const app=appFrom(event.target);
+    if(!app)return;
+    event.stopImmediatePropagation();
+    if(event.pointerType==="mouse")begin(app,event.clientX,event.clientY,"mouse");
+  },true);
+
+  document.addEventListener("pointermove",event=>{
+    if(!active||active.pointerKind!=="mouse")return;
+    move(event.clientX,event.clientY);
+  },true);
+
+  document.addEventListener("pointerup",event=>{
+    const app=appFrom(event.target);
+    if(!app&&!active)return;
+    event.stopImmediatePropagation();
+    if(active&&active.pointerKind==="mouse")finish();
+  },true);
+
+  document.addEventListener("pointercancel",event=>{
+    if(active&&active.pointerKind==="mouse")clearPress();
+  },true);
+
+  document.addEventListener("touchstart",event=>{
+    const app=appFrom(event.target);
+    if(!app)return;
+    const touch=event.touches&&event.touches[0];
+    if(!touch)return;
+    /* 关键：阻止 iOS 生成图片拖拽/长按预览，但不阻止事件冒泡，桌面横滑仍可工作。 */
+    event.preventDefault();
+    begin(app,touch.clientX,touch.clientY,"touch");
+  },{capture:true,passive:false});
+
+  document.addEventListener("touchmove",event=>{
+    if(!active||active.pointerKind!=="touch")return;
+    const touch=event.touches&&event.touches[0];
+    if(touch)move(touch.clientX,touch.clientY);
+  },{capture:true,passive:true});
+
+  document.addEventListener("touchend",event=>{
+    if(!active||active.pointerKind!=="touch")return;
+    event.preventDefault();
+    finish();
+  },{capture:true,passive:false});
+
+  document.addEventListener("touchcancel",()=>clearPress(),true);
+
+  ["dragstart","contextmenu","selectstart"].forEach(type=>{
+    document.addEventListener(type,event=>{
+      if(!appFrom(event.target))return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      clearPress();
+    },true);
+  });
+
+  document.addEventListener("click",event=>{
+    if(!appFrom(event.target))return;
+    /* 触摸结束后的合成 click 不再交给旧监听，避免重复打开。 */
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  },true);
+
+  function boot(){
+    injectStyle();
+    const desktop=document.getElementById("desktop");
+    if(!desktop)return;
+    sanitize(desktop);
+    if(!desktop.__bbV300Observer){
+      desktop.__bbV300Observer=new MutationObserver(records=>{
+        records.forEach(record=>record.addedNodes.forEach(node=>{
+          if(node&&node.nodeType===1)sanitize(node);
+        }));
+      });
+      desktop.__bbV300Observer.observe(desktop,{childList:true,subtree:true});
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded",boot,{once:true});
+  if(document.readyState!=="loading")boot();
+  window.addEventListener("pageshow",()=>{clearPress();boot();});
+  window.addEventListener("pagehide",clearPress);
+  window.addEventListener("blur",clearPress);
+})();

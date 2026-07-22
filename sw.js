@@ -1,5 +1,5 @@
-/* 豹豹机 299：结构分离缓存。HTML 先返回，CSS/JS 独立缓存，后续桌面启动无需重复解析内联大文件。 */
-const CACHE_NAME = "baobao-shell-v299";
+/* 豹豹机 300：结构分离缓存。HTML 先返回，CSS/JS 独立缓存，后续桌面启动无需重复解析内联大文件。 */
+const CACHE_NAME = "baobao-shell-v300";
 const SHELL = [
   "./",
   "./index.html",
