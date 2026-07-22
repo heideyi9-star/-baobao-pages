@@ -34371,3 +34371,694 @@ ${offline}
   [50,180,500,1200,2600,5200,9000].forEach(ms=>setTimeout(boot,ms));
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
 })();
+
+/* ===================================================================
+   bb-anti-stuck-panel-guard（296 新增）
+   问题背景：这个项目里"设置""美化""聊天设置""图标编辑"等几十个页面
+   都是用同一种写法做的——整块 <div class="panel"> 铺满全屏，
+   要显示就把它的 style.display 设成 "block"，要关就设成 "none"。
+   这些面板大多数没有单独指定层级（z-index），大家挤在同一层，
+   谁在最后面的 HTML 位置谁就盖在上面。
+
+   一旦某一次"关闭"没有真正执行到（比如某个功能里报了错、
+   或者两个操作前后脚触发、没等上一个关完下一个又开了），
+   就会有一块本该关掉的页面卡在屏幕最上层、但你却看不出来，
+   于是出现这几种现象：
+   　1）明明点的是语音气泡，跳转打开的却是设置里的某一行（因为
+   　   那一整块设置页其实一直卡在最上面，接收了你的点击）；
+   　2）整个页面看起来"卡住不动"（其实是有一层看不见的东西
+   　   挡在最上面，点哪都没反应）；
+   　3）偶尔闪一下黑框（卡住的面板背景没盖满或者过渡到一半）。
+
+   下面这段不去改各个功能各自的开关逻辑（那样的话要挨个改几十处，
+   还是会漏），而是加一层"兜底"：不管前面是哪个功能出了错，
+   固定每隔一小段时间检查一次——如果同时有超过一个面板在显示，
+   只留下最后一个真正打开的，其余全部强制关闭；一旦某处代码
+   出错（JS error），也立刻做一次这样的清理，防止卡死。
+=================================================================== */
+(function(){
+  var PANEL_IDS = [
+    "beautify","chatBgSettings","settings","apiSettings","chatAPI",
+    "visionAPI","imageAPI","minimaxAPI","modal","iconEdit","textEdit",
+    "personaArchive","chatSettingsPanel","dualAvatarPanel","dataManagerPage"
+  ];
+  // 这两个是"真的会在聊天室里用到"的面板（聊天详情/双头像设置），
+  // 其余十几个都是桌面层级的设置页，正常情况下不该在聊天室开着的
+  // 同时还留在最上面——如果它们还开着，基本可以断定是没关干净的残留。
+  var CHAT_SCOPED_PANEL_IDS = ["chatSettingsPanel","dualAvatarPanel"];
+  var DESKTOP_ONLY_PANEL_IDS = PANEL_IDS.filter(function(id){
+    return CHAT_SCOPED_PANEL_IDS.indexOf(id) === -1;
+  });
+
+  var lastOpenedId = null;
+  var cleaning = false;
+
+  function panelEl(id){ return document.getElementById(id); }
+
+  function isPanelOpen(id){
+    var el = panelEl(id);
+    if(!el) return false;
+    return getComputedStyle(el).display !== "none";
+  }
+
+  function isChatRoomActive(){
+    var el = document.getElementById("chatRoom");
+    return !!el && getComputedStyle(el).display !== "none";
+  }
+
+  // 只留 keepId（如果传了）或"最后一次真正打开的那个"，其余全部关掉；
+  // 另外，只要聊天室是当前活动页面，桌面层级的设置页一律不该还开着，
+  // 不管当时是不是只剩它自己一个——这正是"点语音却跳到设置行"的根因。
+  function cleanupExtraPanels(keepId){
+    if(cleaning) return;
+    cleaning = true;
+    try{
+      if(isChatRoomActive()){
+        DESKTOP_ONLY_PANEL_IDS.forEach(function(id){
+          if(id === keepId) return;
+          if(isPanelOpen(id)){
+            var el = panelEl(id);
+            if(el) el.style.display = "none";
+          }
+        });
+      }
+
+      var openOnes = PANEL_IDS.filter(isPanelOpen);
+      if(openOnes.length > 1){
+        var keep = keepId && openOnes.indexOf(keepId) !== -1
+          ? keepId
+          : (lastOpenedId && openOnes.indexOf(lastOpenedId) !== -1 ? lastOpenedId : openOnes[openOnes.length - 1]);
+
+        openOnes.forEach(function(id){
+          if(id === keep) return;
+          var el = panelEl(id);
+          if(el) el.style.display = "none";
+        });
+      }
+    }catch(e){
+      // 清理逻辑本身不应该再引发新的报错
+    }
+    cleaning = false;
+  }
+
+  // 包一层 openPanel：每次真正打开某个面板时，记下它是"最新"的，
+  // 并顺手把其它可能卡住的面板关掉
+  var originalOpenPanel = window.openPanel;
+  if(typeof originalOpenPanel === "function"){
+    window.openPanel = function(id){
+      var result = originalOpenPanel.apply(this, arguments);
+      if(PANEL_IDS.indexOf(id) !== -1){
+        lastOpenedId = id;
+        setTimeout(function(){ cleanupExtraPanels(id); }, 0);
+      }
+      return result;
+    };
+  }
+
+  // 有些地方不走 openPanel，是直接 $("xxx").style.display="block"，
+  // 用 MutationObserver 盯着这些面板的 style 变化，同样做兜底清理
+  function watchPanels(){
+    PANEL_IDS.forEach(function(id){
+      var el = panelEl(id);
+      if(!el || el.__bbGuardWatched) return;
+      el.__bbGuardWatched = true;
+      var mo = new MutationObserver(function(){
+        if(getComputedStyle(el).display !== "none"){
+          lastOpenedId = id;
+        }
+        setTimeout(function(){ cleanupExtraPanels(); }, 0);
+      });
+      mo.observe(el, { attributes:true, attributeFilter:["style","class"] });
+    });
+  }
+
+  // 任何地方一旦报错，都做一次兜底清理，避免因为某次异常
+  // 导致某个面板永远卡在最上层
+  window.addEventListener("error", function(){
+    setTimeout(function(){ cleanupExtraPanels(); }, 0);
+  });
+  window.addEventListener("unhandledrejection", function(){
+    setTimeout(function(){ cleanupExtraPanels(); }, 0);
+  });
+
+  // 每点一下屏幕，都顺手查一次（几乎不耗性能，只是比较 15 个面板的 display）
+  document.addEventListener("click", function(){
+    setTimeout(function(){ cleanupExtraPanels(); }, 0);
+  }, true);
+
+  // 双保险：定时轮询
+  setInterval(function(){ cleanupExtraPanels(); }, 700);
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", watchPanels, {once:true});
+  }else{
+    watchPanels();
+  }
+  [50,300,1000,3000].forEach(function(ms){ setTimeout(watchPanels, ms); });
+})();
+
+/* ===================================================================
+   bb-voice-longpress-double-fire-fix（296 新增）
+   问题背景：聊天气泡上同时绑定了 touchstart 和 mousedown 两种"长按"
+   计时器。在手机浏览器里，手指点一下之后，有时候系统会在几百毫秒后
+   补发一次"模拟鼠标点击"，这样同一次点击就可能把长按计时器触发了
+   两次，两次时机对不上，容易出现"点一下却像长按"的误触，或者短暂
+   卡顿。这里加一个很短的时间锁：一次点击只允许真正触发一次长按计时。
+=================================================================== */
+(function(){
+  var lastGestureAt = 0;
+  var originalOpenMessageMenu = null;
+
+  function guardOpenMessageMenu(){
+    if(typeof window.openMessageMenu !== "function" || window.openMessageMenu.__bbGuarded) return;
+    originalOpenMessageMenu = window.openMessageMenu;
+    var wrapped = function(){
+      var now = Date.now();
+      if(now - lastGestureAt < 400) return; // 400ms 内已经触发过一次，忽略重复触发
+      lastGestureAt = now;
+      return originalOpenMessageMenu.apply(this, arguments);
+    };
+    wrapped.__bbGuarded = true;
+    window.openMessageMenu = wrapped;
+  }
+
+  guardOpenMessageMenu();
+  [50,300,1000,3000].forEach(function(ms){ setTimeout(guardOpenMessageMenu, ms); });
+})();
+
+/* baobao-role-moments-v297 */
+(function(){
+  "use strict";
+  if(window.__bbRoleMomentsV297)return;
+  window.__bbRoleMomentsV297=true;
+
+  const POST_KEY="baobao_moments_posts_v3";
+  const WB_KEY="baobao_world_books_v230";
+  const AUTO_COOLDOWN=8*60*60*1000;
+  const $=id=>document.getElementById(id);
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const esc=value=>String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+  const jsq=value=>String(value==null?"":value).replace(/\\/g,"\\\\").replace(/'/g,"\\'").replace(/\r?\n/g," ");
+
+  function appState(){
+    try{return window.state||state||{}}catch(_){return window.state||{}}
+  }
+  function personas(){
+    const s=appState();
+    return Array.isArray(s.personas)?s.personas:[];
+  }
+  function personaById(id){
+    return personas().find(p=>p&&String(p.id)===String(id))||null;
+  }
+  function currentPersona(){
+    const s=appState();
+    return window.currentChatPersona||personaById(s.activeChatId)||personas()[0]||null;
+  }
+  function me(){
+    const s=appState();
+    return {
+      name:String(s.wechatProfile&&s.wechatProfile.name||s.name||"我"),
+      avatar:String(s.wechatProfile&&s.wechatProfile.avatar||s.charAvatar||s.avatar||"")
+    };
+  }
+  function loadPosts(){
+    try{const v=JSON.parse(localStorage.getItem(POST_KEY)||"[]");return Array.isArray(v)?v:[]}catch(_){return []}
+  }
+  function savePosts(posts){
+    try{localStorage.setItem(POST_KEY,JSON.stringify(posts));return true}
+    catch(error){
+      try{
+        const compact=(posts||[]).map(post=>{
+          if(!post||typeof post!=="object")return post;
+          const next={...post};
+          next.images=(next.images||[]).filter(src=>!/^data:image\//i.test(String(src||""))||String(src).length<105000);
+          return next;
+        });
+        localStorage.setItem(POST_KEY,JSON.stringify(compact));
+        return true;
+      }catch(_){
+        if(typeof window.showToast==="function")window.showToast("朋友圈图片太多，本地空间不足",true);
+        return false;
+      }
+    }
+  }
+  function saveState(){
+    try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal();}catch(_){ }
+  }
+  function momentEnabled(person){
+    if(!person)return false;
+    return person.charMomentEnabled!==false;
+  }
+  function autoMomentEnabled(person){
+    if(!person)return false;
+    return momentEnabled(person)&&person.charMomentAutoEnabled!==false;
+  }
+  function setMomentEnabled(person,value){
+    if(!person)return;
+    person.charMomentEnabled=!!value;
+    if(!value)person.charMomentAutoEnabled=false;
+    saveState();
+  }
+  function setAutoMomentEnabled(person,value){
+    if(!person)return;
+    person.charMomentAutoEnabled=!!value;
+    if(value)person.charMomentEnabled=true;
+    saveState();
+  }
+
+  function personaDescription(person){
+    return [person&&person.persona,person&&person.description,person&&person.setting,person&&person.bio,person&&person.brief,person&&person.prompt,person&&person.personality]
+      .filter(Boolean).map(String).join("\n").slice(0,5000);
+  }
+  function chatFor(person){
+    const s=appState();
+    const id=String(person&&person.id||"");
+    if(s.chatRecords&&Array.isArray(s.chatRecords[id]))return s.chatRecords[id];
+    if(String(s.activeChatId||"")===id&&Array.isArray(s.chatMessages))return s.chatMessages;
+    return [];
+  }
+  function recentChatText(person,limit){
+    return chatFor(person).slice(-(limit||12)).map(msg=>{
+      if(!msg||msg.hiddenSystem)return "";
+      const role=msg.role==="assistant"?(person.name||"TA"):"用户";
+      const type=String(msg.type||"text").toLowerCase();
+      if(["image","photo","textphoto","generated-image","sticker"].includes(type))return role+"：[图片]";
+      if(type==="voice")return role+"：[语音]";
+      return role+"："+String(msg.content||"").replace(/\s+/g," ").slice(0,120);
+    }).filter(Boolean).join("\n");
+  }
+  function worldBookText(person,context){
+    try{
+      const raw=JSON.parse(localStorage.getItem(WB_KEY)||"null");
+      const entries=raw&&Array.isArray(raw.entries)?raw.entries:[];
+      const lower=String(context||"").toLowerCase();
+      return entries.filter(entry=>{
+        if(!entry||entry.enabled===false)return false;
+        if(entry.scope==="persona"&&String(entry.personaId||"")!==String(person.id||""))return false;
+        if(entry.mode!=="keyword")return true;
+        const keys=Array.isArray(entry.keywords)?entry.keywords:String(entry.keywords||"").split(/[,，、\n]+/);
+        return keys.some(k=>lower.includes(String(k).trim().toLowerCase()));
+      }).sort((a,b)=>(Number(b.priority)||0)-(Number(a.priority)||0)).slice(0,8)
+        .map(entry=>"〔"+String(entry.name||"世界书")+"〕\n"+String(entry.content||"").slice(0,1200)).join("\n\n");
+    }catch(_){return ""}
+  }
+  function imageSource(msg){
+    if(!msg)return "";
+    for(const value of [msg.content,msg.url,msg.mediaSource,msg.originalMedia,msg.imageUrl,msg.image]){
+      const src=String(value||"");
+      if(/^(?:data:image\/|blob:|https?:\/\/)/i.test(src))return src;
+    }
+    return "";
+  }
+  function latestImage(person){
+    const list=chatFor(person);
+    for(let i=list.length-1;i>=Math.max(0,list.length-20);i--){
+      const msg=list[i];
+      if(!msg)continue;
+      const type=String(msg.type||"").toLowerCase();
+      if(["image","photo","textphoto","generated-image"].includes(type)){
+        const src=imageSource(msg);if(src)return src;
+      }
+    }
+    return "";
+  }
+  function compactImage(src){
+    const value=String(src||"");
+    if(!/^data:image\//i.test(value)||value.length<90000)return Promise.resolve(value);
+    return new Promise(resolve=>{
+      const img=new Image();
+      img.onload=()=>{
+        try{
+          const max=520,scale=Math.min(1,max/Math.max(img.width,img.height));
+          const canvas=document.createElement("canvas");
+          canvas.width=Math.max(1,Math.round(img.width*scale));
+          canvas.height=Math.max(1,Math.round(img.height*scale));
+          canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+          let out=canvas.toDataURL("image/jpeg",.58);
+          if(out.length>105000)out=canvas.toDataURL("image/jpeg",.42);
+          resolve(out.length<150000?out:"");
+        }catch(_){resolve("")}
+      };
+      img.onerror=()=>resolve("");
+      img.src=value;
+    });
+  }
+  function parseJson(raw){
+    const text=String(raw||"").replace(/```json|```/gi,"").trim();
+    try{return JSON.parse(text)}catch(_){
+      const m=text.match(/\{[\s\S]*\}/);
+      if(m)try{return JSON.parse(m[0])}catch(__){}
+      return null;
+    }
+  }
+  function cleanMomentText(value){
+    return String(value||"")
+      .replace(/^\s*(?:朋友圈|动态|正文|文案)\s*[:：]\s*/i,"")
+      .replace(/[“”"]/g,"")
+      .replace(/\n{3,}/g,"\n\n")
+      .trim().slice(0,220);
+  }
+  function cleanReply(value){
+    const banned=/(?:已发布|发布成功|系统|程序|功能|朋友圈正文|角色会|我生成了)/i;
+    return String(value||"").split(/\n+/).map(x=>x.trim()).filter(Boolean).filter(x=>!banned.test(x)).map(x=>x.slice(0,26)).slice(0,2);
+  }
+  function fallbackText(person,idea){
+    const direct=cleanMomentText(idea);
+    if(direct)return direct;
+    const now=new Date(),h=now.getHours();
+    const pools=h<10
+      ?["醒了。今天也慢慢来。","早。还不太想动。","今天的光有点好看。"]
+      :h<18
+        ?["今天就这样。","随手记一下。","忙里偷了会儿闲。"]
+        :["今晚不想说太多。","天黑以后适合安静一点。","今天到这里。"];
+    let seed=0;String(person.id||person.name||"").split("").forEach(ch=>seed+=ch.charCodeAt(0));
+    return pools[(seed+now.getDate())%pools.length];
+  }
+  function fallbackReply(person){
+    const options=["发了。","行，发了。","随便写了两句。","你自己去看。","刚发完。"];
+    let seed=Date.now()+String(person.id||"").length;
+    return [options[seed%options.length]];
+  }
+
+  async function generateMoment(person,options){
+    const idea=String(options&&options.idea||"").trim();
+    const recent=options&&options.useRecent===false?"":recentChatText(person,14);
+    const wb=worldBookText(person,idea+"\n"+recent);
+    const prompt=[
+      "角色："+(person.name||"未命名"),
+      "角色人设：\n"+(personaDescription(person)||"像真人一样自然"),
+      wb?"世界书：\n"+wb:"",
+      recent?"最近私聊：\n"+recent:"",
+      idea?"用户给的发布方向："+idea:"用户没有指定文案，由角色自己决定发什么。",
+      "请让这个角色以本人身份发一条微信朋友圈。正文要像真实年轻人发的，0到90个汉字，可短句、口语、留白或轻微情绪；不要写标题、解释、标签、角色名、引号、系统提示，也不要复述人设。",
+      "同时给用户一句私聊里的自然回应，2到18个汉字，不要说发布成功、系统、程序、功能。",
+      '只输出JSON：{"text":"朋友圈正文","location":"可为空","reply":"私聊回应"}'
+    ].filter(Boolean).join("\n\n");
+    if(typeof window.sendChatCompletion==="function"){
+      try{
+        const raw=await Promise.race([
+          window.sendChatCompletion([
+            {role:"system",content:"你负责让虚拟角色自然地发朋友圈。只输出合法JSON。"},
+            {role:"user",content:prompt}
+          ]),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error("moment timeout")),12000))
+        ]);
+        const data=parseJson(raw)||{};
+        const text=cleanMomentText(data.text);
+        if(text)return {text,location:String(data.location||"").trim().slice(0,32),reply:cleanReply(data.reply)};
+      }catch(error){console.warn("角色朋友圈生成失败，使用本地内容：",error&&error.message)}
+    }
+    return {text:fallbackText(person,idea),location:"",reply:fallbackReply(person)};
+  }
+
+  function authorOf(post){
+    if(post&&post.authorType==="persona"){
+      const person=personaById(post.personaId);
+      return {
+        type:"persona",
+        id:String(post.personaId||""),
+        name:String(person&&person.name||post.authorName||"未命名"),
+        avatar:String(person&&person.photo||post.authorAvatar||"")
+      };
+    }
+    const profile=me();
+    return {type:"user",id:"me",name:profile.name,avatar:profile.avatar};
+  }
+  function timeText(ts){
+    const d=Math.max(0,Date.now()-Number(ts||0));
+    if(d<60000)return "刚刚";
+    if(d<3600000)return Math.floor(d/60000)+"分钟前";
+    if(d<86400000)return Math.floor(d/3600000)+"小时前";
+    return new Date(ts).toLocaleDateString();
+  }
+  function renderMoments(){
+    const box=$("momentsFeed");
+    if(!box)return;
+    const posts=loadPosts();
+    if(!posts.length){box.innerHTML='<div class="moments-empty">还没有动态，点击右上角＋发布</div>';return;}
+    box.innerHTML=posts.map(post=>{
+      const author=authorOf(post);
+      const imgs=Array.isArray(post.images)?post.images.filter(Boolean):[];
+      const likes=Array.isArray(post.likes)?post.likes:[];
+      const comments=Array.isArray(post.comments)?post.comments:[];
+      const images=imgs.length?`<div class="moments-feed-images count-${Math.min(9,imgs.length)}">${imgs.slice(0,9).map(src=>`<img class="moments-feed-image" src="${esc(src)}">`).join("")}</div>`:"";
+      const social=(likes.length||comments.length)?`<div class="moments-social-box">${likes.length?`<div class="moments-likes">♡ ${likes.map(x=>esc(x.name)).join("、")}</div>`:""}${comments.length?`<div class="moments-comments">${comments.map(comment=>`<div class="moments-comment ${comment.mine?"mine":""}" ${comment.mine?`onclick="deleteMomentComment('${jsq(post.id)}','${jsq(comment.id)}')"`:""}><span class="moments-comment-name" onclick="event.stopPropagation();openMomentComment('${jsq(post.id)}','${jsq(comment.name)}')">${esc(comment.name)}</span>${comment.replyTo?` 回复 <span class="moments-comment-name">${esc(comment.replyTo)}</span>`:""}：${esc(comment.text)}</div>`).join("")}</div>`:""}</div>`:"";
+      const avatar=author.avatar?`<img src="${esc(author.avatar)}">`:esc(author.name.slice(0,1)||"TA");
+      const roleMark=author.type==="persona"?'<span class="bb-role-moment-mark-v297">CHAR</span>':"";
+      return `<div class="moments-feed-item" data-author-type="${author.type}" data-persona-id="${esc(author.id)}"><div class="moments-item-avatar">${avatar}</div><div class="moments-item-main"><div class="moments-item-name">${esc(author.name)}${roleMark}</div>${post.text?`<div class="moments-item-text">${esc(post.text)}</div>`:""}${images}${post.location?`<div class="moments-item-location">${esc(post.location)}</div>`:""}<div class="moments-item-bottom"><span class="moments-item-time">${timeText(post.createdAt)} · ${esc(post.visibility&&post.visibility.label||"公开")}</span><span class="moments-item-delete" onclick="deleteMoment('${jsq(post.id)}')">删除</span><button class="moments-more-btn" onclick="openMomentActions('${jsq(post.id)}',this)">••</button></div>${social}</div></div>`;
+    }).join("");
+  }
+  window.renderMomentsFeed=renderMoments;
+
+  async function scheduleReactions(post){
+    const others=personas().filter(p=>String(p.id)!==String(post.personaId)&&momentEnabled(p));
+    others.sort(()=>Math.random()-.5);
+    others.slice(0,Math.min(3,others.length)).forEach((person,index)=>{
+      const like=Math.random()<.82;
+      const comment=Math.random()<.48;
+      if(like)setTimeout(()=>{
+        const posts=loadPosts(),current=posts.find(x=>x.id===post.id);if(!current)return;
+        current.likes=Array.isArray(current.likes)?current.likes:[];
+        if(!current.likes.some(x=>String(x.id)===String(person.id)))current.likes.push({id:String(person.id),name:person.name||"未命名",avatar:person.photo||""});
+        savePosts(posts);renderMoments();
+      },1700+index*1200+Math.random()*1600);
+      if(comment)setTimeout(async()=>{
+        const posts=loadPosts(),current=posts.find(x=>x.id===post.id);if(!current)return;
+        current.comments=Array.isArray(current.comments)?current.comments:[];
+        if(current.comments.some(x=>String(x.personaId)===String(person.id)))return;
+        let text="";
+        try{
+          if(typeof window.baobaoGeneratePersonaMomentComment==="function")text=await window.baobaoGeneratePersonaMomentComment(person,current);
+        }catch(_){ }
+        if(!text){
+          const fallback=["看到了。","你还挺会发。","这条有点意思。","行，我记住了。"];
+          text=fallback[(index+String(person.id||"").length)%fallback.length];
+        }
+        const fresh=loadPosts(),target=fresh.find(x=>x.id===post.id);if(!target)return;
+        target.comments=Array.isArray(target.comments)?target.comments:[];
+        if(target.comments.some(x=>String(x.personaId)===String(person.id)))return;
+        target.comments.push({id:"char_comment_"+Date.now()+"_"+index,personaId:String(person.id),name:person.name||"未命名",text:String(text).slice(0,120),mine:false});
+        savePosts(fresh);renderMoments();
+      },4200+index*2500+Math.random()*2600);
+    });
+  }
+
+  async function publishForPersona(person,options){
+    if(!person)throw new Error("请先选择角色");
+    if(!momentEnabled(person))throw new Error("这个角色的朋友圈开关已关闭");
+    const generated=await generateMoment(person,options||{});
+    let image="";
+    if(options&&options.includeImage){image=await compactImage(options.image||latestImage(person));}
+    const post={
+      id:"moment_char_"+Date.now()+"_"+Math.random().toString(36).slice(2,7),
+      text:generated.text,
+      images:image?[image]:[],
+      location:generated.location||"",
+      remind:[],
+      visibility:{type:"public",label:"公开",people:[],group:""},
+      authorType:"persona",
+      personaId:String(person.id||""),
+      authorName:String(person.name||"未命名"),
+      authorAvatar:String(person.photo||""),
+      likes:[],comments:[],
+      createdAt:Date.now(),
+      generatedByRoleV297:true,
+      source:String(options&&options.source||"manual")
+    };
+    const posts=loadPosts();posts.unshift(post);
+    if(!savePosts(posts))throw new Error("朋友圈保存失败");
+    person.lastCharMomentAt=Date.now();
+    saveState();
+    renderMoments();
+    scheduleReactions(post);
+    return {post,reply:generated.reply&&generated.reply.length?generated.reply:fallbackReply(person)};
+  }
+  window.baobaoPersonaPublishMoment=async function(personaId,options){
+    return publishForPersona(personaById(personaId)||currentPersona(),options||{});
+  };
+
+  function injectStyle(){
+    if($("bbRoleMomentsStyleV297"))return;
+    const style=document.createElement("style");style.id="bbRoleMomentsStyleV297";
+    style.textContent=`
+      .bb-role-moment-btn-v297{border:0;background:#111;color:#fff;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:850;letter-spacing:-.3px;margin-left:auto;margin-right:8px;box-shadow:none}
+      .discover-head .moments-plus-btn{margin-left:0!important}
+      .bb-role-moment-mark-v297{display:inline-flex;align-items:center;height:16px;padding:0 5px;margin-left:6px;border-radius:5px;background:#eef1f7;color:#7b88a6;font-size:8px;font-weight:800;vertical-align:2px;letter-spacing:.3px}
+      #bbRoleMomentPanelV297{position:absolute;inset:0;z-index:2500;display:none;background:rgba(0,0,0,.28);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);align-items:flex-end}
+      #bbRoleMomentPanelV297.show{display:flex}
+      .bb-role-moment-sheet-v297{width:100%;max-height:86%;box-sizing:border-box;padding:16px 18px calc(18px + env(safe-area-inset-bottom));border-radius:28px 28px 0 0;background:#fff;color:#171719;overflow:auto;box-shadow:0 -10px 35px rgba(0,0,0,.12)}
+      .bb-role-moment-head-v297{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px}.bb-role-moment-head-v297 b{font-size:24px}.bb-role-moment-close-v297{border:0;background:#f1f1f4;border-radius:50%;width:38px;height:38px;font-size:23px}
+      .bb-role-moment-field-v297{margin:12px 0}.bb-role-moment-field-v297 label{display:block;font-size:12px;color:#8e8e93;margin:0 0 7px 3px;font-weight:700}
+      .bb-role-moment-field-v297 select,.bb-role-moment-field-v297 textarea{width:100%;box-sizing:border-box;border:0;border-radius:16px;background:#f4f4f7;color:#171719;padding:13px 14px;font:500 15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;outline:0}
+      .bb-role-moment-field-v297 textarea{min-height:104px;resize:none}
+      .bb-role-moment-option-v297{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid #ededf0;font-size:15px}.bb-role-moment-option-v297 input{width:21px;height:21px}
+      .bb-role-moment-send-v297{width:100%;border:0;border-radius:17px;background:#111;color:#fff;padding:15px;font-size:16px;font-weight:800;margin-top:18px}.bb-role-moment-send-v297:disabled{opacity:.45}
+      .bb-char-moment-setting-v297{display:flex;align-items:center;justify-content:space-between;gap:14px;background:#f7f7f9;border:1px solid rgba(60,60,67,.08);border-radius:16px;padding:14px 16px;margin:12px 0 4px}.bb-char-moment-setting-v297 b{font-size:15px}.bb-char-moment-setting-v297 small{display:block;color:#8e8e93;font-size:12px;line-height:1.45;margin-top:4px}
+    `;
+    document.head.appendChild(style);
+  }
+  function ensurePanel(){
+    let panel=$("bbRoleMomentPanelV297");if(panel)return panel;
+    panel=document.createElement("div");panel.id="bbRoleMomentPanelV297";
+    panel.innerHTML=`<div class="bb-role-moment-sheet-v297"><div class="bb-role-moment-head-v297"><b>让角色发朋友圈</b><button class="bb-role-moment-close-v297" type="button">×</button></div><div class="bb-role-moment-field-v297"><label>选择角色</label><select id="bbRoleMomentPersonaV297"></select></div><div class="bb-role-moment-field-v297"><label>想让TA发什么（可以留空，让TA自己决定）</label><textarea id="bbRoleMomentIdeaV297" maxlength="260" placeholder="例如：发一条刚下班的朋友圈；或者直接留空"></textarea></div><div class="bb-role-moment-option-v297"><span>参考最近聊天</span><input id="bbRoleMomentRecentV297" type="checkbox" checked></div><div class="bb-role-moment-option-v297"><span>带上最近一张聊天图片</span><input id="bbRoleMomentImageV297" type="checkbox"></div><button id="bbRoleMomentSendV297" class="bb-role-moment-send-v297" type="button">让TA发布</button></div>`;
+    const root=$("chatDemo")||document.body;root.appendChild(panel);
+    panel.addEventListener("click",event=>{if(event.target===panel)closePanel()});
+    panel.querySelector(".bb-role-moment-close-v297").onclick=closePanel;
+    $("bbRoleMomentSendV297").onclick=submitPanel;
+    return panel;
+  }
+  function fillRoleSelect(preferred){
+    const select=$("bbRoleMomentPersonaV297");if(!select)return;
+    const list=personas();
+    select.innerHTML=list.length?list.map(p=>`<option value="${esc(p.id)}" ${String(p.id)===String(preferred||"")?"selected":""}>${esc(p.name||"未命名")}${momentEnabled(p)?"":"（已关闭）"}</option>`).join(""):'<option value="">还没有角色</option>';
+  }
+  function openPanel(){
+    injectStyle();const panel=ensurePanel();const p=currentPersona();fillRoleSelect(p&&p.id);$("bbRoleMomentIdeaV297").value="";$("bbRoleMomentImageV297").checked=false;panel.classList.add("show");
+  }
+  function closePanel(){const panel=$("bbRoleMomentPanelV297");if(panel)panel.classList.remove("show")}
+  async function submitPanel(){
+    const btn=$("bbRoleMomentSendV297"),person=personaById($("bbRoleMomentPersonaV297").value);
+    if(!person){if(typeof showToast==="function")showToast("请先选择角色",true);return;}
+    btn.disabled=true;btn.textContent="正在写…";
+    try{
+      await publishForPersona(person,{idea:$("bbRoleMomentIdeaV297").value,useRecent:$("bbRoleMomentRecentV297").checked,includeImage:$("bbRoleMomentImageV297").checked,source:"discover-panel"});
+      closePanel();if(typeof showToast==="function")showToast((person.name||"角色")+"发了一条朋友圈");
+    }catch(error){if(typeof showToast==="function")showToast(error&&error.message?error.message:"发布失败",true)}
+    finally{btn.disabled=false;btn.textContent="让TA发布";}
+  }
+  window.openRoleMomentPanelV297=openPanel;
+  function ensureDiscoverButton(){
+    const head=document.querySelector("#tabDiscover .discover-head");if(!head||$("bbRoleMomentBtnV297"))return;
+    const btn=document.createElement("button");btn.id="bbRoleMomentBtnV297";btn.type="button";btn.className="bb-role-moment-btn-v297";btn.textContent="TA";btn.setAttribute("aria-label","让角色发朋友圈");btn.onclick=openPanel;
+    const plus=head.querySelector(".moments-plus-btn");head.insertBefore(btn,plus||null);
+  }
+
+  function archiveEditingPersona(){
+    try{if(typeof archiveEditingId!=="undefined"&&archiveEditingId)return personaById(archiveEditingId)}catch(_){ }
+    return null;
+  }
+  function ensureArchiveSetting(){
+    const panel=$("personaArchive");if(!panel)return;
+    let row=$("bbArchiveMomentSettingV297");
+    if(!row){
+      row=document.createElement("div");row.id="bbArchiveMomentSettingV297";row.className="bb-char-moment-setting-v297";
+      row.innerHTML='<div><b>角色发朋友圈</b><small>可接受聊天指令，也会偶尔根据最近聊天自主发布。</small></div><div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end"><label class="ios-switch"><input id="bbArchiveMomentToggleV297" type="checkbox"><span class="ios-switch-track"></span></label><label style="font-size:11px;color:#8e8e93;display:flex;align-items:center;gap:5px"><input id="bbArchiveAutoMomentToggleV297" type="checkbox">自主发布</label></div>';
+      const sticker=$("bbArchiveStickerSettingV289");
+      if(sticker)sticker.insertAdjacentElement("afterend",row);else panel.querySelector(".archive-save-row")?.insertAdjacentElement("beforebegin",row);
+      $("bbArchiveMomentToggleV297").addEventListener("change",function(){const p=archiveEditingPersona();if(p)setMomentEnabled(p,this.checked);syncToggles()});
+      $("bbArchiveAutoMomentToggleV297").addEventListener("change",function(){const p=archiveEditingPersona();if(p)setAutoMomentEnabled(p,this.checked);syncToggles()});
+    }
+    const p=archiveEditingPersona();
+    if($("bbArchiveMomentToggleV297"))$("bbArchiveMomentToggleV297").checked=p?momentEnabled(p):true;
+    if($("bbArchiveAutoMomentToggleV297"))$("bbArchiveAutoMomentToggleV297").checked=p?autoMomentEnabled(p):true;
+  }
+  function ensureChatSetting(){
+    const panel=$("chatSettingsPanel");if(!panel)return;
+    let group=$("bbChatMomentGroupV297");
+    if(!group){
+      group=document.createElement("div");group.id="bbChatMomentGroupV297";group.className="ios-group";
+      group.innerHTML='<div class="ios-row ios-row-toggle"><div class="ios-row-label">角色发朋友圈<div class="ios-row-desc">允许当前角色接受发动态指令</div></div><label class="ios-switch"><input id="bbChatMomentToggleV297" type="checkbox"><span class="ios-switch-track"></span></label></div><div class="ios-row ios-row-toggle"><div class="ios-row-label">自主发动态<div class="ios-row-desc">聊天后偶尔按人设自己发布，8小时内最多一次</div></div><label class="ios-switch"><input id="bbChatAutoMomentToggleV297" type="checkbox"><span class="ios-switch-track"></span></label></div>';
+      const sticker=$("bbChatStickerGroupV289");if(sticker)sticker.insertAdjacentElement("afterend",group);else panel.appendChild(group);
+      $("bbChatMomentToggleV297").addEventListener("change",function(){const p=currentPersona();if(p)setMomentEnabled(p,this.checked);syncToggles()});
+      $("bbChatAutoMomentToggleV297").addEventListener("change",function(){const p=currentPersona();if(p)setAutoMomentEnabled(p,this.checked);syncToggles()});
+    }
+    const p=currentPersona();
+    $("bbChatMomentToggleV297").checked=p?momentEnabled(p):true;$("bbChatMomentToggleV297").disabled=!p;
+    $("bbChatAutoMomentToggleV297").checked=p?autoMomentEnabled(p):true;$("bbChatAutoMomentToggleV297").disabled=!p;
+  }
+  function syncToggles(){ensureArchiveSetting();ensureChatSetting()}
+  function wrapUi(name,after){
+    const original=window[name];if(typeof original!=="function"||original.__bbMomentUiV297)return;
+    const wrapped=function(){const result=original.apply(this,arguments);setTimeout(after,0);return result};wrapped.__bbMomentUiV297=true;wrapped.__bbPrevious=original;window[name]=wrapped;
+  }
+  function installUiHooks(){
+    wrapUi("openCreatePersonaPanel",()=>{ensureArchiveSetting();if($("bbArchiveMomentToggleV297"))$("bbArchiveMomentToggleV297").checked=true;if($("bbArchiveAutoMomentToggleV297"))$("bbArchiveAutoMomentToggleV297").checked=true;});
+    wrapUi("openEditPersonaPanel",syncToggles);wrapUi("openChatSettings",syncToggles);
+    const original=window.savePersonaArchive;
+    if(typeof original==="function"&&!original.__bbMomentSaveV297){
+      const wrapped=function(){
+        const enabled=$("bbArchiveMomentToggleV297")?.checked!==false,auto=$("bbArchiveAutoMomentToggleV297")?.checked!==false;
+        let editId="";try{if(typeof archiveEditingId!=="undefined")editId=archiveEditingId}catch(_){ }
+        const before=new Set(personas().map(p=>String(p.id)));const result=original.apply(this,arguments);
+        const person=editId?personaById(editId):personas().find(p=>!before.has(String(p.id)))||personas()[personas().length-1];
+        if(person){person.charMomentEnabled=enabled;person.charMomentAutoEnabled=enabled&&auto;saveState();}
+        return result;
+      };wrapped.__bbMomentSaveV297=true;wrapped.__bbPrevious=original;window.savePersonaArchive=wrapped;
+    }
+  }
+
+  const COMMAND_RE=/(?:发(?:个|一条|条)?朋友圈|发(?:个|一条|条)?动态|朋友圈(?:发|写|说)|发到朋友圈|发在朋友圈|把.+发朋友圈|这张(?:图|照片).{0,8}朋友圈|你也发个朋友圈)/i;
+  function latestCommand(){
+    const s=appState(),list=Array.isArray(s.chatMessages)?s.chatMessages:[];
+    for(let i=list.length-1;i>=Math.max(0,list.length-18);i--){
+      const msg=list[i];if(!msg||msg.role!=="user"||String(msg.type||"text").toLowerCase()!=="text"||msg.charMomentHandledV297)continue;
+      if(COMMAND_RE.test(String(msg.content||"")))return msg;
+      if(msg.role==="assistant")break;
+    }
+    return null;
+  }
+  function commandIdea(text){
+    let value=String(text||"").trim();
+    const quoted=value.match(/[“"]([^”"]{2,180})[”"]/);if(quoted)return quoted[1];
+    value=value.replace(/^(?:你|宝贝|宝宝|亲爱的)?\s*(?:去|也|帮我|给我)?\s*/i,"")
+      .replace(/(?:发(?:个|一条|条)?朋友圈|发(?:个|一条|条)?动态|发到朋友圈|发在朋友圈|朋友圈(?:发|写|说))\s*[：:,，]?/i,"")
+      .replace(/(?:吧|呗|一下|看看)\s*$/i,"").trim();
+    if(COMMAND_RE.test(value)&&value.length<12)return "";
+    return value.slice(0,220);
+  }
+  async function appendAssistantReplies(person,replies){
+    const s=appState();s.chatMessages=Array.isArray(s.chatMessages)?s.chatMessages:[];
+    for(let i=0;i<replies.length;i++){
+      if(i)await sleep(250+Math.random()*220);
+      s.chatMessages.push({role:"assistant",type:"text",content:String(replies[i]),time:Date.now(),id:"msg_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),charMomentReplyV297:true});
+      if(typeof window.appendChatMessageRow==="function")window.appendChatMessageRow();else if(typeof window.renderChatMessages==="function")window.renderChatMessages();
+    }
+    if(s.activeChatId&&s.chatRecords)s.chatRecords[s.activeChatId]=s.chatMessages;
+    saveState();
+  }
+  async function handleCommand(command){
+    const person=currentPersona();if(!person||!momentEnabled(person))return false;
+    command.charMomentHandledV297=true;
+    window.__baobaoReplyPending=true;
+    const btn=$("chatReplyBtn");if(btn)btn.classList.add("loading");
+    try{
+      if(typeof window.bbTypingBubbleV292==="function")window.bbTypingBubbleV292(true);
+      await sleep(260);
+      const text=String(command.content||"");
+      const result=await publishForPersona(person,{idea:commandIdea(text),useRecent:true,includeImage:/(?:这张|图片|照片|配图)/.test(text),source:"chat-command"});
+      await appendAssistantReplies(person,result.reply&&result.reply.length?result.reply:fallbackReply(person));
+      try{if(typeof window.generateInnerVoiceForCurrentPersona==="function")window.generateInnerVoiceForCurrentPersona();}catch(_){ }
+      return true;
+    }catch(error){
+      command.charMomentHandledV297=false;
+      if(typeof showToast==="function")showToast(error&&error.message?error.message:"朋友圈发布失败",true);
+      return true;
+    }finally{
+      if(typeof window.bbTypingBubbleV292==="function")window.bbTypingBubbleV292(false);
+      window.__baobaoReplyPending=false;if(btn)btn.classList.remove("loading");
+    }
+  }
+  async function maybeAutoPost(person){
+    if(!person||!autoMomentEnabled(person))return;
+    const last=Number(person.lastCharMomentAt||0);if(Date.now()-last<AUTO_COOLDOWN)return;
+    const chats=chatFor(person);if(chats.length<8||Math.random()>.16)return;
+    const meaningful=chats.slice(-6).some(msg=>msg&&String(msg.content||"").replace(/\s+/g,"").length>8);if(!meaningful)return;
+    try{await publishForPersona(person,{idea:"",useRecent:true,includeImage:false,source:"auto"});if(typeof showToast==="function")showToast((person.name||"角色")+"刚刚发了一条朋友圈");}catch(_){ }
+  }
+  function installTrigger(){
+    const current=window.triggerAIReply;if(typeof current!=="function"||current.__bbRoleMomentsV297)return;
+    const wrapped=async function(){
+      const command=latestCommand();if(command)return handleCommand(command);
+      const person=currentPersona();const result=await current.apply(this,arguments);setTimeout(()=>maybeAutoPost(person),800);return result;
+    };
+    wrapped.__bbRoleMomentsV297=true;wrapped.__bbPrevious=current;window.triggerAIReply=wrapped;try{triggerAIReply=wrapped}catch(_){ }
+  }
+  function installButtonCapture(){
+    const btn=$("chatReplyBtn");if(!btn||btn.__bbMomentCaptureV297)return;btn.__bbMomentCaptureV297=true;
+    btn.addEventListener("click",event=>{const command=latestCommand();if(!command||!momentEnabled(currentPersona()))return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();handleCommand(command);},true);
+  }
+  function boot(){injectStyle();ensurePanel();ensureDiscoverButton();installUiHooks();syncToggles();installTrigger();installButtonCapture();renderMoments();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  [80,300,900,2200,5200,9000].forEach(ms=>setTimeout(boot,ms));
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+})();
