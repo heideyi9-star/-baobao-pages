@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<!-- index(297)：角色可发朋友圈版。 -->
+<!-- index(299)：角色记忆彻底隔离与陌生人名防编造版。 -->
 <meta name="apple-mobile-web-app-title" content="斑斑豹">
 <script id="bb-early-start-v274">
 (function(){
@@ -19,18 +19,18 @@
   window.addEventListener("load",function(){tick();setTimeout(function(){clearInterval(timer);},15000);},{once:true});
 })();
 </script>
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=297">
-<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=297">
-<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=297">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=299">
+<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=299">
+<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=299">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=297">
+<link rel="manifest" href="./baobao-manifest.json?v=299">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=297",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=299",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 297 角色可发朋友圈版</title>
+<title>豹豹机4.9 · 299 角色记忆隔离版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -150,8 +150,8 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
-<link rel="stylesheet" href="./app.css?v=297">
-<script defer src="./app.js?v=297"></script>
+<link rel="stylesheet" href="./app.css?v=299">
+<script defer src="./app.js?v=299"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -1578,7 +1578,7 @@ API Key<br>
 <div class="memv1-panel" id="memoryV1Panel">
   <div class="memv1-back" onclick="closeMemoryV1()">‹</div>
   <div class="memv1-title">记忆总结</div>
-  <div class="memv1-sub">长期保存 · 全局共享，所有角色互通 · 自动选取相关记忆进入聊天</div>
+  <div class="memv1-sub">长期保存 · 每个角色独立 · 仅手动标记的事实允许全角色共享</div>
   <div class="memv1-hero">
     <div class="memv1-person">
       <div class="memv1-avatar" id="memv1Avatar">人</div>
@@ -1602,6 +1602,7 @@ API Key<br>
     <div class="memv1-tab" data-tab="event" onclick="memoryV1SetTab(this)">重要事件</div>
     <div class="memv1-tab" data-tab="relationship" onclick="memoryV1SetTab(this)">我们之间</div>
     <div class="memv1-tab" data-tab="hidden" onclick="memoryV1SetTab(this)">隐性记忆</div>
+    <div class="memv1-tab" data-tab="shared" onclick="memoryV1SetTab(this)">明确共享</div>
     <div class="memv1-tab" data-tab="pinned" onclick="memoryV1SetTab(this)">永久固定</div>
   </div>
   <div id="memv1List"></div>
@@ -1613,6 +1614,7 @@ API Key<br>
     <select class="memv1-select" id="memv1AddType">
       <option value="profile">关于我</option><option value="event">重要事件</option>
       <option value="relationship">我们之间</option><option value="hidden">隐性记忆</option>
+      <option value="shared">全角色共享（仅明确需要时选择）</option>
     </select>
     <textarea class="memv1-textarea" id="memv1AddText" placeholder="例如：用户很怕打雷，听见雷声时需要陪伴。"></textarea>
     <select class="memv1-select" id="memv1AddImportance">

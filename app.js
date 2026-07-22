@@ -10156,294 +10156,239 @@ ${clean(reply)}
 })();
 ;
 
-/* baobao-memory-engine-v1-script */
+/* baobao-memory-engine-v2-isolated-script */
 (function(){
 "use strict";
 const DBKEY="baobao_memory_engine_v1";
 let currentTab="all", editingId=null, lastInjectedCount=0;
 
 function safeParse(s,f){try{return JSON.parse(s)}catch(e){return f}}
+function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function words(s){return Array.from(new Set(String(s||"").toLowerCase().match(/[\u4e00-\u9fff]{1,4}|[a-z0-9]{2,}/g)||[]))}
+function persona(){return window.currentChatPersona||((window.state&&state.personas||[])[0])||{id:"default",name:"当前角色",photo:""}}
+function pid(){return String(persona().id||"default")}
+function freshBox(){return {memories:[],summary:"",summaryUpdatedAt:0,lastAutoSummaryCount:0,createdAt:Date.now()}}
+function normalizeBox(box){
+  const out=box&&typeof box==="object"?box:freshBox();
+  if(!Array.isArray(out.memories))out.memories=[];
+  if(typeof out.summary!=="string")out.summary="";
+  if(!Number.isFinite(out.summaryUpdatedAt))out.summaryUpdatedAt=0;
+  if(!Number.isFinite(out.lastAutoSummaryCount))out.lastAutoSummaryCount=0;
+  if(!out.createdAt)out.createdAt=Date.now();
+  return out;
+}
+function cloneMemory(m){return Object.assign({},m,{keywords:Array.isArray(m&&m.keywords)?m.keywords:words(m&&m.text||"")})}
+function pushUnique(box,m){
+  if(!m||!String(m.text||"").trim())return;
+  const text=String(m.text).trim();
+  const found=box.memories.find(x=>String(x.text||"").trim()===text);
+  if(found){
+    found.importance=Math.max(Number(found.importance||0),Number(m.importance||0));
+    found.weight=Math.max(Number(found.weight||0),Number(m.weight||0));
+    found.updatedAt=Math.max(Number(found.updatedAt||0),Number(m.updatedAt||0));
+    if(m.pinned)found.pinned=true;
+    return;
+  }
+  box.memories.push(cloneMemory(m));
+}
 function loadDB(){
-  const db=safeParse(localStorage.getItem(DBKEY),null);
-  const out=db&&typeof db==="object"?db:{version:1,personas:{},createdAt:Date.now()};
-  if(!out.global)out.global={memories:[],summary:"",summaryUpdatedAt:0,lastAutoSummaryCount:0,createdAt:Date.now()};
-  if(!out.__migratedGlobal && out.personas && Object.keys(out.personas).length){
-    const seen=new Set((out.global.memories||[]).map(m=>m.text));
-    Object.values(out.personas).forEach(box=>{
-      (box.memories||[]).forEach(m=>{ if(!seen.has(m.text)){ out.global.memories.push(m); seen.add(m.text); } });
-      if(box.summary && !out.global.summary) out.global.summary=box.summary;
-    });
-    out.global.memories.sort((a,b)=>(b.updatedAt||b.createdAt||0)-(a.updatedAt||a.createdAt||0));
-    out.__migratedGlobal=true;
+  const raw=safeParse(localStorage.getItem(DBKEY),null);
+  const out=raw&&typeof raw==="object"?raw:{version:2,personas:{},shared:freshBox(),quarantine:[],createdAt:Date.now()};
+  if(!out.personas||typeof out.personas!=="object")out.personas={};
+  Object.keys(out.personas).forEach(id=>out.personas[id]=normalizeBox(out.personas[id]));
+  out.shared=normalizeBox(out.shared);
+  if(!Array.isArray(out.quarantine))out.quarantine=[];
+
+  if(!out.__isolatedV2){
+    const legacy=out.global&&typeof out.global==="object"?out.global:null;
+    if(legacy){
+      (legacy.memories||[]).forEach(mem=>{
+        const m=cloneMemory(mem);
+        const owner=String(m.personaId||"");
+        const explicitShared=m.scope==="shared"||m.type==="shared"||m.shared===true;
+        if(explicitShared){
+          m.scope="shared";m.personaId="*";m.type="shared";pushUnique(out.shared,m);
+        }else if(owner&&owner!=="default"&&owner!=="*"){
+          out.personas[owner]=normalizeBox(out.personas[owner]);
+          m.scope="persona";m.personaId=owner;pushUnique(out.personas[owner],m);
+        }else{
+          out.quarantine.push(Object.assign({},m,{quarantinedAt:Date.now(),quarantineReason:"旧版无角色归属，已停止注入聊天"}));
+        }
+      });
+      if(legacy.summary){
+        out.quarantine.push({id:"legacy_summary_"+Date.now(),text:String(legacy.summary),type:"summary",quarantinedAt:Date.now(),quarantineReason:"旧版全局关系总结，已停止跨角色使用"});
+      }
+    }
+    delete out.global;
+    out.__isolatedV2=true;
+    out.version=2;
   }
   return out;
 }
 function saveDB(db){localStorage.setItem(DBKEY,JSON.stringify(db))}
-function persona(){
-  return window.currentChatPersona || ((window.state&&state.personas||[])[0]) || {id:"default",name:"当前角色",photo:""};
-}
-function pid(){return String(persona().id||"default")}
-function ensureBox(){
-  const db=loadDB();
-  saveDB(db);return {db,box:db.global};
-}
-function esc(s){return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function words(s){
-  return Array.from(new Set(String(s||"").toLowerCase().match(/[\u4e00-\u9fff]{1,4}|[a-z0-9]{2,}/g)||[]));
+function ensurePersonaBox(db,id){id=String(id||"default");db.personas[id]=normalizeBox(db.personas[id]);return db.personas[id]}
+function ensureBox(){const db=loadDB(),box=ensurePersonaBox(db,pid());saveDB(db);return {db,box,shared:db.shared}}
+function targetBox(db,data){
+  const shared=data&&(data.scope==="shared"||data.type==="shared"||data.shared===true);
+  return shared?{box:db.shared,scope:"shared",personaId:"*"}:{box:ensurePersonaBox(db,pid()),scope:"persona",personaId:pid()};
 }
 function addMemory(data){
-  const x=ensureBox(), list=x.box.memories;
-  const text=String(data.text||"").trim(); if(!text)return null;
-  const duplicate=list.find(m=>m.active!==false && (m.text===text || (m.text.includes(text)&&text.length>8)));
+  const db=loadDB(),target=targetBox(db,data||{}),list=target.box.memories;
+  const text=String(data&&data.text||"").trim();if(!text)return null;
+  const duplicate=list.find(m=>m.active!==false&&(m.text===text||(String(m.text||"").includes(text)&&text.length>8)));
   if(duplicate){
-    duplicate.weight=Math.min(10,(duplicate.weight||5)+1);
-    duplicate.updatedAt=Date.now(); duplicate.hits=(duplicate.hits||1)+1;
-    if(data.pinned)duplicate.pinned=true;
-    saveDB(x.db);return duplicate;
+    duplicate.weight=Math.min(10,(duplicate.weight||5)+1);duplicate.updatedAt=Date.now();duplicate.hits=(duplicate.hits||1)+1;
+    if(data.pinned)duplicate.pinned=true;saveDB(db);return duplicate;
   }
+  const type=target.scope==="shared"?"shared":(data.type||"event");
   const mem={
-    id:"mem_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),
-    personaId:pid(), type:data.type||"event", text,
-    importance:Math.max(1,Math.min(10,Number(data.importance||5))),
-    weight:Math.max(1,Math.min(10,Number(data.weight||data.importance||5))),
-    emotion:data.emotion||"", source:data.source||"chat",
-    sourceTime:data.sourceTime||Date.now(), createdAt:Date.now(), updatedAt:Date.now(),
-    hidden:!!data.hidden || data.type==="hidden", pinned:!!data.pinned || Number(data.importance)>=10,
-    active:data.active!==false, keywords:data.keywords||words(text).slice(0,18)
+    id:"mem_"+Date.now()+"_"+Math.random().toString(36).slice(2,8),personaId:target.personaId,scope:target.scope,type,text,
+    importance:Math.max(1,Math.min(10,Number(data.importance||5))),weight:Math.max(1,Math.min(10,Number(data.weight||data.importance||5))),
+    emotion:data.emotion||"",source:data.source||"chat",sourceTime:data.sourceTime||Date.now(),createdAt:Date.now(),updatedAt:Date.now(),
+    hidden:!!data.hidden||type==="hidden",pinned:!!data.pinned||Number(data.importance)>=10,active:data.active!==false,keywords:data.keywords||words(text).slice(0,18)
   };
-  list.unshift(mem); x.box.memories=list.slice(0,6000); saveDB(x.db);return mem;
+  list.unshift(mem);target.box.memories=list.slice(0,target.scope==="shared"?1000:3000);saveDB(db);return mem;
 }
 window.baobaoMemoryAdd=addMemory;
 
 function importAntiRecon(){
   const sources=["baobao_anti_recon_memories","baobao_anti_recon_memories_v2","baobao_anti_recon_memories_v3","baobao_anti_recon_memories_v4"];
-  sources.forEach(k=>{
-    const a=safeParse(localStorage.getItem(k),[])||[];
-    a.forEach(x=>{
-      if(x.personaId && String(x.personaId)!==pid())return;
-      addMemory({type:"hidden",text:x.text||("角色曾查看过用户手机："+(x.seen||[]).join("、")),importance:9,hidden:true,source:"anti-recon",sourceTime:x.time||Date.now(),keywords:["手机","偷看","昨晚","隐私","反侦察"]});
-    });
-  });
+  sources.forEach(k=>{const a=safeParse(localStorage.getItem(k),[])||[];a.forEach(x=>{
+    if(x.personaId&&String(x.personaId)!==pid())return;
+    addMemory({type:"hidden",text:x.text||("角色曾查看过用户手机："+(x.seen||[]).join("、")),importance:9,hidden:true,source:"anti-recon",sourceTime:x.time||Date.now(),keywords:["手机","偷看","昨晚","隐私","反侦察"]});
+  })});
 }
-
 function extractRules(text,role){
-  const t=String(text||"").trim(); if(!t||role!=="user")return;
+  const t=String(text||"").trim();if(!t||role!=="user")return;
   const rules=[
-    [/我(?:最)?喜欢(.{1,18})/g,"profile",7,"喜欢"],
-    [/我不喜欢(.{1,18})/g,"profile",7,"不喜欢"],
-    [/我讨厌(.{1,18})/g,"profile",8,"讨厌"],
-    [/我怕(.{1,18})/g,"profile",8,"害怕"],
-    [/我(?:的)?生日(?:是|在)?(.{1,18})/g,"profile",10,"生日"],
-    [/记住[，, ]?(.{2,40})/g,"profile",9,"明确要求记住"],
-    [/我们约好(.{2,40})/g,"relationship",8,"约定"],
-    [/你答应我(.{2,40})/g,"relationship",9,"承诺"],
-    [/我叫(.{1,12})/g,"profile",8,"姓名"],
-    [/我今年?(.{1,4}岁)/g,"profile",6,"年龄"],
-    [/我(?:是|在)(.{1,16}(?:大学|高中|初中|学院))/g,"profile",6,"学校"],
-    [/我(?:在|上班在)(.{1,18}(?:公司|单位|工作))/g,"profile",6,"工作"],
-    [/我家(?:在|住)(.{1,16})/g,"profile",6,"家乡/住址"],
-    [/我(?:养了|有)(?:一[只个条])?(.{1,10}(?:猫|狗|仓鼠|兔子|宠物))/g,"profile",6,"宠物"],
-    [/我对(.{1,14})过敏/g,"profile",9,"过敏"],
-    [/我最(?:不能接受|受不了)(.{1,18})/g,"profile",8,"雷区"],
-    [/(?:我们|今天)(?:是)?(?:第一次|纪念日)(.{0,20})/g,"relationship",9,"纪念日/第一次"],
-    [/我(?:星座|属相)(?:是)?(.{1,8})/g,"profile",5,"星座/属相"],
-    [/我(?:身高|体重)(.{1,10})/g,"profile",4,"身高体重"],
-    [/我家里(?:有|还有)(.{1,20})/g,"profile",6,"家庭成员"],
-    [/我最近(?:在|正)(.{2,24})/g,"event",5,"近况"],
-    [/我以前(.{2,24})/g,"event",6,"过去经历"]
+    [/我(?:最)?喜欢(.{1,18})/g,"profile",7,"喜欢"],[/我不喜欢(.{1,18})/g,"profile",7,"不喜欢"],[/我讨厌(.{1,18})/g,"profile",8,"讨厌"],[/我怕(.{1,18})/g,"profile",8,"害怕"],
+    [/我(?:的)?生日(?:是|在)?(.{1,18})/g,"profile",10,"生日"],[/记住[，, ]?(.{2,40})/g,"profile",9,"明确要求记住"],[/我们约好(.{2,40})/g,"relationship",8,"约定"],
+    [/你答应我(.{2,40})/g,"relationship",9,"承诺"],[/我叫(.{1,12})/g,"profile",8,"姓名"],[/我今年?(.{1,4}岁)/g,"profile",6,"年龄"],
+    [/我(?:是|在)(.{1,16}(?:大学|高中|初中|学院))/g,"profile",6,"学校"],[/我(?:在|上班在)(.{1,18}(?:公司|单位|工作))/g,"profile",6,"工作"],
+    [/我家(?:在|住)(.{1,16})/g,"profile",6,"家乡/住址"],[/我(?:养了|有)(?:一[只个条])?(.{1,10}(?:猫|狗|仓鼠|兔子|宠物))/g,"profile",6,"宠物"],
+    [/我对(.{1,14})过敏/g,"profile",9,"过敏"],[/我最(?:不能接受|受不了)(.{1,18})/g,"profile",8,"雷区"],[/(?:我们|今天)(?:是)?(?:第一次|纪念日)(.{0,20})/g,"relationship",9,"纪念日/第一次"],
+    [/我(?:星座|属相)(?:是)?(.{1,8})/g,"profile",5,"星座/属相"],[/我(?:身高|体重)(.{1,10})/g,"profile",4,"身高体重"],[/我家里(?:有|还有)(.{1,20})/g,"profile",6,"家庭成员"],
+    [/我最近(?:在|正)(.{2,24})/g,"event",5,"近况"],[/我以前(.{2,24})/g,"event",6,"过去经历"]
   ];
-  rules.forEach(([re,type,importance,label])=>{
-    let m;while((m=re.exec(t))){
-      let val=String(m[1]||"").replace(/[。！？!?].*$/,"").trim();
-      if(val.length>0) addMemory({type,text:label+"："+val,importance,source:"auto-rule",sourceTime:Date.now(),keywords:words(label+val)});
-    }
-  });
+  rules.forEach(([re,type,importance,label])=>{let m;while((m=re.exec(t))){let val=String(m[1]||"").replace(/[。！？!?].*$/,"").trim();if(val)addMemory({type,text:label+"："+val,importance,source:"auto-rule",sourceTime:Date.now(),keywords:words(label+val)})}});
 }
-
-function score(mem,query){
-  if(mem.active===false)return -999;
-  const q=String(query||"").toLowerCase(), kws=words(q), txt=(mem.text+" "+(mem.keywords||[]).join(" ")).toLowerCase();
-  let s=(mem.importance||5)*1.4+(mem.weight||5)*.6+(mem.pinned?12:0);
-  kws.forEach(k=>{if(txt.includes(k))s+=8;if((mem.keywords||[]).includes(k))s+=5});
-  const ageDays=(Date.now()-(mem.updatedAt||mem.createdAt||Date.now()))/86400000;
-  s+=Math.max(0,7-Math.log2(ageDays+1)*0.45);
-  if(mem.personaId&&mem.personaId===pid())s+=4;
-  if(mem.hidden&&/(手机|昨晚|偷看|隐私|查|动我手机|密码)/.test(q))s+=18;
-  if(mem.type==="profile"&&/(我|喜欢|讨厌|生日|怕|名字)/.test(q))s+=6;
-  if(mem.type==="relationship"&&/(我们|关系|答应|以前|记得)/.test(q))s+=6;
-  return s;
+function currentEvidenceText(){
+  const p=persona();
+  const chat=((window.state&&state.chatMessages)||[]).map(m=>String(m&&m.content||"")).join("\n");
+  let wb="";
+  try{
+    const store=safeParse(localStorage.getItem("baobao_world_books_v230"),{})||{};
+    wb=(store.entries||[]).filter(e=>e&&e.enabled&&(e.scope==="global"||(e.scope==="persona"&&String(e.personaId)===pid()))).map(e=>String(e.content||"")).join("\n");
+  }catch(e){}
+  return [p.name,p.persona,p.personality,p.brief,chat,wb].filter(Boolean).join("\n");
+}
+function containsUnsupportedPersonaName(text){
+  const t=String(text||"");if(!t)return false;
+  const evidence=currentEvidenceText();
+  const others=((window.state&&state.personas)||[]).filter(x=>x&&String(x.id)!==pid()).map(x=>String(x.name||"").trim()).filter(n=>n.length>=2);
+  return others.some(name=>t.includes(name)&&!evidence.includes(name));
+}
+function relevance(mem,query){
+  if(!mem||mem.active===false)return {ok:false,score:-999};
+  if(mem.scope!=="shared"&&String(mem.personaId||"")!==pid())return {ok:false,score:-999};
+  if(containsUnsupportedPersonaName(mem.text))return {ok:false,score:-999};
+  const q=String(query||"").toLowerCase(),qWords=words(q),memKeys=Array.from(new Set([...(mem.keywords||[]),...words(mem.text||"")])).map(String),txt=(String(mem.text||"")+" "+memKeys.join(" ")).toLowerCase();
+  let overlap=0;qWords.forEach(k=>{if(k.length>=2&&txt.includes(k))overlap++});
+  memKeys.forEach(k=>{k=String(k).toLowerCase();if(k.length>=2&&q.includes(k))overlap+=2});
+  const direct=overlap>0;
+  const relationCue=mem.type==="relationship"&&/(我们|以前|记得|答应|关系|那次|上次)/.test(q);
+  const hiddenCue=mem.hidden&&/(手机|昨晚|偷看|隐私|密码|查手机)/.test(q);
+  const ok=direct||relationCue||hiddenCue;
+  let score=overlap*18+Number(mem.importance||5)*1.2+Number(mem.weight||5)*.5+(mem.pinned?9:0)+(mem.scope==="shared"?1:4);
+  if(hiddenCue)score+=20;if(relationCue)score+=10;
+  return {ok,score};
 }
 function retrieve(query,limit){
   importAntiRecon();
-  const {box}=ensureBox();
-  const list=(box.memories||[]).filter(m=>m.active!==false).map(m=>({m,s:score(m,query)})).sort((a,b)=>b.s-a.s);
-  return list.slice(0,limit||20).map(x=>x.m);
+  const {box,shared}=ensureBox();
+  const combined=[...(box.memories||[]),...(shared.memories||[])];
+  return combined.map(m=>({m,r:relevance(m,query)})).filter(x=>x.r.ok).sort((a,b)=>b.r.score-a.r.score).slice(0,limit||8).map(x=>x.m);
 }
 window.baobaoMemoryRetrieve=retrieve;
-
 function buildMemoryPrompt(query){
-  const {box}=ensureBox(), chosen=retrieve(query,20); lastInjectedCount=chosen.length;
+  const {db,box}=ensureBox(),chosen=retrieve(query,8);lastInjectedCount=chosen.length;
   const lines=[];
-  lines.push("【仅供角色内部思考的记忆，不得输出】");
-  lines.push("这些是你已经亲身经历或知道的事实，记忆是长期保存、跨对话共享的，不会因为换了话题或过了很久而消失。必须让它们影响本轮态度、语气和判断，但绝不能照抄、罗列或展示记忆文本。");
-  lines.push("其中可能包含用户在其他聊天里提到过的事情，把它们当成你本来就知道/听说过的信息自然使用，不要说自己是从别的对话里得知的，也不要生硬报出处。");
-  lines.push("禁止在回复中出现：隐性记忆、长期记忆系统、系统提示、角色记忆、具体看到、写入记忆，以及任何方括号记忆说明。");
-  lines.push("遇到查手机相关记忆时，要像真人一样自然表现为怀疑、吃醋、试探、阴阳、追问、回避或装作不知道；具体反应服从人设和当前语境。");
-  if(box.summary)lines.push("关系背景："+box.summary);
-  chosen.forEach((m,i)=>{
-    const kind=m.hidden?"内部经历":"已知事实";
-    lines.push((i+1)+". "+kind+"："+m.text);
-    m.lastUsedAt=Date.now();m.useCount=(m.useCount||0)+1;
-  });
-  lines.push("最终只输出角色真正会发给用户的聊天内容，不能解释你为什么这样回复。");
-  const x=ensureBox(); x.box.memories=box.memories; saveDB(x.db);
-  return lines.join("\n");
+  lines.push("【仅供当前角色内部思考的记忆，不得输出】");
+  lines.push("以下记忆只属于当前角色“"+String(persona().name||"当前角色")+"”，以及用户明确标记为全角色共享的事实。严禁读取、暗示或借用其他角色的聊天、关系、查手机经历、朋友圈互动和私密事件。");
+  lines.push("人名只能来自：当前角色人设、当前角色专属世界书、当前这段聊天、用户明确发送的真实朋友圈内容，或下方确实列出的当前角色记忆。没有依据的人名、第三者、前任、朋友、同学、同事一律禁止临时编造。");
+  lines.push("没有真实朋友圈证据时，禁止声称“我在朋友圈看到”“你朋友圈里和某某聊过”。不确定就按不知道处理，不能为了吃醋或制造戏剧性补造事实。");
+  lines.push("记忆只能自然影响态度，禁止照抄、罗列、报出处，也禁止出现隐性记忆、长期记忆系统、系统提示、角色记忆等后台词。");
+  if(box.summary)lines.push("当前角色与你的关系背景："+box.summary);
+  chosen.forEach((m,i)=>{lines.push((i+1)+". "+(m.scope==="shared"?"用户明确共享事实":"当前角色已知事实")+"："+m.text);m.lastUsedAt=Date.now();m.useCount=(m.useCount||0)+1});
+  if(!chosen.length)lines.push("本轮没有相关长期记忆。不要硬提旧事，不要自行补充陌生人名或不存在的朋友圈内容。");
+  lines.push("最终只输出当前角色真正会发给用户的聊天内容。");
+  saveDB(db);return lines.join("\n");
 }
 window.baobaoBuildMemoryPrompt=buildMemoryPrompt;
-
-function typeLabel(t){return ({profile:"关于用户",event:"重要事件",relationship:"关系记忆",hidden:"隐性记忆"})[t]||"记忆"}
-
-function findLastUser(){
-  const a=(window.state&&state.chatMessages)||[];
-  const m=a.slice().reverse().find(x=>x.role==="user"&&!x.hiddenSystem);
-  return m?m.content:"";
-}
-
+function typeLabel(t){return ({profile:"关于用户",event:"重要事件",relationship:"我们之间",hidden:"隐性记忆",shared:"全角色共享"})[t]||"记忆"}
+function findLastUser(){const a=(window.state&&state.chatMessages)||[];const m=a.slice().reverse().find(x=>x.role==="user"&&!x.hiddenSystem);return m?m.content:""}
 const oldRequest=window.requestChatReply;
-if(typeof oldRequest==="function"&&!oldRequest.__memoryV1){
+if(typeof oldRequest==="function"&&!oldRequest.__memoryV2){
   const wrapped=async function(){
     const history=(state.chatMessages||[]).filter(m=>m.type!=="image"&&!m.hiddenSystem).slice(-28).map(m=>({role:m.role,content:(typeof window.baobaoMessageForAI==="function"?window.baobaoMessageForAI(m):m.content)}));
-    const messages=[];
-    if(state.timeAware&&typeof buildTimeSystemMessage==="function")messages.push({role:"system",content:buildTimeSystemMessage()});
-    messages.push({role:"system",content:buildMemoryPrompt(findLastUser())});
-    messages.push(...history);
-    state.lastMsgTime=Date.now();if(typeof saveLocal==="function")saveLocal();
+    const messages=[];if(state.timeAware&&typeof buildTimeSystemMessage==="function")messages.push({role:"system",content:buildTimeSystemMessage()});
+    messages.push({role:"system",content:buildMemoryPrompt(findLastUser())});messages.push(...history);state.lastMsgTime=Date.now();if(typeof saveLocal==="function")saveLocal();
     try{return await sendChatCompletion(messages)}catch(e){if(typeof showToast==="function")showToast(" "+e.message,true);return null}
-  };
-  wrapped.__memoryV1=true;window.requestChatReply=wrapped;
+  };wrapped.__memoryV2=true;window.requestChatReply=wrapped;
 }
-
 const oldSendUser=window.sendUserMessage;
-if(typeof oldSendUser==="function"&&!oldSendUser.__memoryV1){
-  const wrapped=function(){
-    const input=document.getElementById("chatInputBox"), text=input?input.value.trim():"";
-    const r=oldSendUser.apply(this,arguments);
-    if(text)extractRules(text,"user");
-    return r;
-  };wrapped.__memoryV1=true;window.sendUserMessage=wrapped;
-}
-
+if(typeof oldSendUser==="function"&&!oldSendUser.__memoryV2){const wrapped=function(){const input=document.getElementById("chatInputBox"),text=input?input.value.trim():"";const r=oldSendUser.apply(this,arguments);if(text)extractRules(text,"user");return r};wrapped.__memoryV2=true;window.sendUserMessage=wrapped}
 const oldTrigger=window.triggerAIReply;
-if(typeof oldTrigger==="function"&&!oldTrigger.__memoryV1){
-  const wrapped=async function(){
-    const before=(state.chatMessages||[]).length;
-    const r=await oldTrigger.apply(this,arguments);
-    const after=(state.chatMessages||[]).length;
-    if(after>before) maybeAutoSummarize();
-    return r;
-  };wrapped.__memoryV1=true;window.triggerAIReply=wrapped;
-}
-
+if(typeof oldTrigger==="function"&&!oldTrigger.__memoryV2){const wrapped=async function(){const before=(state.chatMessages||[]).length;const r=await oldTrigger.apply(this,arguments);const after=(state.chatMessages||[]).length;if(after>before)maybeAutoSummarize();return r};wrapped.__memoryV2=true;window.triggerAIReply=wrapped}
 async function summarizeWithAI(manual){
-  const p=persona(), {db,box}=ensureBox();
-  const history=(state.chatMessages||[]).filter(m=>!m.hiddenSystem&&m.type!=="image").slice(-120);
+  const p=persona(),{db,box}=ensureBox(),history=(state.chatMessages||[]).filter(m=>!m.hiddenSystem&&m.type!=="image").slice(-120);
   if(history.length<4){if(manual&&typeof showToast==="function")showToast("聊天还太少，先多聊几句",true);return}
   const btn=document.getElementById("memv1SummarizeBtn");if(btn)btn.classList.add("memv1-loading");
   const transcript=history.map(m=>(m.role==="user"?"用户":p.name||"角色")+"："+m.content).join("\n");
-  const prompt=`你是长期记忆整理器。根据对话提炼真正值得长期保存的内容，不要保存寒暄和无意义句子。这些记忆会被保存进全局记忆库，其他角色的对话也可能读到，所以涉及用户本人的客观事实（身份、喜好、雷区等）要写得清楚、可独立理解；只有这段关系专属的私密事件才标为relationship。
-输出严格JSON，不要markdown：
-{"summary":"100到220字关系总结","memories":[{"type":"profile|event|relationship","text":"一条明确、可独立理解的记忆","importance":1到10,"emotion":"可空","keywords":["关键词"]}]}
-规则：
-1. 用户稳定偏好、身份、生日、雷区重要度7-10，标为profile。
-2. 承诺、第一次、争吵、和好、礼物等和这个角色之间的事件重要度6-10，标为relationship或event。
-3. 不要编造；不确定就不写。
-4. 最多20条，措辞具体，保留时间线索。
-角色：${p.name||"角色"}
-已有关系总结：${box.summary||"无"}
-对话：
-${transcript}`;
+  const prompt=`你是长期记忆整理器。只整理当前角色“${p.name||"角色"}”和用户之间这段对话。严禁混入其他角色、其他聊天或没有在本段对话出现的人名。不要保存寒暄。
+输出严格JSON：
+{"summary":"100到220字当前关系总结","memories":[{"type":"profile|event|relationship","text":"明确且有对话依据的记忆","importance":1到10,"emotion":"可空","keywords":["关键词"]}]}
+规则：1. 不要编造；2. 第三方人名只有本段对话明确出现才能保存；3. 最多20条；4. 这些记忆默认只属于当前角色，不与其他角色共享。
+已有当前角色关系总结：${box.summary||"无"}
+对话：\n${transcript}`;
   try{
-    const raw=await sendChatCompletion([{role:"system",content:"只输出合法JSON。你负责提炼长期记忆。"},{role:"user",content:prompt}]);
-    const clean=String(raw).replace(/^```json\s*/i,"").replace(/^```\s*/,"").replace(/```$/,"").trim();
-    const data=JSON.parse(clean);
+    const raw=await sendChatCompletion([{role:"system",content:"只输出合法JSON。只整理当前角色的记忆，禁止跨角色。"},{role:"user",content:prompt}]);
+    const clean=String(raw).replace(/^```json\s*/i,"").replace(/^```\s*/,"").replace(/```$/,"").trim(),data=JSON.parse(clean);
     if(data.summary)box.summary=String(data.summary).slice(0,700);
     (Array.isArray(data.memories)?data.memories:[]).forEach(m=>addMemory({type:m.type,text:m.text,importance:m.importance,emotion:m.emotion,keywords:m.keywords,source:"ai-summary",sourceTime:Date.now(),pinned:Number(m.importance)>=10}));
-    const latest=ensureBox();latest.box.summary=box.summary;latest.box.summaryUpdatedAt=Date.now();latest.box.lastAutoSummaryCount=(state.chatMessages||[]).length;saveDB(latest.db);
-    renderMemoryV1();if(manual&&typeof showToast==="function")showToast("记忆总结完成");
-  }catch(e){
-    console.warn("记忆总结失败",e);if(manual&&typeof showToast==="function")showToast("记忆总结失败："+e.message,true);
-  }finally{if(btn)btn.classList.remove("memv1-loading")}
+    const latest=loadDB(),latestBox=ensurePersonaBox(latest,pid());latestBox.summary=box.summary;latestBox.summaryUpdatedAt=Date.now();latestBox.lastAutoSummaryCount=(state.chatMessages||[]).length;saveDB(latest);
+    renderMemoryV1();if(manual&&typeof showToast==="function")showToast("当前角色记忆总结完成");
+  }catch(e){console.warn("记忆总结失败",e);if(manual&&typeof showToast==="function")showToast("记忆总结失败："+e.message,true)}finally{if(btn)btn.classList.remove("memv1-loading")}
 }
 window.memoryV1SummarizeNow=()=>summarizeWithAI(true);
-function maybeAutoSummarize(){
-  const {box}=ensureBox(), count=(state.chatMessages||[]).filter(m=>!m.hiddenSystem).length;
-  if(count>=12 && count-(box.lastAutoSummaryCount||0)>=20)setTimeout(()=>summarizeWithAI(false),1800);
-}
-
-window.openMemoryV1=function(){
-  importAntiRecon();document.getElementById("memoryV1Panel").classList.add("show");renderMemoryV1();
-}
+function maybeAutoSummarize(){const {box}=ensureBox(),count=(state.chatMessages||[]).filter(m=>!m.hiddenSystem).length;if(count>=12&&count-(box.lastAutoSummaryCount||0)>=20)setTimeout(()=>summarizeWithAI(false),1800)}
+window.openMemoryV1=function(){importAntiRecon();document.getElementById("memoryV1Panel").classList.add("show");renderMemoryV1()}
 window.closeMemoryV1=function(){document.getElementById("memoryV1Panel").classList.remove("show")}
 window.memoryV1SetTab=function(el){document.querySelectorAll(".memv1-tab").forEach(x=>x.classList.remove("active"));el.classList.add("active");currentTab=el.dataset.tab;renderMemoryV1()}
-window.openMemoryV1Add=function(id){
-  editingId=id||null;const {box}=ensureBox(),m=id?(box.memories||[]).find(x=>x.id===id):null;
-  document.getElementById("memv1SheetTitle").textContent=m?"编辑记忆":"添加长期记忆";
-  document.getElementById("memv1AddType").value=m?m.type:"profile";
-  document.getElementById("memv1AddText").value=m?m.text:"";
-  document.getElementById("memv1AddImportance").value=String(m?([5,7,9,10].sort((a,b)=>Math.abs(a-m.importance)-Math.abs(b-m.importance))[0]):7);
-  document.getElementById("memoryV1AddSheet").classList.add("show");
-}
+function findMemory(db,id){for(const [personaId,box] of Object.entries(db.personas||{})){const m=(box.memories||[]).find(x=>x.id===id);if(m)return {m,box,personaId}}const shared=(db.shared.memories||[]).find(x=>x.id===id);return shared?{m:shared,box:db.shared,personaId:"*"}:null}
+window.openMemoryV1Add=function(id){editingId=id||null;const db=loadDB(),found=id?findMemory(db,id):null,m=found&&found.m;document.getElementById("memv1SheetTitle").textContent=m?"编辑记忆":"添加长期记忆";document.getElementById("memv1AddType").value=m?(m.scope==="shared"?"shared":m.type):"profile";document.getElementById("memv1AddText").value=m?m.text:"";document.getElementById("memv1AddImportance").value=String(m?([5,7,9,10].sort((a,b)=>Math.abs(a-m.importance)-Math.abs(b-m.importance))[0]):7);document.getElementById("memoryV1AddSheet").classList.add("show")}
 window.closeMemoryV1Add=function(){document.getElementById("memoryV1AddSheet").classList.remove("show");editingId=null}
 window.saveMemoryV1Manual=function(){
-  const type=document.getElementById("memv1AddType").value,text=document.getElementById("memv1AddText").value.trim(),imp=Number(document.getElementById("memv1AddImportance").value);
-  if(!text){if(typeof showToast==="function")showToast("先写记忆内容",true);return}
+  const type=document.getElementById("memv1AddType").value,text=document.getElementById("memv1AddText").value.trim(),imp=Number(document.getElementById("memv1AddImportance").value);if(!text){if(typeof showToast==="function")showToast("先写记忆内容",true);return}
   if(editingId){
-    const x=ensureBox(),m=x.box.memories.find(v=>v.id===editingId);if(m){m.type=type;m.text=text;m.importance=imp;m.pinned=imp>=10;m.hidden=type==="hidden";m.keywords=words(text);m.updatedAt=Date.now();saveDB(x.db)}
-  }else addMemory({type,text,importance:imp,hidden:type==="hidden",pinned:imp>=10,source:"manual"});
+    const db=loadDB(),found=findMemory(db,editingId);if(found){const oldShared=found.m.scope==="shared",newShared=type==="shared";if(oldShared!==newShared){found.box.memories=found.box.memories.filter(v=>v.id!==editingId);saveDB(db);addMemory({type,text,importance:imp,hidden:type==="hidden",pinned:imp>=10,source:"manual",scope:newShared?"shared":"persona"})}else{found.m.type=newShared?"shared":type;found.m.scope=newShared?"shared":"persona";found.m.personaId=newShared?"*":pid();found.m.text=text;found.m.importance=imp;found.m.pinned=imp>=10;found.m.hidden=type==="hidden";found.m.keywords=words(text);found.m.updatedAt=Date.now();saveDB(db)}}
+  }else addMemory({type,text,importance:imp,hidden:type==="hidden",pinned:imp>=10,source:"manual",scope:type==="shared"?"shared":"persona"});
   closeMemoryV1Add();renderMemoryV1();
 }
-window.memoryV1TogglePin=function(id){const x=ensureBox(),m=x.box.memories.find(v=>v.id===id);if(m){m.pinned=!m.pinned;if(m.pinned)m.importance=Math.max(9,m.importance||0);saveDB(x.db);renderMemoryV1()}}
-window.memoryV1Delete=function(id){if(!confirm("删除这条记忆？"))return;const x=ensureBox();x.box.memories=x.box.memories.filter(v=>v.id!==id);saveDB(x.db);renderMemoryV1()}
-
+window.memoryV1TogglePin=function(id){const db=loadDB(),found=findMemory(db,id);if(found){found.m.pinned=!found.m.pinned;if(found.m.pinned)found.m.importance=Math.max(9,found.m.importance||0);saveDB(db);renderMemoryV1()}}
+window.memoryV1Delete=function(id){if(!confirm("删除这条记忆？"))return;const db=loadDB(),found=findMemory(db,id);if(found){found.box.memories=found.box.memories.filter(v=>v.id!==id);saveDB(db);renderMemoryV1()}}
 window.renderMemoryV1=function(){
-  const p=persona(),x=ensureBox(),list=(x.box.memories||[]).filter(m=>m.active!==false);
-  const av=document.getElementById("memv1Avatar");av.innerHTML=p.photo?'<img src="'+p.photo+'">':esc((p.name||"人").slice(0,1));
-  document.getElementById("memv1Name").textContent=p.name||"当前角色";
-  document.getElementById("memv1Count").textContent=list.length+" 条长期记忆 · 全局共享 · 最多保留 6000 条";
-  document.getElementById("memv1Summary").textContent=x.box.summary||"还没有形成关系总结。点击「AI 总结聊天」后，会根据最近对话生成长期关系摘要。";
-  document.getElementById("memv1Permanent").textContent=list.filter(m=>m.pinned||m.importance>=10).length;
-  document.getElementById("memv1Hidden").textContent=list.filter(m=>m.hidden).length;
-  document.getElementById("memv1Injected").textContent=lastInjectedCount;
-  const q=(document.getElementById("memv1Search").value||"").toLowerCase();
-  let shown=list.filter(m=>{
-    if(currentTab==="pinned"&&!m.pinned)return false;
-    if(currentTab!=="all"&&currentTab!=="pinned"&&m.type!==currentTab)return false;
-    return !q||m.text.toLowerCase().includes(q)||(m.keywords||[]).join(" ").toLowerCase().includes(q);
-  }).sort((a,b)=>(b.pinned-a.pinned)||(b.importance-a.importance)||(b.updatedAt-a.updatedAt));
-  const wrap=document.getElementById("memv1List");
-  wrap.innerHTML=shown.length?shown.map(m=>`<div class="memv1-card ${m.hidden?"hidden-memory":""}">
-    <div class="memv1-card-top"><span class="memv1-type">${typeLabel(m.type)}</span><span class="memv1-stars">重要度 ${m.importance}/10 ${m.pinned?"· 永久":""}</span></div>
-    <div class="memv1-text">${esc(m.text)}</div>
-    <div class="memv1-meta">来源：${esc(m.source||"未知")} · ${new Date(m.sourceTime||m.createdAt).toLocaleString()}${m.hidden?" · 角色默认保密":""}</div>
-    <div class="memv1-actions"><span class="memv1-action" onclick="openMemoryV1Add('${m.id}')">编辑</span><span class="memv1-action" onclick="memoryV1TogglePin('${m.id}')">${m.pinned?"取消永久":"固定永久"}</span><span class="memv1-action" onclick="memoryV1Delete('${m.id}')">删除</span></div>
-  </div>`).join(""):'<div class="memv1-empty">这里还没有记忆。</div>';
+  const p=persona(),x=ensureBox(),own=(x.box.memories||[]).filter(m=>m.active!==false),shared=(x.shared.memories||[]).filter(m=>m.active!==false),list=[...own,...shared];
+  const av=document.getElementById("memv1Avatar");av.innerHTML=p.photo?'<img src="'+p.photo+'">':esc((p.name||"人").slice(0,1));document.getElementById("memv1Name").textContent=p.name||"当前角色";
+  document.getElementById("memv1Count").textContent=own.length+" 条角色记忆 · "+shared.length+" 条明确共享";document.getElementById("memv1Summary").textContent=x.box.summary||"还没有形成当前角色的关系总结。";
+  document.getElementById("memv1Permanent").textContent=list.filter(m=>m.pinned||m.importance>=10).length;document.getElementById("memv1Hidden").textContent=own.filter(m=>m.hidden).length;document.getElementById("memv1Injected").textContent=lastInjectedCount;
+  const q=(document.getElementById("memv1Search").value||"").toLowerCase();let shown=list.filter(m=>{if(currentTab==="pinned"&&!m.pinned)return false;if(currentTab==="shared"&&m.scope!=="shared")return false;if(currentTab!=="all"&&currentTab!=="pinned"&&currentTab!=="shared"&&m.type!==currentTab)return false;return !q||m.text.toLowerCase().includes(q)||(m.keywords||[]).join(" ").toLowerCase().includes(q)}).sort((a,b)=>(b.pinned-a.pinned)||(b.importance-a.importance)||(b.updatedAt-a.updatedAt));
+  const wrap=document.getElementById("memv1List");wrap.innerHTML=shown.length?shown.map(m=>`<div class="memv1-card ${m.hidden?"hidden-memory":""}"><div class="memv1-card-top"><span class="memv1-type">${typeLabel(m.scope==="shared"?"shared":m.type)}</span><span class="memv1-stars">重要度 ${m.importance}/10 ${m.pinned?"· 永久":""}</span></div><div class="memv1-text">${esc(m.text)}</div><div class="memv1-meta">${m.scope==="shared"?"所有角色明确共享":"仅 "+esc(p.name||"当前角色")+" 可用"} · 来源：${esc(m.source||"未知")}</div><div class="memv1-actions"><span class="memv1-action" onclick="openMemoryV1Add('${m.id}')">编辑</span><span class="memv1-action" onclick="memoryV1TogglePin('${m.id}')">${m.pinned?"取消永久":"固定永久"}</span><span class="memv1-action" onclick="memoryV1Delete('${m.id}')">删除</span></div></div>`).join(""):'<div class="memv1-empty">这里还没有记忆。</div>';
 }
-
-function installRow(){
-  const panel=document.getElementById("chatSettingsPanel");if(!panel||panel.querySelector(".memv1-settings-row"))return;
-  const groups=panel.querySelectorAll(".ios-group");const target=groups[2]||groups[0];if(!target)return;
-  const row=document.createElement("div");row.className="ios-row memv1-settings-row";row.onclick=()=>{if(typeof closeChatSettings==="function")closeChatSettings();openMemoryV1()};
-  row.innerHTML='<div class="ios-row-label">记忆总结<div class="ios-row-desc">长期记忆、全局共享、关系总结、隐性记忆与手动管理</div></div><span style="font-size:13px;color:#999;margin-right:6px">长期保存</span><div class="ios-row-chevron">›</div>';
-  target.insertBefore(row,target.firstChild);
-}
-const oldOpenSettings=window.openChatSettings;
-if(typeof oldOpenSettings==="function"){
-  window.openChatSettings=function(){oldOpenSettings.apply(this,arguments);setTimeout(installRow,0)}
-}
-document.addEventListener("DOMContentLoaded",()=>{installRow();importAntiRecon()});
-setTimeout(()=>{installRow();importAntiRecon()},800);
+function installRow(){const panel=document.getElementById("chatSettingsPanel");if(!panel||panel.querySelector(".memv1-settings-row"))return;const groups=panel.querySelectorAll(".ios-group"),target=groups[2]||groups[0];if(!target)return;const row=document.createElement("div");row.className="ios-row memv1-settings-row";row.onclick=()=>{if(typeof closeChatSettings==="function")closeChatSettings();openMemoryV1()};row.innerHTML='<div class="ios-row-label">记忆总结<div class="ios-row-desc">当前角色独立记忆；只有手动选择的内容才全角色共享</div></div><span style="font-size:13px;color:#999;margin-right:6px">已隔离</span><div class="ios-row-chevron">›</div>';target.insertBefore(row,target.firstChild)}
+const oldOpenSettings=window.openChatSettings;if(typeof oldOpenSettings==="function"){window.openChatSettings=function(){oldOpenSettings.apply(this,arguments);setTimeout(installRow,0)}}
+document.addEventListener("DOMContentLoaded",()=>{installRow();importAntiRecon()});setTimeout(()=>{installRow();importAntiRecon()},800);
 })();
-;
 
 /* baobao-slang-human-v2 */
 (function(){
@@ -35060,5 +35005,396 @@ ${offline}
   function boot(){injectStyle();ensurePanel();ensureDiscoverButton();installUiHooks();syncToggles();installTrigger();installButtonCapture();renderMoments();}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
   [80,300,900,2200,5200,9000].forEach(ms=>setTimeout(boot,ms));
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+})();
+
+/* baobao-v298-moments-reply-like-and-sticker-open-fix */
+(function(){
+  "use strict";
+  if(window.__bbMomentsReplyLikeStickerV298)return;
+  window.__bbMomentsReplyLikeStickerV298=true;
+
+  const POST_KEY="baobao_moments_posts_v3";
+  const $=id=>document.getElementById(id);
+  const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const esc=value=>String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+
+  function appState(){
+    try{return window.state||state||{}}catch(_){return window.state||{}}
+  }
+  function personas(){
+    const s=appState();
+    return Array.isArray(s.personas)?s.personas.filter(Boolean):[];
+  }
+  function personaById(id){
+    return personas().find(p=>String(p.id)===String(id))||null;
+  }
+  function myProfile(){
+    const s=appState();
+    return {
+      name:String(s.wechatProfile&&s.wechatProfile.name||s.name||"我"),
+      avatar:String(s.wechatProfile&&s.wechatProfile.avatar||s.charAvatar||s.avatar||"")
+    };
+  }
+  function loadPosts(){
+    try{
+      const parsed=JSON.parse(localStorage.getItem(POST_KEY)||"[]");
+      return Array.isArray(parsed)?parsed:[];
+    }catch(_){return []}
+  }
+  function savePosts(posts){
+    try{localStorage.setItem(POST_KEY,JSON.stringify(posts));return true}
+    catch(error){
+      try{
+        const compact=(posts||[]).map(post=>{
+          if(!post||typeof post!=="object")return post;
+          const next={...post};
+          next.images=(next.images||[]).filter(src=>!/^data:image\//i.test(String(src||""))||String(src).length<105000);
+          return next;
+        });
+        localStorage.setItem(POST_KEY,JSON.stringify(compact));
+        return true;
+      }catch(_){
+        try{if(typeof window.showToast==="function")window.showToast("朋友圈保存失败，本地空间不足",true)}catch(__){}
+        return false;
+      }
+    }
+  }
+  function personaDescription(person){
+    return [person&&person.persona,person&&person.description,person&&person.setting,person&&person.bio,person&&person.brief,person&&person.prompt,person&&person.personality]
+      .filter(Boolean).map(String).join("\n").slice(0,5000);
+  }
+  function chatFor(person){
+    const s=appState(),id=String(person&&person.id||"");
+    if(s.chatRecords&&Array.isArray(s.chatRecords[id]))return s.chatRecords[id];
+    if(String(s.activeChatId||"")===id&&Array.isArray(s.chatMessages))return s.chatMessages;
+    return [];
+  }
+  function recentChat(person){
+    return chatFor(person).slice(-10).map(msg=>{
+      if(!msg||msg.hiddenSystem)return "";
+      const role=msg.role==="assistant"?(person.name||"TA"):"用户";
+      const type=String(msg.type||"text").toLowerCase();
+      if(["image","photo","textphoto","generated-image","sticker"].includes(type))return role+"：[图片]";
+      if(type==="voice")return role+"：[语音]";
+      return role+"："+String(msg.content||"").replace(/\s+/g," ").slice(0,100);
+    }).filter(Boolean).join("\n");
+  }
+  function cleanRoleReply(raw){
+    let text=String(raw||"")
+      .replace(/```[\s\S]*?```/g,"")
+      .replace(/^\s*(?:回复|评论|角色回复|朋友圈回复)\s*[:：]\s*/i,"")
+      .replace(/^[“\"']|[”\"']$/g,"")
+      .replace(/\s+/g," ")
+      .trim();
+    text=text.split(/\n+/)[0]||text;
+    if(text.length>36)text=text.slice(0,36);
+    if(/(?:作为AI|系统|程序|功能|已自动回复|生成回复)/i.test(text))return "";
+    return text;
+  }
+  function fallbackRoleReply(person,comment){
+    const text=String(comment&&comment.text||"");
+    const pools=/[?？]/.test(text)
+      ?["你觉得呢。","这还用问。","不然呢。","你猜。"]
+      :/(好看|喜欢|可爱|帅|漂亮|爱你|想你|夸)/.test(text)
+        ?["知道了。","嘴还挺甜。","那就多看两眼。","算你会说。"]
+        :/(哈哈|笑死|笨|傻|逗|欠)/.test(text)
+          ?["你少来。","还笑。","闭嘴吧你。","就你话多。"]
+          :["看见了。","回你了。","嗯。","你又来了。"];
+    let seed=String(person&&person.id||"").length+text.length;
+    return pools[seed%pools.length];
+  }
+  async function generateRoleReply(person,post,comment){
+    const prompt=[
+      "你正在扮演"+(person.name||"这个角色")+"，在微信朋友圈回复用户的评论。",
+      "角色人设：\n"+(personaDescription(person)||"像真人一样自然"),
+      recentChat(person)?"最近私聊：\n"+recentChat(person):"",
+      "角色发的朋友圈："+String(post.text||"（只有图片）").slice(0,220),
+      "用户评论："+String(comment.text||"").slice(0,160),
+      "只回复一句自然口语，2到24个汉字。要贴人设和关系，可以嘴硬、调侃、简短或有情绪；不要客服腔，不要解释，不要写角色名、引号、标签或“回复：”。"
+    ].filter(Boolean).join("\n\n");
+    if(typeof window.sendChatCompletion==="function"){
+      try{
+        const raw=await Promise.race([
+          window.sendChatCompletion([
+            {role:"system",content:"你是朋友圈评论区里的真实角色，只输出一句自然回复。"},
+            {role:"user",content:prompt}
+          ]),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error("reply timeout")),12000))
+        ]);
+        const cleaned=cleanRoleReply(raw);
+        if(cleaned)return cleaned;
+      }catch(error){console.warn("朋友圈角色回复失败，使用本地兜底：",error&&error.message)}
+    }
+    return fallbackRoleReply(person,comment);
+  }
+
+  const replyingComments=new Set();
+  function commentTime(comment){
+    const direct=Number(comment&&comment.createdAt||0);
+    if(direct)return direct;
+    const match=String(comment&&comment.id||"").match(/(\d{10,})/);
+    return match?Number(match[1]):0;
+  }
+  function latestUnansweredMineComment(){
+    const candidates=[];
+    loadPosts().forEach(post=>{
+      if(!post||post.authorType!=="persona"||!post.personaId)return;
+      (Array.isArray(post.comments)?post.comments:[]).forEach(comment=>{
+        if(!comment||!comment.mine||comment.bbAuthorReplyDoneV298||comment.bbAuthorReplyPendingV298)return;
+        candidates.push({post,comment,time:commentTime(comment)});
+      });
+    });
+    candidates.sort((a,b)=>b.time-a.time);
+    return candidates[0]||null;
+  }
+  async function replyToLatestUserComment(){
+    const latest=latestUnansweredMineComment();
+    if(!latest)return;
+    const key=String(latest.post.id)+"::"+String(latest.comment.id);
+    if(replyingComments.has(key))return;
+    replyingComments.add(key);
+
+    let posts=loadPosts();
+    let post=posts.find(p=>String(p.id)===String(latest.post.id));
+    let comment=post&&(post.comments||[]).find(c=>String(c.id)===String(latest.comment.id));
+    if(!post||!comment){replyingComments.delete(key);return;}
+    comment.bbAuthorReplyPendingV298=true;
+    savePosts(posts);
+
+    try{
+      await sleep(900+Math.random()*1000);
+      const repliedPersona=comment.replyTo?personas().find(p=>String(p.name||"")===String(comment.replyTo||"")):null;
+      const author=repliedPersona||personaById(post.personaId);
+      if(!author)throw new Error("找不到回复角色");
+      const text=await generateRoleReply(author,post,comment);
+      posts=loadPosts();
+      post=posts.find(p=>String(p.id)===String(latest.post.id));
+      comment=post&&(post.comments||[]).find(c=>String(c.id)===String(latest.comment.id));
+      if(!post||!comment)return;
+      post.comments=Array.isArray(post.comments)?post.comments:[];
+      if(!post.comments.some(c=>c&&String(c.replyToCommentId||"")===String(comment.id)&&String(c.personaId||"")===String(author.id))){
+        post.comments.push({
+          id:"char_reply_"+Date.now()+"_"+Math.random().toString(36).slice(2,6),
+          createdAt:Date.now(),
+          personaId:String(author.id),
+          name:String(author.name||"未命名"),
+          avatar:String(author.photo||""),
+          text:String(text||fallbackRoleReply(author,comment)).slice(0,80),
+          replyTo:String(comment.name||myProfile().name||"我"),
+          replyToCommentId:String(comment.id),
+          mine:false,
+          bbAuthorReplyV298:true
+        });
+      }
+      comment.bbAuthorReplyDoneV298=true;
+      delete comment.bbAuthorReplyPendingV298;
+      savePosts(posts);
+      try{if(typeof window.renderMomentsFeed==="function")window.renderMomentsFeed()}catch(_){ }
+    }catch(error){
+      posts=loadPosts();
+      post=posts.find(p=>String(p.id)===String(latest.post.id));
+      comment=post&&(post.comments||[]).find(c=>String(c.id)===String(latest.comment.id));
+      if(comment)delete comment.bbAuthorReplyPendingV298;
+      savePosts(posts);
+    }finally{
+      replyingComments.delete(key);
+    }
+  }
+  function installCommentReplyHook(){
+    if(document.__bbMomentCommentReplyV298)return;
+    document.__bbMomentCommentReplyV298=true;
+    document.addEventListener("click",event=>{
+      const button=event.target&&event.target.closest?event.target.closest("#momentsCommentSend"):null;
+      if(!button)return;
+      setTimeout(replyToLatestUserComment,80);
+    },false);
+  }
+
+  const pendingLikePosts=new Set();
+  function deterministicCount(post,available){
+    let sum=0;String(post.id||post.text||"").split("").forEach(ch=>sum+=ch.charCodeAt(0));
+    return Math.min(available,1+(sum%2));
+  }
+  function ensureRoleMutualLikes(){
+    const posts=loadPosts(),people=personas();
+    if(people.length<2)return;
+    posts.forEach(post=>{
+      if(!post||post.authorType!=="persona"||!post.personaId)return;
+      const existing=new Set((post.likes||[]).map(like=>String(like&&like.id||"")));
+      const others=people.filter(p=>String(p.id)!==String(post.personaId)&&!existing.has(String(p.id)));
+      if(!others.length)return;
+      const hasRoleLike=(post.likes||[]).some(like=>like&&!like.mine&&personaById(like.id));
+      if(hasRoleLike)return;
+      const postKey=String(post.id);
+      if(pendingLikePosts.has(postKey))return;
+      pendingLikePosts.add(postKey);
+      const count=deterministicCount(post,others.length);
+      setTimeout(()=>{
+        const fresh=loadPosts(),target=fresh.find(p=>String(p.id)===postKey);
+        if(!target){pendingLikePosts.delete(postKey);return;}
+        target.likes=Array.isArray(target.likes)?target.likes:[];
+        others.slice(0,count).forEach(person=>{
+          if(!target.likes.some(like=>String(like&&like.id||"")===String(person.id))){
+            target.likes.push({id:String(person.id),name:String(person.name||"未命名"),avatar:String(person.photo||""),mine:false,bbMutualLikeV298:true});
+          }
+        });
+        savePosts(fresh);
+        try{if(typeof window.renderMomentsFeed==="function")window.renderMomentsFeed()}catch(_){ }
+        pendingLikePosts.delete(postKey);
+      },700+Math.random()*900);
+    });
+  }
+
+  function removeCharMarks(){
+    document.querySelectorAll(".bb-role-moment-mark-v297").forEach(node=>node.remove());
+  }
+  function installMomentStyle(){
+    if($("bbMomentsPolishV298"))return;
+    const style=document.createElement("style");
+    style.id="bbMomentsPolishV298";
+    style.textContent=`
+      .bb-role-moment-mark-v297{display:none!important}
+      #momentsFeed .moments-item-name{display:flex;align-items:center;gap:0}
+    `;
+    document.head.appendChild(style);
+  }
+  function wrapMomentsRenderer(){
+    const original=window.renderMomentsFeed;
+    if(typeof original!=="function"||original.__bbMomentsV298)return;
+    const wrapped=function(){
+      const result=original.apply(this,arguments);
+      requestAnimationFrame(()=>{removeCharMarks();ensureRoleMutualLikes()});
+      return result;
+    };
+    wrapped.__bbMomentsV298=true;
+    wrapped.__bbPrevious=original;
+    window.renderMomentsFeed=wrapped;
+  }
+
+  /* 表情包：只响应真实工具箱入口，但不再被旧版的过严门禁拦住。 */
+  let stickerIntentUntil=0;
+  let stickerProtectUntil=0;
+  let lastStickerOpenAt=0;
+  function toolSheetVisible(sheet){
+    if(!sheet||!sheet.classList.contains("show"))return false;
+    const style=getComputedStyle(sheet),rect=sheet.getBoundingClientRect();
+    return style.display!=="none"&&style.visibility!=="hidden"&&style.pointerEvents!=="none"&&Number(style.opacity||1)>.1&&rect.width>100&&rect.height>80;
+  }
+  function stickerToolFromTarget(target){
+    if(!target||!target.closest)return null;
+    const item=target.closest("#bbToolSheet .bb-sticker-tool-v238,#bbToolSheet .bb-sticker-tool");
+    if(!item)return null;
+    const sheet=item.closest("#bbToolSheet");
+    if(!toolSheetVisible(sheet))return null;
+    const style=getComputedStyle(item),rect=item.getBoundingClientRect();
+    if(style.display==="none"||style.visibility==="hidden"||style.pointerEvents==="none"||Number(style.opacity||1)<.1)return null;
+    if(rect.width<28||rect.height<28||rect.width>180||rect.height>180)return null;
+    return item;
+  }
+  function ensureStickerTool(){
+    const grid=document.querySelector("#bbToolSheet .bb-tool-grid");
+    if(!grid)return null;
+    let item=grid.querySelector(".bb-sticker-tool-v238,.bb-sticker-tool");
+    if(!item){
+      item=document.createElement("div");
+      item.className="bb-tool-item bb-sticker-tool-v238";
+      item.innerHTML='<div class="bb-tool-icon"><svg viewBox="0 0 24 24" style="width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><rect x="4" y="4" width="16" height="16" rx="5"></rect><path d="M8.3 10h.01M15.7 10h.01"></path><path d="M8.5 14c1 .9 2.15 1.35 3.5 1.35S14.5 14.9 15.5 14"></path></svg></div>表情包';
+      const imageItem=Array.from(grid.children).find(el=>String(el.textContent||"").trim()==="图片");
+      if(imageItem&&imageItem.nextSibling)grid.insertBefore(item,imageItem.nextSibling);else grid.appendChild(item);
+    }
+    item.classList.remove("bb-sticker-tool");
+    item.classList.add("bb-sticker-tool-v238");
+    return item;
+  }
+  function openStickerDirect(){
+    const picker=$("bbStickerPicker");
+    const room=$("chatRoom");
+    const s=appState();
+    if(!picker||!room||!s.activeChatId)return false;
+    if(Date.now()-lastStickerOpenAt<250&&picker.classList.contains("show"))return true;
+    lastStickerOpenAt=Date.now();
+    stickerProtectUntil=Date.now()+650;
+    try{if(typeof window.closeBaobaoTools==="function")window.closeBaobaoTools()}catch(_){ }
+    try{if(typeof window.renderBaobaoStickerPicker==="function")window.renderBaobaoStickerPicker()}catch(_){ }
+    picker.classList.add("show");
+    picker.style.setProperty("display","flex","important");
+    document.querySelector(".phone")?.classList.add("bb-private-chat-visible");
+    room.classList.add("bb-chat-is-active");
+    return true;
+  }
+  function installStickerOpen(){
+    const guarded=function(){
+      const picker=$("bbStickerPicker");
+      if(picker&&picker.classList.contains("show"))return true;
+      if(Date.now()>stickerIntentUntil)return false;
+      stickerIntentUntil=0;
+      return openStickerDirect();
+    };
+    guarded.__bbStrictGateV296=true;
+    guarded.__bbExplicitOnlyV295=true;
+    guarded.__bbStickerOpenV298=true;
+    window.openBaobaoStickerPicker=guarded;
+
+    const oldClose=window.closeBaobaoStickerPicker;
+    if(typeof oldClose==="function"&&!oldClose.__bbProtectV298){
+      const closeWrapped=function(){
+        if(Date.now()<stickerProtectUntil)return false;
+        const result=oldClose.apply(this,arguments);
+        const picker=$("bbStickerPicker");
+        if(picker){picker.classList.remove("show");picker.style.removeProperty("display");}
+        return result;
+      };
+      closeWrapped.__bbProtectV298=true;
+      closeWrapped.__bbPrevious=oldClose;
+      window.closeBaobaoStickerPicker=closeWrapped;
+    }
+  }
+  function installStickerToolCapture(){
+    if(window.__bbStickerToolCaptureV298)return;
+    window.__bbStickerToolCaptureV298=true;
+    const arm=event=>{
+      const item=stickerToolFromTarget(event.target);
+      stickerIntentUntil=item?Date.now()+1300:0;
+    };
+    window.addEventListener("pointerdown",arm,true);
+    window.addEventListener("touchstart",arm,{capture:true,passive:true});
+    window.addEventListener("click",event=>{
+      const item=stickerToolFromTarget(event.target);
+      if(!item)return;
+      stickerIntentUntil=Date.now()+1300;
+      event.preventDefault();
+      event.stopPropagation();
+      if(typeof event.stopImmediatePropagation==="function")event.stopImmediatePropagation();
+      openStickerDirect();
+    },true);
+  }
+  function wrapToolsOpen(){
+    const original=window.openBaobaoTools;
+    if(typeof original!=="function"||original.__bbStickerEntryV298)return;
+    const wrapped=function(){
+      const result=original.apply(this,arguments);
+      ensureStickerTool();
+      setTimeout(ensureStickerTool,0);
+      return result;
+    };
+    wrapped.__bbStickerEntryV298=true;
+    wrapped.__bbPrevious=original;
+    window.openBaobaoTools=wrapped;
+  }
+
+  function boot(){
+    installMomentStyle();
+    wrapMomentsRenderer();
+    installCommentReplyHook();
+    removeCharMarks();
+    ensureRoleMutualLikes();
+    installStickerOpen();
+    installStickerToolCapture();
+    ensureStickerTool();
+    wrapToolsOpen();
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  [60,220,600,1400,3200,6500,10000].forEach(ms=>setTimeout(boot,ms));
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
 })();
