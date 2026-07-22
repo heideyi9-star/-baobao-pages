@@ -1,5 +1,5 @@
-/* 豹豹机 331：首页大组件稳定防回弹版。 */
-const CACHE_NAME = "baobao-shell-v338";
+/* 豹豹机 339：首页单一布局微调版。 */
+const CACHE_NAME = "baobao-shell-v339";
 const SHELL = [
   "./",
   "./index.html",

@@ -41089,1256 +41089,15 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("load",init);
 })();
 
-/* baobao-page1-showcase-order-fix-v326 */
+
+/* baobao-page1-single-layout-v339 */
 (function(){
   "use strict";
-  if(window.__bbPage1ShowcaseOrderFixV326)return;
-  window.__bbPage1ShowcaseOrderFixV326=true;
+  if(window.__bbPage1SingleLayoutV339)return;
+  window.__bbPage1SingleLayoutV339=true;
 
-  function injectStyle(){
-    var old=document.getElementById("bbPage1ShowcaseOrderFixV326Style");
-    if(old)old.remove();
-    var style=document.createElement("style");
-    style.id="bbPage1ShowcaseOrderFixV326Style";
-    style.textContent=`
-      /* 第一页：只留一个三图组件，八个 App 放在组件下面 */
-      html body #desktop:not(.page-two-mode) .desk-scroll > #clock,
-      html body #desktop:not(.page-two-mode) .desk-scroll > #desktopNote,
-      html body #desktop:not(.page-two-mode) .desk-scroll > .avatar-box,
-      html body #desktop:not(.page-two-mode) .desk-scroll > #deskIns{
-        display:none!important;
-        visibility:hidden!important;
-        opacity:0!important;
-        height:0!important;
-        min-height:0!important;
-        margin:0!important;
-        padding:0!important;
-        overflow:hidden!important;
-        pointer-events:none!important;
-      }
-      html body #desktop:not(.page-two-mode) .desk-scroll{
-        padding-top:76px!important;
-        padding-bottom:118px!important;
-      }
-      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-        display:block!important;
-        position:relative!important;
-        width:calc(100% - 34px)!important;
-        max-width:none!important;
-        height:auto!important;
-        min-height:0!important;
-        margin:0 auto 16px!important;
-        padding:0!important;
-        inset:auto!important;
-        transform:none!important;
-        opacity:1!important;
-        visibility:visible!important;
-        overflow:visible!important;
-        z-index:15!important;
-      }
-      html body #desktop.page-two-mode .desk-scroll > #photoWidget.bb-page1-showcase{
-        display:none!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-        width:100%!important;
-        min-height:0!important;
-        height:auto!important;
-        padding:15px 14px 14px!important;
-        border-radius:27px!important;
-        background:rgba(255,255,255,.67)!important;
-        border:1px solid rgba(255,255,255,.78)!important;
-        box-shadow:0 10px 28px rgba(0,0,0,.055)!important;
-        -webkit-backdrop-filter:blur(18px)!important;
-        backdrop-filter:blur(18px)!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-head{
-        display:grid!important;
-        grid-template-columns:62px minmax(0,1fr) auto!important;
-        align-items:center!important;
-        gap:11px!important;
-        min-height:62px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-left{
-        width:62px!important;
-        height:62px!important;
-        flex:none!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-        width:62px!important;
-        height:62px!important;
-        min-width:62px!important;
-        min-height:62px!important;
-        border-radius:50%!important;
-        transform:none!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-        width:21px!important;
-        height:21px!important;
-        right:-1px!important;
-        bottom:-1px!important;
-        font-size:10px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-titlebox{
-        min-width:0!important;
-        padding:0!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-line1{
-        display:flex!important;
-        align-items:center!important;
-        gap:8px!important;
-        flex-wrap:nowrap!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
-        min-width:54px!important;
-        width:auto!important;
-        padding:8px 10px!important;
-        border-radius:999px!important;
-        font-size:13px!important;
-        line-height:1!important;
-        white-space:nowrap!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-title{
-        display:block!important;
-        min-width:0!important;
-        font-size:15px!important;
-        line-height:1.15!important;
-        letter-spacing:.7px!important;
-        white-space:nowrap!important;
-        overflow:hidden!important;
-        text-overflow:ellipsis!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
-        margin-top:8px!important;
-        font-size:11px!important;
-        line-height:1.35!important;
-        white-space:nowrap!important;
-        overflow:hidden!important;
-        text-overflow:ellipsis!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-date{
-        align-self:center!important;
-        margin:0!important;
-        padding:0!important;
-        font-size:11px!important;
-        white-space:nowrap!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-        display:grid!important;
-        grid-template-columns:repeat(3,minmax(0,1fr))!important;
-        gap:8px!important;
-        width:100%!important;
-        margin:13px 0 0!important;
-        padding:0!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-        display:flex!important;
-        position:relative!important;
-        width:100%!important;
-        min-width:0!important;
-        max-width:none!important;
-        height:82px!important;
-        min-height:82px!important;
-        margin:0!important;
-        padding:0!important;
-        inset:auto!important;
-        transform:none!important;
-        rotate:none!important;
-        clip-path:none!important;
-        writing-mode:horizontal-tb!important;
-        border-radius:8px!important;
-        overflow:hidden!important;
-        align-items:center!important;
-        justify-content:center!important;
-        flex-direction:column!important;
-        background:rgba(255,255,255,.72)!important;
-        border:1px solid rgba(255,255,255,.94)!important;
-        box-shadow:none!important;
-        color:#a3a3a3!important;
-        font-size:19px!important;
-        line-height:1!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo span{
-        display:block!important;
-        margin:5px 0 0!important;
-        writing-mode:horizontal-tb!important;
-        transform:none!important;
-        font-size:10px!important;
-        line-height:1!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo img{
-        display:block!important;
-        width:100%!important;
-        height:100%!important;
-        object-fit:cover!important;
-        border-radius:0!important;
-        transform:none!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
-        display:flex!important;
-        align-items:center!important;
-        position:relative!important;
-        width:100%!important;
-        height:45px!important;
-        margin:13px 0 0!important;
-        padding:0 13px!important;
-        border-radius:999px!important;
-        background:rgba(255,255,255,.92)!important;
-        overflow:hidden!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-pill{
-        display:block!important;
-        flex:1!important;
-        height:1px!important;
-        min-height:0!important;
-        background:transparent!important;
-        box-shadow:none!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
-        display:flex!important;
-        align-items:center!important;
-        gap:18px!important;
-        margin:0!important;
-        padding:0!important;
-        position:static!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-action{
-        width:20px!important;
-        height:20px!important;
-        margin:0!important;
-        padding:0!important;
-        font-size:20px!important;
-        transform:none!important;
-      }
-      html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
-        display:block!important;
-        order:2!important;
-        width:100%!important;
-        margin:0!important;
-        padding:0!important;
-        overflow:hidden!important;
-      }
-      html body #desktop:not(.page-two-mode) .pages-container{
-        margin:0!important;
-      }
-      html body #desktop:not(.page-two-mode) .apps-page{
-        padding-top:0!important;
-        margin-top:0!important;
-        align-content:start!important;
-      }
-      html body #desktop:not(.page-two-mode) .dots{
-        margin-top:7px!important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function enforceLayout(){
-    var desktop=document.getElementById("desktop");
-    var scroll=desktop&&desktop.querySelector(".desk-scroll");
-    var widget=document.getElementById("photoWidget");
-    var viewport=scroll&&scroll.querySelector(":scope > .pages-viewport");
-    if(!scroll||!widget||!viewport)return;
-
-    [document.getElementById("clock"),document.getElementById("desktopNote"),document.getElementById("deskIns"),scroll.querySelector(":scope > .avatar-box")].forEach(function(el){
-      if(!el)return;
-      if(!desktop.classList.contains("page-two-mode")){
-        el.style.setProperty("display","none","important");
-      }else{
-        el.style.removeProperty("display");
-      }
-    });
-
-    if(widget.nextElementSibling!==viewport){
-      scroll.insertBefore(widget,viewport);
-    }
-    widget.style.setProperty("display",desktop.classList.contains("page-two-mode")?"none":"block","important");
-  }
-
-  function install(){
-    injectStyle();
-    enforceLayout();
-  }
-
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
-  else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",function(){setTimeout(install,0)});
-  [50,180,500,1200,2600,5200].forEach(function(ms){setTimeout(install,ms)});
-
-  var started=false;
-  function observe(){
-    if(started)return;
-    var desktop=document.getElementById("desktop");
-    if(!desktop){setTimeout(observe,100);return;}
-    started=true;
-    new MutationObserver(function(){requestAnimationFrame(enforceLayout)}).observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:["class","style"]});
-  }
-  observe();
-})();
-
-/* baobao-page1-showcase-bigger-v327 */
-(function(){
-  "use strict";
-  if(window.__bbPage1ShowcaseBiggerV327)return;
-  window.__bbPage1ShowcaseBiggerV327=true;
-
-  function injectStyle(){
-    var old=document.getElementById("bbPage1ShowcaseBiggerV327Style");
-    if(old)old.remove();
-    var style=document.createElement("style");
-    style.id="bbPage1ShowcaseBiggerV327Style";
-    style.textContent=`
-      html body #desktop:not(.page-two-mode) .desk-scroll{
-        padding-top:68px!important;
-        padding-bottom:118px!important;
-      }
-      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-        width:calc(100% - 12px)!important;
-        margin:0 auto 18px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-        padding:18px 18px 16px!important;
-        border-radius:30px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-head{
-        grid-template-columns:72px minmax(0,1fr) auto!important;
-        gap:13px!important;
-        min-height:72px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-left,
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-        width:72px!important;
-        height:72px!important;
-        min-width:72px!important;
-        min-height:72px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-        width:23px!important;
-        height:23px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
-        min-width:60px!important;
-        padding:9px 12px!important;
-        font-size:14px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-title{
-        font-size:17px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
-        margin-top:9px!important;
-        font-size:12px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-date{
-        font-size:12px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-        gap:10px!important;
-        margin-top:15px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-        height:96px!important;
-        min-height:96px!important;
-        border-radius:10px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
-        height:50px!important;
-        margin-top:15px!important;
-        padding:0 16px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
-        gap:20px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-action{
-        width:22px!important;
-        height:22px!important;
-        font-size:22px!important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function install(){ injectStyle(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
-  else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",function(){setTimeout(install,0)});
-  [80,300,900,2200].forEach(function(ms){setTimeout(install,ms)});
-})();
-
-/* baobao-page1-showcase-wider-v328 */
-(function(){
-  "use strict";
-  if(window.__bbPage1ShowcaseWiderV328)return;
-  window.__bbPage1ShowcaseWiderV328=true;
-
-  function injectStyle(){
-    var old=document.getElementById("bbPage1ShowcaseWiderV328Style");
-    if(old)old.remove();
-    var style=document.createElement("style");
-    style.id="bbPage1ShowcaseWiderV328Style";
-    style.textContent=`
-      html body #desktop:not(.page-two-mode) .desk-scroll{
-        padding-top:76px!important;
-        padding-bottom:108px!important;
-      }
-      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-        width:calc(100% - 4px)!important;
-        margin:0 auto 20px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-        padding:20px 20px 18px!important;
-        border-radius:34px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-head{
-        grid-template-columns:76px minmax(0,1fr) auto!important;
-        gap:14px!important;
-        min-height:76px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-left,
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-        width:76px!important;
-        height:76px!important;
-        min-width:76px!important;
-        min-height:76px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-        width:24px!important;
-        height:24px!important;
-        right:-2px!important;
-        bottom:-2px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
-        min-width:64px!important;
-        padding:10px 13px!important;
-        font-size:15px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-title{
-        font-size:18px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
-        margin-top:10px!important;
-        font-size:12px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-date{
-        font-size:13px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-        gap:11px!important;
-        margin-top:16px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-        height:102px!important;
-        min-height:102px!important;
-        border-radius:11px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
-        height:54px!important;
-        margin-top:16px!important;
-        padding:0 18px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
-        gap:22px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-action{
-        width:24px!important;
-        height:24px!important;
-        font-size:24px!important;
-      }
-      html body #desktop:not(.page-two-mode) .pages-viewport{
-        margin-top:2px!important;
-      }
-      html body #desktop:not(.page-two-mode) .dots{
-        margin-top:10px!important;
-      }
-      html body #desktop:not(.page-two-mode) .dock{
-        bottom:14px!important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function install(){ injectStyle(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
-  else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",function(){setTimeout(install,0)});
-  [80,280,800,1800,3600].forEach(function(ms){setTimeout(install,ms)});
-})();
-
-/* baobao-page1-showcase-bigger-and-lower-v329 */
-(function(){
-  "use strict";
-  if(window.__bbPage1ShowcaseLowerV329)return;
-  window.__bbPage1ShowcaseLowerV329=true;
-
-  function injectStyle(){
-    var old=document.getElementById("bbPage1ShowcaseLowerV329Style");
-    if(old)old.remove();
-    var style=document.createElement("style");
-    style.id="bbPage1ShowcaseLowerV329Style";
-    style.textContent=`
-      html body #desktop:not(.page-two-mode) .desk-scroll{
-        padding-top:88px!important;
-        padding-bottom:102px!important;
-      }
-      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-        width:calc(100% + 8px)!important;
-        margin:12px 0 22px -4px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-        padding:22px 22px 20px!important;
-        border-radius:36px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-head{
-        grid-template-columns:82px minmax(0,1fr) auto!important;
-        gap:15px!important;
-        min-height:82px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-left,
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-        width:82px!important;
-        height:82px!important;
-        min-width:82px!important;
-        min-height:82px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-        width:26px!important;
-        height:26px!important;
-        right:-3px!important;
-        bottom:-3px!important;
-        font-size:12px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
-        min-width:68px!important;
-        padding:11px 14px!important;
-        font-size:16px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-title{
-        font-size:19px!important;
-        letter-spacing:.6px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
-        margin-top:11px!important;
-        font-size:13px!important;
-        line-height:1.5!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-date{
-        padding-top:52px!important;
-        font-size:13px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-        gap:12px!important;
-        margin-top:18px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-        height:114px!important;
-        min-height:114px!important;
-        border-radius:12px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
-        height:60px!important;
-        margin-top:18px!important;
-        padding:0 20px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-pill{
-        height:60px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
-        gap:24px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-action{
-        width:26px!important;
-        height:26px!important;
-        font-size:26px!important;
-      }
-      html body #desktop:not(.page-two-mode) .pages-viewport{
-        margin-top:6px!important;
-      }
-      html body #desktop:not(.page-two-mode) .apps-page{
-        padding-top:10px!important;
-      }
-      html body #desktop:not(.page-two-mode) .dots{
-        margin-top:16px!important;
-      }
-      html body #desktop:not(.page-two-mode) .dock{
-        bottom:10px!important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function install(){ injectStyle(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
-  else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",function(){ setTimeout(install,0); });
-  [80,260,700,1600,3200].forEach(function(ms){ setTimeout(install,ms); });
-})();
-
-/* baobao-page1-showcase-fill-screen-v330 */
-(function(){
-  "use strict";
-  if(window.__bbPage1ShowcaseFillV330)return;
-  window.__bbPage1ShowcaseFillV330=true;
-
-  function injectStyle(){
-    var old=document.getElementById("bbPage1ShowcaseFillV330Style");
-    if(old)old.remove();
-    var style=document.createElement("style");
-    style.id="bbPage1ShowcaseFillV330Style";
-    style.textContent=`
-      html body #desktop:not(.page-two-mode) .desk-scroll{
-        padding-top:96px!important;
-        padding-bottom:88px!important;
-      }
-      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-        width:calc(100% + 36px)!important;
-        margin:16px 0 26px -18px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-        padding:24px 24px 22px!important;
-        border-radius:38px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-head{
-        grid-template-columns:88px minmax(0,1fr) auto!important;
-        gap:16px!important;
-        min-height:88px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-left,
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-        width:88px!important;
-        height:88px!important;
-        min-width:88px!important;
-        min-height:88px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-        width:28px!important;
-        height:28px!important;
-        right:-4px!important;
-        bottom:-4px!important;
-        font-size:12px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
-        min-width:72px!important;
-        padding:12px 14px!important;
-        font-size:16px!important;
-        border-radius:18px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-title{
-        font-size:20px!important;
-        letter-spacing:.6px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
-        margin-top:12px!important;
-        font-size:13px!important;
-        line-height:1.5!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-date{
-        padding-top:56px!important;
-        font-size:13px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-        gap:12px!important;
-        margin-top:20px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-        height:136px!important;
-        min-height:136px!important;
-        border-radius:13px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-footer,
-      html body #desktop:not(.page-two-mode) .bb-showcase-pill{
-        height:66px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
-        margin-top:20px!important;
-        padding:0 22px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
-        gap:26px!important;
-      }
-      html body #desktop:not(.page-two-mode) .bb-showcase-action{
-        width:27px!important;
-        height:27px!important;
-        font-size:27px!important;
-      }
-      html body #desktop:not(.page-two-mode) .pages-viewport{
-        margin-top:20px!important;
-      }
-      html body #desktop:not(.page-two-mode) .apps-page{
-        padding-top:18px!important;
-        row-gap:30px!important;
-      }
-      html body #desktop:not(.page-two-mode) .apps-page > .app{
-        transform:scale(1.03)!important;
-        transform-origin:center top!important;
-      }
-      html body #desktop:not(.page-two-mode) .dots{
-        margin-top:22px!important;
-      }
-      html body #desktop:not(.page-two-mode) .dock{
-        bottom:24px!important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function install(){ injectStyle(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
-  else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",function(){ setTimeout(install,0); });
-  [80,260,700,1600,3200].forEach(function(ms){ setTimeout(install,ms); });
-})();
-
-/* baobao-page1-layout-stable-lock-v331 */
-(function(){
-  "use strict";
-  if(window.__bbPage1StableLockV331)return;
-  window.__bbPage1StableLockV331=true;
-
-  var STYLE_ID="bbPage1StableLockV331Style";
-  var scheduled=false;
-
-  function cssText(){return `
-    html body #desktop:not(.page-two-mode) .desk-scroll{
-      padding-top:96px!important;
-      padding-bottom:88px!important;
-    }
-    html body #desktop:not(.page-two-mode) .desk-scroll > #clock,
-    html body #desktop:not(.page-two-mode) .desk-scroll > #desktopNote,
-    html body #desktop:not(.page-two-mode) .desk-scroll > .avatar-box,
-    html body #desktop:not(.page-two-mode) .desk-scroll > #deskIns{
-      display:none!important;
-      visibility:hidden!important;
-      opacity:0!important;
-      height:0!important;
-      min-height:0!important;
-      margin:0!important;
-      padding:0!important;
-      overflow:hidden!important;
-      pointer-events:none!important;
-    }
-    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-      display:block!important;
-      position:relative!important;
-      width:calc(100% + 36px)!important;
-      max-width:none!important;
-      min-width:0!important;
-      height:auto!important;
-      margin:16px 0 26px -18px!important;
-      padding:0!important;
-      inset:auto!important;
-      transform:none!important;
-      opacity:1!important;
-      visibility:visible!important;
-      overflow:visible!important;
-      z-index:15!important;
-    }
-    html body #desktop.page-two-mode .desk-scroll > #photoWidget.bb-page1-showcase{display:none!important}
-    html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-      width:100%!important;
-      height:auto!important;
-      padding:24px 24px 22px!important;
-      border-radius:38px!important;
-      background:rgba(255,255,255,.67)!important;
-      border:1px solid rgba(255,255,255,.78)!important;
-      box-shadow:0 12px 30px rgba(0,0,0,.055)!important;
-      -webkit-backdrop-filter:blur(18px)!important;
-      backdrop-filter:blur(18px)!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-head{
-      display:grid!important;
-      grid-template-columns:88px minmax(0,1fr) auto!important;
-      align-items:center!important;
-      gap:16px!important;
-      min-height:88px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-left,
-    html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-      width:88px!important;
-      height:88px!important;
-      min-width:88px!important;
-      min-height:88px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-      width:28px!important;height:28px!important;right:-4px!important;bottom:-4px!important;font-size:12px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-temp{
-      min-width:72px!important;padding:12px 14px!important;font-size:16px!important;border-radius:18px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-title{font-size:20px!important;letter-spacing:.6px!important}
-    html body #desktop:not(.page-two-mode) .bb-showcase-sub{margin-top:12px!important;font-size:13px!important;line-height:1.5!important}
-    html body #desktop:not(.page-two-mode) .bb-showcase-date{padding-top:56px!important;font-size:13px!important}
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-      display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;margin-top:20px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-      width:100%!important;height:136px!important;min-height:136px!important;margin:0!important;padding:0!important;
-      transform:none!important;rotate:none!important;clip-path:none!important;border-radius:13px!important;overflow:hidden!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo img{
-      width:100%!important;height:100%!important;object-fit:cover!important;transform:none!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-footer,
-    html body #desktop:not(.page-two-mode) .bb-showcase-pill{height:66px!important}
-    html body #desktop:not(.page-two-mode) .bb-showcase-footer{margin-top:20px!important;padding:0 22px!important}
-    html body #desktop:not(.page-two-mode) .bb-showcase-actions{gap:26px!important}
-    html body #desktop:not(.page-two-mode) .bb-showcase-action{width:27px!important;height:27px!important;font-size:27px!important}
-    html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
-      display:block!important;width:100%!important;margin:20px 0 0!important;padding:0!important;overflow:hidden!important;
-    }
-    html body #desktop:not(.page-two-mode) .apps-page{padding-top:18px!important;row-gap:30px!important}
-    html body #desktop:not(.page-two-mode) .apps-page > .app{transform:scale(1.03)!important;transform-origin:center top!important}
-    html body #desktop:not(.page-two-mode) .dots{margin-top:22px!important}
-    html body #desktop:not(.page-two-mode) .dock{top:auto!important;bottom:24px!important}
-  `}
-
-  function putLast(){
-    var style=document.getElementById(STYLE_ID);
-    if(!style){
-      style=document.createElement("style");
-      style.id=STYLE_ID;
-      style.textContent=cssText();
-    }
-    if(style.parentNode!==document.head || style!==document.head.lastElementChild){
-      document.head.appendChild(style);
-    }
-  }
-
-  function enforceOrder(){
-    var desktop=document.getElementById("desktop");
-    var scroll=desktop&&desktop.querySelector(".desk-scroll");
-    var widget=document.getElementById("photoWidget");
-    var viewport=scroll&&scroll.querySelector(":scope > .pages-viewport");
-    if(scroll&&widget&&viewport&&widget.nextElementSibling!==viewport){
-      scroll.insertBefore(widget,viewport);
-    }
-    putLast();
-  }
-
-  function schedule(){
-    if(scheduled)return;
-    scheduled=true;
-    requestAnimationFrame(function(){scheduled=false;enforceOrder()});
-  }
-
-  function install(){
-    enforceOrder();
-    if(!document.head.__bbV331Observer){
-      document.head.__bbV331Observer=new MutationObserver(schedule);
-      document.head.__bbV331Observer.observe(document.head,{childList:true});
-    }
-    var desktop=document.getElementById("desktop");
-    if(desktop&&!desktop.__bbV331Observer){
-      desktop.__bbV331Observer=new MutationObserver(schedule);
-      desktop.__bbV331Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:["class","style"]});
-    }
-  }
-
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
-  else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",install);
-  [0,50,150,400,900,1800,3500,6000,10000].forEach(function(ms){setTimeout(install,ms)});
-})();
-
-
-/* baobao-page1-final-lock-v332 */
-(function(){
-  "use strict";
-  if(window.__bbPage1FinalLockV332)return;
-  window.__bbPage1FinalLockV332=true;
-
-  var STYLE_ID="bbPage1FinalLockV332Style";
-  var scheduled=false;
-
-  function cssText(){return `
-    html body #desktop:not(.page-two-mode) .desk-scroll{
-      padding-top:94px!important;
-      padding-bottom:62px!important;
-    }
-    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-      display:block!important;
-      position:relative!important;
-      width:calc(100% + 52px)!important;
-      max-width:none!important;
-      margin:14px 0 16px -26px!important;
-      padding:0!important;
-      transform:none!important;
-      z-index:15!important;
-    }
-    html body #desktop.page-two-mode .desk-scroll > #photoWidget.bb-page1-showcase{
-      display:none!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-      width:100%!important;
-      border-radius:40px!important;
-      padding:28px 28px 24px!important;
-      background:rgba(255,255,255,.68)!important;
-      border:1px solid rgba(255,255,255,.82)!important;
-      box-shadow:0 14px 32px rgba(0,0,0,.055)!important;
-      -webkit-backdrop-filter:blur(18px)!important;
-      backdrop-filter:blur(18px)!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-head{
-      display:grid!important;
-      grid-template-columns:98px minmax(0,1fr) auto!important;
-      align-items:center!important;
-      gap:18px!important;
-      min-height:96px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-left,
-    html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-      width:98px!important;height:98px!important;min-width:98px!important;min-height:98px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-      width:30px!important;height:30px!important;right:-5px!important;bottom:-5px!important;font-size:12px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-line1{gap:16px!important;align-items:center!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-temp{min-width:78px!important;padding:12px 16px!important;font-size:18px!important;border-radius:18px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-title{font-size:21px!important;letter-spacing:.5px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-sub{margin-top:14px!important;font-size:14px!important;line-height:1.48!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-date{padding-top:58px!important;font-size:14px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-      display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important;margin-top:22px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-      width:100%!important;height:148px!important;min-height:148px!important;border-radius:14px!important;overflow:hidden!important;
-      transform:none!important;rotate:none!important;clip-path:none!important;margin:0!important;padding:0!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo img{
-      width:100%!important;height:100%!important;object-fit:cover!important;transform:none!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-footer,
-    html body #desktop:not(.page-two-mode) .bb-showcase-pill{height:70px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-footer{margin-top:22px!important;padding:0 24px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-actions{gap:28px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-action{width:28px!important;height:28px!important;font-size:28px!important;}
-    html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
-      display:block!important;width:100%!important;margin:10px 0 0!important;padding:0!important;overflow:hidden!important;
-    }
-    html body #desktop:not(.page-two-mode) .apps-page{
-      padding-top:12px!important;row-gap:32px!important;
-    }
-    html body #desktop:not(.page-two-mode) .apps-page > .app{
-      transform:scale(1.04)!important;transform-origin:center top!important;background:transparent!important;box-shadow:none!important;
-    }
-    html body #desktop:not(.page-two-mode) .dots{
-      margin-top:14px!important;margin-bottom:0!important;
-    }
-    html body #desktop:not(.page-two-mode) .dock{
-      top:auto!important;bottom:10px!important;
-    }
-    html body #desktop .apps-page > .app,
-    html body #desktop .apps-page > .app .icon,
-    html body #desktop .apps-page > .app img,
-    html body #desktop .apps-page > .app svg{
-      -webkit-user-select:none!important;user-select:none!important;-webkit-user-drag:none!important; -webkit-touch-callout:none!important;
-      -webkit-tap-highlight-color:transparent!important;
-    }
-    html body #desktop .apps-page > .app::before,
-    html body #desktop .apps-page > .app::after,
-    html body #desktop .apps-page > .app .icon::before,
-    html body #desktop .apps-page > .app .icon::after{
-      content:none!important;display:none!important;background:transparent!important;box-shadow:none!important;
-    }
-  `}
-
-  function ensureStyle(){
-    var style=document.getElementById(STYLE_ID);
-    if(!style){
-      style=document.createElement('style');
-      style.id=STYLE_ID;
-      style.textContent=cssText();
-    }else if(style.textContent!==cssText()){
-      style.textContent=cssText();
-    }
-    document.head.appendChild(style);
-  }
-
-  function stopNative(e){
-    var t=e.target;
-    if(!t||!t.closest)return;
-    var hit=t.closest('#desktop .apps-page > .app, #desktop .dock .app-tabbar-item, #desktop .dock .dock-app, #desktop .app, #desktop .icon');
-    if(!hit)return;
-    if(e.type==='dragstart' || e.type==='selectstart' || e.type==='contextmenu'){
-      e.preventDefault();
-    }
-  }
-
-  function cleanDesktop(){
-    var desktop=document.getElementById('desktop');
-    if(!desktop)return;
-    desktop.querySelectorAll('.apps-page > .app').forEach(function(app){
-      app.setAttribute('draggable','false');
-      app.style.background='transparent';
-      app.style.boxShadow='none';
-      app.style.webkitTapHighlightColor='transparent';
-      app.style.webkitTouchCallout='none';
-      app.style.webkitUserSelect='none';
-      app.style.userSelect='none';
-      app.style.outline='none';
-      app.classList.remove('bb-v300-pressing','bb-v302-pressing','pressed','pressing');
-      app.querySelectorAll('*').forEach(function(node){
-        try{node.setAttribute('draggable','false')}catch(err){}
-        try{node.style.webkitUserDrag='none'}catch(err){}
-        try{node.style.webkitTouchCallout='none'}catch(err){}
-        try{node.style.webkitTapHighlightColor='transparent'}catch(err){}
-        try{node.style.userSelect='none'}catch(err){}
-      });
-    });
-  }
-
-  function lockShowcase(){
-    var desktop=document.getElementById('desktop');
-    if(!desktop || desktop.classList.contains('page-two-mode'))return;
-    var widget=document.getElementById('photoWidget');
-    if(!widget)return;
-    widget.classList.add('bb-page1-showcase');
-    var scroll=desktop.querySelector('.desk-scroll');
-    var viewport=scroll&&scroll.querySelector(':scope > .pages-viewport');
-    if(scroll && viewport && widget.nextElementSibling!==viewport){
-      scroll.insertBefore(widget, viewport);
-    }
-    var shell=widget.querySelector('.bb-showcase-shell');
-    if(shell){
-      shell.style.padding='28px 28px 24px';
-      shell.style.borderRadius='40px';
-    }
-    var grid=widget.querySelector('.bb-showcase-grid');
-    if(grid){
-      grid.style.marginTop='22px';
-      grid.style.gap='14px';
-    }
-    widget.querySelectorAll('.bb-showcase-grid > .photo-slot.bb-showcase-photo').forEach(function(slot){
-      slot.style.height='148px';
-      slot.style.minHeight='148px';
-      slot.style.borderRadius='14px';
-    });
-  }
-
-  function enforce(){
-    ensureStyle();
-    cleanDesktop();
-    lockShowcase();
-  }
-
-  function schedule(){
-    if(scheduled)return;
-    scheduled=true;
-    requestAnimationFrame(function(){scheduled=false;enforce()});
-  }
-
-  function install(){
-    enforce();
-    ['dragstart','selectstart','contextmenu'].forEach(function(type){
-      if(!document.__bbV332NativeBlock){
-        document.addEventListener(type,stopNative,true);
-      }
-    });
-    document.__bbV332NativeBlock=true;
-    if(!document.head.__bbV332Observer){
-      document.head.__bbV332Observer=new MutationObserver(schedule);
-      document.head.__bbV332Observer.observe(document.head,{childList:true,subtree:false});
-    }
-    var desktop=document.getElementById('desktop');
-    if(desktop && !desktop.__bbV332Observer){
-      desktop.__bbV332Observer=new MutationObserver(schedule);
-      desktop.__bbV332Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
-  }
-
-  if(typeof window.renderPages==='function' && !window.renderPages.__bbV332Wrap){
-    var oldRenderPages=window.renderPages;
-    var wrapped=function(){
-      var res=oldRenderPages.apply(this,arguments);
-      schedule();
-      return res;
-    };
-    wrapped.__bbV332Wrap=true;
-    window.renderPages=wrapped;
-  }
-  if(typeof window.goToPage==='function' && !window.goToPage.__bbV332Wrap){
-    var oldGoToPage=window.goToPage;
-    var wrappedGo=function(){
-      var res=oldGoToPage.apply(this,arguments);
-      schedule();
-      return res;
-    };
-    wrappedGo.__bbV332Wrap=true;
-    window.goToPage=wrappedGo;
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
-  else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',function(){setTimeout(install,0)});
-  [0,60,180,420,900,1800,3600,6000,10000].forEach(function(ms){setTimeout(install,ms)});
-})();
-
-
-/* baobao-page1-spacing-fix-v333 */
-(function(){
-  "use strict";
-  if(window.__bbPage1SpacingFixV333)return;
-  window.__bbPage1SpacingFixV333=true;
-
-  var STYLE_ID='bbPage1SpacingFixV333Style';
-  var scheduled=false;
-
-  function cssText(){return `
-    html body #desktop:not(.page-two-mode) .desk-scroll{
-      padding-top:64px!important;
-      padding-bottom:38px!important;
-    }
-    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-      width:calc(100% + 56px)!important;
-      margin:-8px 0 8px -28px!important;
-      z-index:15!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-      padding:24px 28px 22px!important;
-      border-radius:40px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-head{
-      grid-template-columns:94px minmax(0,1fr) auto!important;
-      gap:16px!important;
-      min-height:90px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-left,
-    html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-      width:94px!important;height:94px!important;min-width:94px!important;min-height:94px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-      width:29px!important;height:29px!important;right:-4px!important;bottom:-4px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-temp{
-      min-width:72px!important;padding:11px 15px!important;font-size:17px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-title{
-      font-size:19px!important;letter-spacing:.35px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-sub{
-      margin-top:12px!important;font-size:13px!important;line-height:1.45!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-date{
-      padding-top:52px!important;font-size:13px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-      gap:12px!important;margin-top:18px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-      height:134px!important;min-height:134px!important;border-radius:14px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-footer,
-    html body #desktop:not(.page-two-mode) .bb-showcase-pill{
-      height:64px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-footer{
-      margin-top:18px!important;padding:0 22px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-actions{
-      gap:24px!important;
-    }
-    html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
-      margin:4px 0 0!important;
-      overflow:visible!important;
-    }
-    html body #desktop:not(.page-two-mode) .apps-page{
-      padding-top:2px!important;
-      row-gap:22px!important;
-    }
-    html body #desktop:not(.page-two-mode) .apps-page > .app{
-      transform:scale(1)!important;
-      transform-origin:center top!important;
-      margin:0!important;
-    }
-    html body #desktop:not(.page-two-mode) .apps-page > .app .icon{
-      margin-bottom:8px!important;
-    }
-    html body #desktop:not(.page-two-mode) .dots{
-      margin-top:8px!important;
-      margin-bottom:0!important;
-    }
-    html body #desktop:not(.page-two-mode) .dock{
-      top:auto!important;
-      bottom:2px!important;
-      z-index:25!important;
-    }
-  `}
-
-  function putLast(){
-    var style=document.getElementById(STYLE_ID);
-    if(!style){
-      style=document.createElement('style');
-      style.id=STYLE_ID;
-    }
-    style.textContent=cssText();
-    document.head.appendChild(style);
-  }
-
-  function enforce(){
-    putLast();
-    var desktop=document.getElementById('desktop');
-    if(!desktop || desktop.classList.contains('page-two-mode'))return;
-    var widget=document.getElementById('photoWidget');
-    var scroll=desktop.querySelector('.desk-scroll');
-    var viewport=scroll&&scroll.querySelector(':scope > .pages-viewport');
-    if(scroll && widget && viewport && widget.nextElementSibling!==viewport){
-      scroll.insertBefore(widget, viewport);
-    }
-    desktop.querySelectorAll('.apps-page > .app').forEach(function(app){
-      app.style.transform='scale(1)';
-      app.style.margin='0';
-    });
-  }
-
-  function schedule(){
-    if(scheduled)return;
-    scheduled=true;
-    requestAnimationFrame(function(){scheduled=false;enforce();});
-  }
-
-  function install(){
-    enforce();
-    if(!document.head.__bbV333Observer){
-      document.head.__bbV333Observer=new MutationObserver(schedule);
-      document.head.__bbV333Observer.observe(document.head,{childList:true});
-    }
-    var desktop=document.getElementById('desktop');
-    if(desktop && !desktop.__bbV333Observer){
-      desktop.__bbV333Observer=new MutationObserver(schedule);
-      desktop.__bbV333Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
-  else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',install);
-  [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms);});
-})();
-
-
-/* baobao-page1-final-position-v334 */
-(function(){
-  "use strict";
-  if(window.__bbPage1FinalPositionV334)return;
-  window.__bbPage1FinalPositionV334=true;
-
-  var STYLE_ID='bbPage1FinalPositionV334Style';
-  var LEGACY_STYLES=[
-    'bbPage1SingleShowcaseV325Style',
-    'bbPage1LayoutFixV326Style',
-    'bbPage1ShowcaseBiggerV327Style',
-    'bbPage1ShowcaseWiderV328Style',
-    'bbPage1ShowcaseLowerV329Style',
-    'bbPage1ShowcaseFillV330Style',
-    'bbPage1StableLockV331Style',
-    'bbPage1FinalLockV332Style',
-    'bbPage1SpacingFixV333Style'
-  ];
+  var STYLE_ID='bbPage1SingleLayoutV339Style';
+  var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
   var scheduled=false;
 
   function cssText(){return `
@@ -42361,14 +41120,16 @@ window.updateArchiveChatStyleHintV324=function(){
     html body #desktop:not(.page-two-mode) .desk-scroll > #deskIns{
       display:none!important;
     }
+
+    /* 只比上一版缩小 5px，并向下收 5px，给灵动岛和边框留缝 */
     html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
       display:block!important;
       position:relative!important;
-      width:calc(100% + 54px)!important;
+      width:calc(100% + 44px)!important;
       max-width:none!important;
-      margin:0 0 -34px -27px!important;
+      margin:0 0 -35px -22px!important;
       padding:0!important;
-      transform:translateY(-42px)!important;
+      transform:translateY(-25px)!important;
       z-index:15!important;
       overflow:visible!important;
     }
@@ -42444,8 +41205,8 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
       width:100%!important;
-      height:126px!important;
-      min-height:126px!important;
+      height:121px!important;
+      min-height:121px!important;
       margin:0!important;
       padding:0!important;
       border-radius:13px!important;
@@ -42476,6 +41237,7 @@ window.updateArchiveChatStyleHintV324=function(){
       height:26px!important;
       font-size:26px!important;
     }
+
     html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
       display:block!important;
       position:relative!important;
@@ -42529,17 +41291,20 @@ window.updateArchiveChatStyleHintV324=function(){
       z-index:21!important;
       margin:2px 0 0!important;
     }
+
+    /* 上一版 bottom:-8px，这版只往上 2px */
+    html body #desktop:not(.page-two-mode) > .dock,
     html body #desktop:not(.page-two-mode) .dock{
       position:absolute!important;
       left:12px!important;
       right:12px!important;
       top:auto!important;
-      bottom:-12px!important;
+      bottom:-6px!important;
       width:auto!important;
       height:92px!important;
       margin:0!important;
       transform:none!important;
-      z-index:50!important;
+      z-index:80!important;
       display:flex!important;
       align-items:center!important;
       justify-content:space-around!important;
@@ -42547,10 +41312,11 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     html body #desktop:not(.page-two-mode) .dock > .dock-icon{
       position:relative!important;
-      z-index:52!important;
+      z-index:82!important;
       pointer-events:auto!important;
       transform:none!important;
     }
+
     html body #desktop .apps-page > .app,
     html body #desktop .apps-page > .app .icon,
     html body #desktop .apps-page > .app img,
@@ -42568,27 +41334,31 @@ window.updateArchiveChatStyleHintV324=function(){
       content:none!important;
       display:none!important;
     }
+
+    /* 设置/美化打开后不与桌面叠加 */
+    html body.bb-v339-panel-open #desktop{
+      visibility:hidden!important;
+      opacity:0!important;
+      pointer-events:none!important;
+    }
+    html body .panel.ios-settings{
+      position:absolute!important;
+      inset:0!important;
+      width:100%!important;
+      height:100%!important;
+      min-height:100%!important;
+      z-index:500!important;
+      background:#f4f4f7!important;
+      background-color:#f4f4f7!important;
+      overflow-x:hidden!important;
+      overflow-y:auto!important;
+      -webkit-overflow-scrolling:touch!important;
+      opacity:1!important;
+      isolation:isolate!important;
+    }
   `}
 
-  function disconnectLegacy(){
-    try{document.head.__bbV331Observer&&document.head.__bbV331Observer.disconnect()}catch(e){}
-    try{document.head.__bbV332Observer&&document.head.__bbV332Observer.disconnect()}catch(e){}
-    try{document.head.__bbV333Observer&&document.head.__bbV333Observer.disconnect()}catch(e){}
-    var desktop=document.getElementById('desktop');
-    try{desktop&&desktop.__bbV331Observer&&desktop.__bbV331Observer.disconnect()}catch(e){}
-    try{desktop&&desktop.__bbV332Observer&&desktop.__bbV332Observer.disconnect()}catch(e){}
-    try{desktop&&desktop.__bbV333Observer&&desktop.__bbV333Observer.disconnect()}catch(e){}
-  }
-
-  function removeLegacyStyles(){
-    LEGACY_STYLES.forEach(function(id){
-      var node=document.getElementById(id);
-      if(node)node.remove();
-    });
-  }
-
   function putLast(){
-    removeLegacyStyles();
     var style=document.getElementById(STYLE_ID);
     if(!style){
       style=document.createElement('style');
@@ -42598,227 +41368,16 @@ window.updateArchiveChatStyleHintV324=function(){
     document.head.appendChild(style);
   }
 
-  function applyInline(){
-    var desktop=document.getElementById('desktop');
-    if(!desktop||desktop.classList.contains('page-two-mode'))return;
-    var scroll=desktop.querySelector('.desk-scroll');
-    var widget=document.getElementById('photoWidget');
-    var viewport=scroll&&scroll.querySelector(':scope > .pages-viewport');
-    var dock=desktop.querySelector('.dock');
-    if(scroll){
-      scroll.style.setProperty('padding-top','58px','important');
-      scroll.style.setProperty('padding-bottom','0','important');
-      scroll.style.setProperty('overflow','hidden','important');
-    }
-    if(scroll&&widget&&viewport&&widget.nextElementSibling!==viewport){
-      scroll.insertBefore(widget,viewport);
-    }
-    if(widget){
-      widget.style.setProperty('width','calc(100% + 54px)','important');
-      widget.style.setProperty('margin','0 0 -34px -27px','important');
-      widget.style.setProperty('transform','translateY(-42px)','important');
-    }
-    if(viewport){
-      viewport.style.setProperty('height','244px','important');
-      viewport.style.setProperty('margin','0','important');
-      viewport.style.setProperty('overflow','hidden','important');
-    }
-    desktop.querySelectorAll('.apps-page').forEach(function(page){
-      page.style.setProperty('height','244px','important');
-      page.style.setProperty('padding','4px 20px 0','important');
-      page.style.setProperty('row-gap','18px','important');
-    });
-    desktop.querySelectorAll('.apps-page > .app').forEach(function(app){
-      app.style.setProperty('height','104px','important');
-      app.style.setProperty('min-height','104px','important');
-      app.style.setProperty('transform','none','important');
-      app.style.setProperty('pointer-events','auto','important');
-    });
-    if(dock){
-      dock.style.setProperty('position','absolute','important');
-      dock.style.setProperty('left','12px','important');
-      dock.style.setProperty('right','12px','important');
-      dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','-12px','important');
-      dock.style.setProperty('height','92px','important');
-      dock.style.setProperty('transform','none','important');
-      dock.style.setProperty('z-index','50','important');
-    }
+  function isVisible(el){
+    if(!el)return false;
+    if(String(el.style&&el.style.display||'').toLowerCase()==='none')return false;
+    var cs=getComputedStyle(el);
+    return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0;
   }
 
-  function enforce(){
-    disconnectLegacy();
-    putLast();
-    applyInline();
-  }
-
-  function schedule(){
-    if(scheduled)return;
-    scheduled=true;
-    requestAnimationFrame(function(){scheduled=false;enforce()});
-  }
-
-  function install(){
-    enforce();
-    if(!document.head.__bbV334Observer){
-      document.head.__bbV334Observer=new MutationObserver(schedule);
-      document.head.__bbV334Observer.observe(document.head,{childList:true});
-    }
-    var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV334Observer){
-      desktop.__bbV334Observer=new MutationObserver(schedule);
-      desktop.__bbV334Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
-  else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',install);
-  [0,40,120,280,600,1200,2400,4800,8000].forEach(function(ms){setTimeout(install,ms)});
-})();
-
-
-/* baobao-page1-up-dock-down-v335 */
-(function(){
-  "use strict";
-  if(window.__bbPage1UpDockDownV335)return;
-  window.__bbPage1UpDockDownV335=true;
-
-  var STYLE_ID='bbPage1UpDockDownV335Style';
-  var OLD_STYLE_ID='bbPage1FinalPositionV334Style';
-  var scheduled=false;
-
-  function cssText(){return `
-    html body #desktop{
-      position:absolute!important;
-      inset:0!important;
-      overflow:hidden!important;
-    }
-    html body #desktop:not(.page-two-mode) .desk-scroll{
-      position:absolute!important;
-      inset:0!important;
-      width:100%!important;
-      height:100%!important;
-      padding:58px 0 0!important;
-      overflow:hidden!important;
-    }
-    html body #desktop:not(.page-two-mode) .desk-scroll > #clock,
-    html body #desktop:not(.page-two-mode) .desk-scroll > #desktopNote,
-    html body #desktop:not(.page-two-mode) .desk-scroll > .avatar-box,
-    html body #desktop:not(.page-two-mode) .desk-scroll > #deskIns{
-      display:none!important;
-      width:0!important;height:0!important;margin:0!important;padding:0!important;
-      overflow:hidden!important;
-    }
-    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-      display:block!important;
-      position:relative!important;
-      width:calc(100% + 54px)!important;
-      max-width:none!important;
-      margin:0 0 -72px -27px!important;
-      padding:0!important;
-      transform:translateY(-78px)!important;
-      z-index:15!important;
-      overflow:visible!important;
-    }
-    html body #desktop.page-two-mode .desk-scroll > #photoWidget.bb-page1-showcase{
-      display:none!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-shell{
-      width:100%!important;
-      padding:23px 27px 21px!important;
-      border-radius:39px!important;
-      background:rgba(255,255,255,.68)!important;
-      border:1px solid rgba(255,255,255,.84)!important;
-      box-shadow:0 14px 32px rgba(0,0,0,.055)!important;
-      -webkit-backdrop-filter:blur(18px)!important;
-      backdrop-filter:blur(18px)!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-head{
-      display:grid!important;
-      grid-template-columns:88px minmax(0,1fr) auto!important;
-      align-items:center!important;
-      gap:14px!important;
-      min-height:86px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-left,
-    html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-      width:88px!important;height:88px!important;min-width:88px!important;min-height:88px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-line1{
-      display:flex!important;align-items:center!important;gap:12px!important;min-width:0!important;flex-wrap:nowrap!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-temp{
-      flex:0 0 auto!important;min-width:69px!important;padding:11px 13px!important;border-radius:18px!important;font-size:17px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-title{
-      min-width:0!important;font-size:18px!important;letter-spacing:.2px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-sub{margin-top:10px!important;font-size:13px!important;line-height:1.42!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-date{padding-top:48px!important;font-size:13px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid{
-      display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:12px!important;margin-top:17px!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
-      width:100%!important;height:126px!important;min-height:126px!important;margin:0!important;padding:0!important;border-radius:13px!important;
-      overflow:hidden!important;transform:none!important;rotate:none!important;clip-path:none!important;
-    }
-    html body #desktop:not(.page-two-mode) .bb-showcase-footer,
-    html body #desktop:not(.page-two-mode) .bb-showcase-pill{height:60px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-footer{margin-top:17px!important;padding:0 21px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-actions{gap:24px!important;}
-    html body #desktop:not(.page-two-mode) .bb-showcase-action{width:26px!important;height:26px!important;font-size:26px!important;}
-
-    html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
-      display:block!important;position:relative!important;width:100%!important;height:244px!important;margin:0!important;padding:0!important;
-      overflow:hidden!important;z-index:18!important;
-    }
-    html body #desktop:not(.page-two-mode) .pages-container{height:244px!important;}
-    html body #desktop:not(.page-two-mode) .apps-page{
-      width:100%!important;height:244px!important;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
-      grid-template-rows:repeat(2,104px)!important;column-gap:8px!important;row-gap:18px!important;align-content:start!important;
-      padding:4px 20px 0!important;margin:0!important;
-    }
-    html body #desktop:not(.page-two-mode) .apps-page > .app{
-      position:relative!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:flex-start!important;
-      width:auto!important;height:104px!important;min-height:104px!important;margin:0!important;padding:0!important;transform:none!important;
-      background:transparent!important;box-shadow:none!important;pointer-events:auto!important;z-index:20!important;
-    }
-    html body #desktop:not(.page-two-mode) .apps-page > .app .icon{
-      flex:0 0 auto!important;margin:0 0 7px!important;transform:none!important;pointer-events:none!important;
-    }
-    html body #desktop:not(.page-two-mode) .dots{position:relative!important;z-index:21!important;margin:2px 0 0!important;}
-
-    html body #desktop:not(.page-two-mode) > .dock,
-    html body #desktop:not(.page-two-mode) .dock{
-      position:absolute!important;
-      left:12px!important;right:12px!important;top:auto!important;bottom:-50px!important;
-      width:auto!important;height:92px!important;margin:0!important;transform:none!important;z-index:60!important;
-      display:flex!important;align-items:center!important;justify-content:space-around!important;overflow:visible!important;
-    }
-    html body #desktop:not(.page-two-mode) .dock > .dock-icon{
-      position:relative!important;z-index:62!important;pointer-events:auto!important;transform:none!important;
-    }
-  `}
-
-  function disconnectOld(){
-    try{document.head.__bbV334Observer&&document.head.__bbV334Observer.disconnect()}catch(e){}
-    var desktop=document.getElementById('desktop');
-    try{desktop&&desktop.__bbV334Observer&&desktop.__bbV334Observer.disconnect()}catch(e){}
-  }
-
-  function removeOldStyle(){
-    var old=document.getElementById(OLD_STYLE_ID);
-    if(old)old.remove();
-  }
-
-  function putLast(){
-    removeOldStyle();
-    var style=document.getElementById(STYLE_ID);
-    if(!style){style=document.createElement('style');style.id=STYLE_ID;}
-    style.textContent=cssText();
-    document.head.appendChild(style);
+  function syncPanelState(){
+    var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
+    document.body.classList.toggle('bb-v339-panel-open',open);
   }
 
   function applyInline(){
@@ -42835,11 +41394,13 @@ window.updateArchiveChatStyleHintV324=function(){
       scroll.style.setProperty('padding','58px 0 0','important');
       scroll.style.setProperty('overflow','hidden','important');
     }
-    if(scroll&&widget&&viewport&&widget.nextElementSibling!==viewport){scroll.insertBefore(widget,viewport);}
+    if(scroll&&widget&&viewport&&widget.nextElementSibling!==viewport){
+      scroll.insertBefore(widget,viewport);
+    }
     if(widget){
-      widget.style.setProperty('width','calc(100% + 54px)','important');
-      widget.style.setProperty('margin','0 0 -72px -27px','important');
-      widget.style.setProperty('transform','translateY(-78px)','important');
+      widget.style.setProperty('width','calc(100% + 44px)','important');
+      widget.style.setProperty('margin','0 0 -35px -22px','important');
+      widget.style.setProperty('transform','translateY(-25px)','important');
     }
     if(viewport){
       viewport.style.setProperty('height','244px','important');
@@ -42862,315 +41423,15 @@ window.updateArchiveChatStyleHintV324=function(){
       dock.style.setProperty('left','12px','important');
       dock.style.setProperty('right','12px','important');
       dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','-50px','important');
-      dock.style.setProperty('height','92px','important');
-      dock.style.setProperty('transform','none','important');
-      dock.style.setProperty('z-index','60','important');
-    }
-  }
-
-  function enforce(){disconnectOld();putLast();applyInline();}
-  function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(function(){scheduled=false;enforce()});}
-  function install(){
-    enforce();
-    if(!document.head.__bbV335Observer){
-      document.head.__bbV335Observer=new MutationObserver(schedule);
-      document.head.__bbV335Observer.observe(document.head,{childList:true});
-    }
-    var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV335Observer){
-      desktop.__bbV335Observer=new MutationObserver(schedule);
-      desktop.__bbV335Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',install);
-  [0,40,120,280,600,1200,2400,4800,8000].forEach(function(ms){setTimeout(install,ms)});
-})();
-
-
-/* baobao-panel-isolation-and-dock-micro-adjust-v336 */
-(function(){
-  "use strict";
-  if(window.__bbPanelIsolationDockV336)return;
-  window.__bbPanelIsolationDockV336=true;
-
-  var STYLE_ID='bbPanelIsolationDockV336Style';
-  var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
-
-  function cssText(){return `
-    /* 底栏只往上挪约 1mm，不再大幅改位置 */
-    html body #desktop:not(.page-two-mode) > .dock,
-    html body #desktop:not(.page-two-mode) .dock{
-      bottom:-46px!important;
-    }
-
-    /* 打开设置/美化等页面时，桌面必须完全退到后面，不能穿透叠在页面上 */
-    html body.bb-v336-panel-open #desktop{
-      visibility:hidden!important;
-      opacity:0!important;
-      pointer-events:none!important;
-    }
-    html body.bb-v336-panel-open #desktop #photoWidget,
-    html body.bb-v336-panel-open #desktop .pages-viewport,
-    html body.bb-v336-panel-open #desktop .dots,
-    html body.bb-v336-panel-open #desktop .dock{
-      display:none!important;
-      visibility:hidden!important;
-      opacity:0!important;
-      pointer-events:none!important;
-    }
-
-    /* iOS 设置类页面使用不透明背景，避免后面的组件透出来 */
-    html body .panel.ios-settings{
-      position:absolute!important;
-      inset:0!important;
-      width:100%!important;
-      height:100%!important;
-      min-height:100%!important;
-      z-index:500!important;
-      background:#f4f4f7!important;
-      background-color:#f4f4f7!important;
-      overflow-x:hidden!important;
-      overflow-y:auto!important;
-      -webkit-overflow-scrolling:touch!important;
-      opacity:1!important;
-      isolation:isolate!important;
-    }
-    html body .panel.ios-settings[style*="display: block"],
-    html body .panel.ios-settings[style*="display:block"]{
-      visibility:visible!important;
-      pointer-events:auto!important;
-    }
-  `}
-
-  function putLast(){
-    var style=document.getElementById(STYLE_ID);
-    if(!style){style=document.createElement('style');style.id=STYLE_ID;}
-    style.textContent=cssText();
-    document.head.appendChild(style);
-  }
-
-  function isVisible(el){
-    if(!el)return false;
-    var inline=String(el.style&&el.style.display||'').toLowerCase();
-    if(inline==='none')return false;
-    var cs=getComputedStyle(el);
-    return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0;
-  }
-
-  function syncPanelState(){
-    putLast();
-    var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
-    document.body.classList.toggle('bb-v336-panel-open',open);
-    var dock=document.querySelector('#desktop .dock');
-    if(dock&&!open){
-      dock.style.setProperty('bottom','-46px','important');
-    }
-  }
-
-  function wrapPanelFns(){
-    var oldOpen=window.openPanel;
-    if(typeof oldOpen==='function'&&!oldOpen.__bbV336){
-      var wrappedOpen=function(id){
-        document.body.classList.add('bb-v336-panel-open');
-        var result=oldOpen.apply(this,arguments);
-        requestAnimationFrame(syncPanelState);
-        setTimeout(syncPanelState,30);
-        return result;
-      };
-      wrappedOpen.__bbV336=true;
-      wrappedOpen.__bbOriginal=oldOpen;
-      window.openPanel=wrappedOpen;
-      try{openPanel=wrappedOpen}catch(e){}
-    }
-    var oldClose=window.closePanel;
-    if(typeof oldClose==='function'&&!oldClose.__bbV336){
-      var wrappedClose=function(id){
-        var result=oldClose.apply(this,arguments);
-        requestAnimationFrame(syncPanelState);
-        setTimeout(syncPanelState,40);
-        return result;
-      };
-      wrappedClose.__bbV336=true;
-      wrappedClose.__bbOriginal=oldClose;
-      window.closePanel=wrappedClose;
-      try{closePanel=wrappedClose}catch(e){}
-    }
-  }
-
-  function observePanels(){
-    PANEL_IDS.forEach(function(id){
-      var panel=document.getElementById(id);
-      if(!panel||panel.__bbV336Observed)return;
-      panel.__bbV336Observed=true;
-      new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
-    });
-  }
-
-  function install(){
-    putLast();
-    wrapPanelFns();
-    observePanels();
-    syncPanelState();
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
-  else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',function(){setTimeout(install,0)});
-  [100,500,1200,2600,5200].forEach(function(ms){setTimeout(install,ms)});
-})();
-
-/* baobao-dock-inside-screen-v337 */
-(function(){
-  "use strict";
-  if(window.__bbDockInsideScreenV337)return;
-  window.__bbDockInsideScreenV337=true;
-
-  var STYLE_ID='bbDockInsideScreenV337Style';
-  var scheduled=false;
-
-  function cssText(){return `
-    /* 只修底栏：完整收回手机屏幕内，不再改大组件 */
-    html body #desktop:not(.page-two-mode) > .dock,
-    html body #desktop:not(.page-two-mode) .dock{
-      position:absolute!important;
-      top:auto!important;
-      bottom:6px!important;
-      left:12px!important;
-      right:12px!important;
-      height:92px!important;
-      transform:none!important;
-      margin:0!important;
-      z-index:80!important;
-      overflow:visible!important;
-    }
-  `}
-
-  function disconnectOldDockWriter(){
-    try{document.head.__bbV335Observer&&document.head.__bbV335Observer.disconnect()}catch(e){}
-    var desktop=document.getElementById('desktop');
-    try{desktop&&desktop.__bbV335Observer&&desktop.__bbV335Observer.disconnect()}catch(e){}
-  }
-
-  function putLast(){
-    var style=document.getElementById(STYLE_ID);
-    if(!style){style=document.createElement('style');style.id=STYLE_ID;}
-    style.textContent=cssText();
-    document.head.appendChild(style);
-  }
-
-  function enforce(){
-    disconnectOldDockWriter();
-    putLast();
-    var desktop=document.getElementById('desktop');
-    if(!desktop||desktop.classList.contains('page-two-mode'))return;
-    var dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
-    if(!dock)return;
-    dock.style.setProperty('position','absolute','important');
-    dock.style.setProperty('top','auto','important');
-    dock.style.setProperty('bottom','6px','important');
-    dock.style.setProperty('left','12px','important');
-    dock.style.setProperty('right','12px','important');
-    dock.style.setProperty('height','92px','important');
-    dock.style.setProperty('transform','none','important');
-    dock.style.setProperty('z-index','80','important');
-  }
-
-  function schedule(){
-    if(scheduled)return;
-    scheduled=true;
-    requestAnimationFrame(function(){scheduled=false;enforce();});
-  }
-
-  function install(){
-    enforce();
-    var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV337DockObserver){
-      desktop.__bbV337DockObserver=new MutationObserver(schedule);
-      desktop.__bbV337DockObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
-  else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',function(){setTimeout(install,0)});
-  [0,50,150,400,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms)});
-})();
-
-/* baobao-position-micro-correction-v338 */
-(function(){
-  "use strict";
-  if(window.__bbPositionMicroV338)return;
-  window.__bbPositionMicroV338=true;
-
-  var STYLE_ID='bbPositionMicroV338Style';
-  var scheduled=false;
-
-  function cssText(){return `
-    /* 只修位置：组件从过高的位置向下收回，尺寸保持不变 */
-    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
-      margin:0 0 -40px -27px!important;
-      transform:translateY(-30px)!important;
-    }
-
-    /* 底栏只轻微超出一点，不再整块跑出去，也不抬得太高 */
-    html body #desktop:not(.page-two-mode) > .dock,
-    html body #desktop:not(.page-two-mode) .dock{
-      position:absolute!important;
-      top:auto!important;
-      bottom:-8px!important;
-      left:12px!important;
-      right:12px!important;
-      height:92px!important;
-      transform:none!important;
-      margin:0!important;
-      z-index:80!important;
-    }
-  `}
-
-  function stopOldWriters(){
-    try{document.head.__bbV335Observer&&document.head.__bbV335Observer.disconnect()}catch(e){}
-    try{document.head.__bbV337DockObserver&&document.head.__bbV337DockObserver.disconnect()}catch(e){}
-    var desktop=document.getElementById('desktop');
-    try{desktop&&desktop.__bbV335Observer&&desktop.__bbV335Observer.disconnect()}catch(e){}
-    try{desktop&&desktop.__bbV337DockObserver&&desktop.__bbV337DockObserver.disconnect()}catch(e){}
-  }
-
-  function putLast(){
-    var style=document.getElementById(STYLE_ID);
-    if(!style){style=document.createElement('style');style.id=STYLE_ID;}
-    style.textContent=cssText();
-    document.head.appendChild(style);
-  }
-
-  function applyInline(){
-    var desktop=document.getElementById('desktop');
-    if(!desktop||desktop.classList.contains('page-two-mode'))return;
-    var widget=document.getElementById('photoWidget');
-    var dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
-    if(widget){
-      widget.style.setProperty('margin','0 0 -40px -27px','important');
-      widget.style.setProperty('transform','translateY(-30px)','important');
-    }
-    if(dock){
-      dock.style.setProperty('position','absolute','important');
-      dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','-8px','important');
-      dock.style.setProperty('left','12px','important');
-      dock.style.setProperty('right','12px','important');
+      dock.style.setProperty('bottom','-6px','important');
       dock.style.setProperty('height','92px','important');
       dock.style.setProperty('transform','none','important');
       dock.style.setProperty('z-index','80','important');
     }
+    syncPanelState();
   }
 
   function enforce(){
-    stopOldWriters();
     putLast();
     applyInline();
   }
@@ -43181,12 +41442,48 @@ window.updateArchiveChatStyleHintV324=function(){
     requestAnimationFrame(function(){scheduled=false;enforce();});
   }
 
+  function wrapPanelFns(){
+    var oldOpen=window.openPanel;
+    if(typeof oldOpen==='function'&&!oldOpen.__bbV339){
+      var wrappedOpen=function(){
+        document.body.classList.add('bb-v339-panel-open');
+        var result=oldOpen.apply(this,arguments);
+        requestAnimationFrame(syncPanelState);
+        setTimeout(syncPanelState,30);
+        return result;
+      };
+      wrappedOpen.__bbV339=true;
+      window.openPanel=wrappedOpen;
+      try{openPanel=wrappedOpen}catch(e){}
+    }
+    var oldClose=window.closePanel;
+    if(typeof oldClose==='function'&&!oldClose.__bbV339){
+      var wrappedClose=function(){
+        var result=oldClose.apply(this,arguments);
+        requestAnimationFrame(syncPanelState);
+        setTimeout(syncPanelState,40);
+        return result;
+      };
+      wrappedClose.__bbV339=true;
+      window.closePanel=wrappedClose;
+      try{closePanel=wrappedClose}catch(e){}
+    }
+  }
+
   function install(){
+    putLast();
+    wrapPanelFns();
     enforce();
+    PANEL_IDS.forEach(function(id){
+      var panel=document.getElementById(id);
+      if(!panel||panel.__bbV339Observed)return;
+      panel.__bbV339Observed=true;
+      new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
+    });
     var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV338Observer){
-      desktop.__bbV338Observer=new MutationObserver(schedule);
-      desktop.__bbV338Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    if(desktop&&!desktop.__bbV339Observer){
+      desktop.__bbV339Observer=new MutationObserver(schedule);
+      desktop.__bbV339Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
     }
   }
 
@@ -43194,5 +41491,5 @@ window.updateArchiveChatStyleHintV324=function(){
   else install();
   window.addEventListener('load',install);
   window.addEventListener('pageshow',function(){setTimeout(install,0)});
-  [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms)});
+  [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms);});
 })();
