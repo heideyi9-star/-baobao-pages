@@ -40813,7 +40813,7 @@ window.updateArchiveChatStyleHintV324=function(){
         display:none!important;
       }
       #desktop.page-two-mode .dots{
-        margin-top:10px!important;
+        margin-top:8px!important;
       }
       #desktop .bb-showcase-shell{
         position:relative;
@@ -41090,13 +41090,13 @@ window.updateArchiveChatStyleHintV324=function(){
 })();
 
 
-/* baobao-page1-single-layout-v341 */
+/* baobao-page1-single-layout-v342 */
 (function(){
   "use strict";
-  if(window.__bbPage1SingleLayoutV341)return;
-  window.__bbPage1SingleLayoutV341=true;
+  if(window.__bbPage1SingleLayoutV342)return;
+  window.__bbPage1SingleLayoutV342=true;
 
-  var STYLE_ID='bbPage1SingleLayoutV341Style';
+  var STYLE_ID='bbPage1SingleLayoutV342Style';
   var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
   var scheduled=false;
 
@@ -41121,13 +41121,13 @@ window.updateArchiveChatStyleHintV324=function(){
       display:none!important;
     }
 
-    /* 按用户要求：上方组件再缩小 20px */
+    /* v342：整个上方组件实际缩小，外框与内部同步收小 */
     html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
       display:block!important;
       position:relative!important;
-      width:calc(100% + 14px)!important;
+      width:calc(100% - 20px)!important;
       max-width:none!important;
-      margin:0 0 -35px -7px!important;
+      margin:0 0 -24px 10px!important;
       padding:0!important;
       transform:translateY(-25px)!important;
       z-index:15!important;
@@ -41138,8 +41138,8 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-shell{
       width:100%!important;
-      padding:23px 27px 21px!important;
-      border-radius:39px!important;
+      padding:20px 23px 18px!important;
+      border-radius:35px!important;
       background:rgba(255,255,255,.68)!important;
       border:1px solid rgba(255,255,255,.84)!important;
       box-shadow:0 14px 32px rgba(0,0,0,.055)!important;
@@ -41148,21 +41148,21 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-head{
       display:grid!important;
-      grid-template-columns:88px minmax(0,1fr) auto!important;
+      grid-template-columns:80px minmax(0,1fr) auto!important;
       align-items:center!important;
       gap:14px!important;
-      min-height:86px!important;
+      min-height:78px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-left,
     html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
-      width:88px!important;
-      height:88px!important;
-      min-width:88px!important;
-      min-height:88px!important;
+      width:80px!important;
+      height:80px!important;
+      min-width:80px!important;
+      min-height:80px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
-      width:28px!important;
-      height:28px!important;
+      width:26px!important;
+      height:26px!important;
       right:-4px!important;
       bottom:-4px!important;
     }
@@ -41175,14 +41175,14 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-temp{
       flex:0 0 auto!important;
-      min-width:69px!important;
-      padding:11px 13px!important;
+      min-width:64px!important;
+      padding:10px 12px!important;
       border-radius:18px!important;
-      font-size:17px!important;
+      font-size:16px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-title{
       min-width:0!important;
-      font-size:18px!important;
+      font-size:17px!important;
       letter-spacing:.2px!important;
       white-space:nowrap!important;
       overflow:hidden!important;
@@ -41194,19 +41194,19 @@ window.updateArchiveChatStyleHintV324=function(){
       line-height:1.42!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-date{
-      padding-top:48px!important;
+      padding-top:43px!important;
       font-size:13px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-grid{
       display:grid!important;
       grid-template-columns:repeat(3,minmax(0,1fr))!important;
-      gap:12px!important;
-      margin-top:17px!important;
+      gap:10px!important;
+      margin-top:14px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
       width:100%!important;
-      height:121px!important;
-      min-height:121px!important;
+      height:111px!important;
+      min-height:111px!important;
       margin:0!important;
       padding:0!important;
       border-radius:13px!important;
@@ -41223,19 +41223,19 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-footer,
     html body #desktop:not(.page-two-mode) .bb-showcase-pill{
-      height:60px!important;
+      height:54px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-footer{
-      margin-top:17px!important;
-      padding:0 21px!important;
+      margin-top:14px!important;
+      padding:0 18px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-actions{
-      gap:24px!important;
+      gap:21px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-action{
-      width:26px!important;
-      height:26px!important;
-      font-size:26px!important;
+      width:24px!important;
+      height:24px!important;
+      font-size:24px!important;
     }
 
     html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
@@ -41336,7 +41336,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
 
     /* 设置/美化打开后不与桌面叠加 */
-    html body.bb-v341-panel-open #desktop{
+    html body.bb-v342-panel-open #desktop{
       visibility:hidden!important;
       opacity:0!important;
       pointer-events:none!important;
@@ -41377,7 +41377,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function syncPanelState(){
     var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
-    document.body.classList.toggle('bb-v341-panel-open',open);
+    document.body.classList.toggle('bb-v342-panel-open',open);
   }
 
   function applyInline(){
@@ -41398,8 +41398,8 @@ window.updateArchiveChatStyleHintV324=function(){
       scroll.insertBefore(widget,viewport);
     }
     if(widget){
-      widget.style.setProperty('width','calc(100% + 14px)','important');
-      widget.style.setProperty('margin','0 0 -35px -7px','important');
+      widget.style.setProperty('width','calc(100% - 20px)','important');
+      widget.style.setProperty('margin','0 0 -24px 10px','important');
       widget.style.setProperty('transform','translateY(-25px)','important');
     }
     if(viewport){
@@ -41444,27 +41444,27 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function wrapPanelFns(){
     var oldOpen=window.openPanel;
-    if(typeof oldOpen==='function'&&!oldOpen.__bbV341){
+    if(typeof oldOpen==='function'&&!oldOpen.__bbV342){
       var wrappedOpen=function(){
-        document.body.classList.add('bb-v341-panel-open');
+        document.body.classList.add('bb-v342-panel-open');
         var result=oldOpen.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,30);
         return result;
       };
-      wrappedOpen.__bbV341=true;
+      wrappedOpen.__bbV342=true;
       window.openPanel=wrappedOpen;
       try{openPanel=wrappedOpen}catch(e){}
     }
     var oldClose=window.closePanel;
-    if(typeof oldClose==='function'&&!oldClose.__bbV341){
+    if(typeof oldClose==='function'&&!oldClose.__bbV342){
       var wrappedClose=function(){
         var result=oldClose.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,40);
         return result;
       };
-      wrappedClose.__bbV341=true;
+      wrappedClose.__bbV342=true;
       window.closePanel=wrappedClose;
       try{closePanel=wrappedClose}catch(e){}
     }
@@ -41476,14 +41476,14 @@ window.updateArchiveChatStyleHintV324=function(){
     enforce();
     PANEL_IDS.forEach(function(id){
       var panel=document.getElementById(id);
-      if(!panel||panel.__bbV341Observed)return;
-      panel.__bbV341Observed=true;
+      if(!panel||panel.__bbV342Observed)return;
+      panel.__bbV342Observed=true;
       new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
     });
     var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV341Observer){
-      desktop.__bbV341Observer=new MutationObserver(schedule);
-      desktop.__bbV341Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    if(desktop&&!desktop.__bbV342Observer){
+      desktop.__bbV342Observer=new MutationObserver(schedule);
+      desktop.__bbV342Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
     }
   }
 
