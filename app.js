@@ -42889,3 +42889,137 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener('pageshow',install);
   [0,40,120,280,600,1200,2400,4800,8000].forEach(function(ms){setTimeout(install,ms)});
 })();
+
+
+/* baobao-panel-isolation-and-dock-micro-adjust-v336 */
+(function(){
+  "use strict";
+  if(window.__bbPanelIsolationDockV336)return;
+  window.__bbPanelIsolationDockV336=true;
+
+  var STYLE_ID='bbPanelIsolationDockV336Style';
+  var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
+
+  function cssText(){return `
+    /* 底栏只往上挪约 1mm，不再大幅改位置 */
+    html body #desktop:not(.page-two-mode) > .dock,
+    html body #desktop:not(.page-two-mode) .dock{
+      bottom:-46px!important;
+    }
+
+    /* 打开设置/美化等页面时，桌面必须完全退到后面，不能穿透叠在页面上 */
+    html body.bb-v336-panel-open #desktop{
+      visibility:hidden!important;
+      opacity:0!important;
+      pointer-events:none!important;
+    }
+    html body.bb-v336-panel-open #desktop #photoWidget,
+    html body.bb-v336-panel-open #desktop .pages-viewport,
+    html body.bb-v336-panel-open #desktop .dots,
+    html body.bb-v336-panel-open #desktop .dock{
+      display:none!important;
+      visibility:hidden!important;
+      opacity:0!important;
+      pointer-events:none!important;
+    }
+
+    /* iOS 设置类页面使用不透明背景，避免后面的组件透出来 */
+    html body .panel.ios-settings{
+      position:absolute!important;
+      inset:0!important;
+      width:100%!important;
+      height:100%!important;
+      min-height:100%!important;
+      z-index:500!important;
+      background:#f4f4f7!important;
+      background-color:#f4f4f7!important;
+      overflow-x:hidden!important;
+      overflow-y:auto!important;
+      -webkit-overflow-scrolling:touch!important;
+      opacity:1!important;
+      isolation:isolate!important;
+    }
+    html body .panel.ios-settings[style*="display: block"],
+    html body .panel.ios-settings[style*="display:block"]{
+      visibility:visible!important;
+      pointer-events:auto!important;
+    }
+  `}
+
+  function putLast(){
+    var style=document.getElementById(STYLE_ID);
+    if(!style){style=document.createElement('style');style.id=STYLE_ID;}
+    style.textContent=cssText();
+    document.head.appendChild(style);
+  }
+
+  function isVisible(el){
+    if(!el)return false;
+    var inline=String(el.style&&el.style.display||'').toLowerCase();
+    if(inline==='none')return false;
+    var cs=getComputedStyle(el);
+    return cs.display!=='none'&&cs.visibility!=='hidden'&&Number(cs.opacity||1)>0;
+  }
+
+  function syncPanelState(){
+    putLast();
+    var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
+    document.body.classList.toggle('bb-v336-panel-open',open);
+    var dock=document.querySelector('#desktop .dock');
+    if(dock&&!open){
+      dock.style.setProperty('bottom','-46px','important');
+    }
+  }
+
+  function wrapPanelFns(){
+    var oldOpen=window.openPanel;
+    if(typeof oldOpen==='function'&&!oldOpen.__bbV336){
+      var wrappedOpen=function(id){
+        document.body.classList.add('bb-v336-panel-open');
+        var result=oldOpen.apply(this,arguments);
+        requestAnimationFrame(syncPanelState);
+        setTimeout(syncPanelState,30);
+        return result;
+      };
+      wrappedOpen.__bbV336=true;
+      wrappedOpen.__bbOriginal=oldOpen;
+      window.openPanel=wrappedOpen;
+      try{openPanel=wrappedOpen}catch(e){}
+    }
+    var oldClose=window.closePanel;
+    if(typeof oldClose==='function'&&!oldClose.__bbV336){
+      var wrappedClose=function(id){
+        var result=oldClose.apply(this,arguments);
+        requestAnimationFrame(syncPanelState);
+        setTimeout(syncPanelState,40);
+        return result;
+      };
+      wrappedClose.__bbV336=true;
+      wrappedClose.__bbOriginal=oldClose;
+      window.closePanel=wrappedClose;
+      try{closePanel=wrappedClose}catch(e){}
+    }
+  }
+
+  function observePanels(){
+    PANEL_IDS.forEach(function(id){
+      var panel=document.getElementById(id);
+      if(!panel||panel.__bbV336Observed)return;
+      panel.__bbV336Observed=true;
+      new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
+    });
+  }
+
+  function install(){
+    putLast();
+    wrapPanelFns();
+    observePanels();
+    syncPanelState();
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',function(){setTimeout(install,0)});
+  [100,500,1200,2600,5200].forEach(function(ms){setTimeout(install,ms)});
+})();
