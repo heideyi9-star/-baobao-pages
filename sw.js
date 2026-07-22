@@ -1,5 +1,5 @@
-/* 豹豹机 311：生图中转站、自动照片与表情包预览。 */
-const CACHE_NAME = "baobao-shell-v311";
+/* 豹豹机 312：首页组件桌面限定与短信人设强化。 */
+const CACHE_NAME = "baobao-shell-v312";
 const SHELL = [
   "./",
   "./index.html",
@@ -70,7 +70,7 @@ self.addEventListener("fetch", event => {
 });
 
 
-/* 311：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
+/* 312：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
 function bbParsePush(event){
   if(!event.data)return {};
   try{return event.data.json()||{};}catch(error){

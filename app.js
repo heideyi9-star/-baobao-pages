@@ -4025,41 +4025,58 @@ ${offlineMemory}
     return parts.length ? parts : ["嗯"];
   }
 
-  // 覆盖底层API调用：带温度和长度限制
+  // 覆盖底层API调用：带温度和长度限制，并对网络抖动/接口临时错误自动重试
   window.sendChatCompletion = async function(messages, apiOverride){
     const api = apiOverride || getChatAPI();
     if(!api.endpoint || !api.key){
       throw new Error("请先在「API 设置 → 对话 API」里填写接口地址和 Key");
     }
     const url = api.endpoint.replace(/\/$/, "") + "/chat/completions";
-    let res;
-    try{
-      res = await fetch(url, {
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "Authorization":"Bearer " + api.key
-        },
-        body:JSON.stringify({
-          model:api.model || "gpt-3.5-turbo",
-          messages,
-          temperature:Number.isFinite(Number(api.temperature)) ? Number(api.temperature) : 0.75,
-          max_tokens:1200,
-          presence_penalty:0.35,
-          frequency_penalty:0.25
-        })
-      });
-    }catch(e){
-      throw new Error("请求失败，可能是网络问题或接口不支持浏览器跨域(CORS)");
+    const body = JSON.stringify({
+      model:api.model || "gpt-3.5-turbo",
+      messages,
+      temperature:Number.isFinite(Number(api.temperature)) ? Number(api.temperature) : 0.75,
+      max_tokens:1200,
+      presence_penalty:0.35,
+      frequency_penalty:0.25
+    });
+
+    const maxNetworkAttempts = 3;
+    let lastError = null;
+    for(let netAttempt=0; netAttempt<maxNetworkAttempts; netAttempt++){
+      let res;
+      try{
+        res = await fetch(url, {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json",
+            "Authorization":"Bearer " + api.key
+          },
+          body
+        });
+      }catch(e){
+        lastError = new Error("请求失败，可能是网络问题或接口不支持浏览器跨域(CORS)");
+        if(netAttempt < maxNetworkAttempts-1){ await new Promise(r=>setTimeout(r,800+netAttempt*800)); continue; }
+        throw lastError;
+      }
+      if(!res.ok){
+        const errText = await res.text().catch(()=>"");
+        // 429（限流）和 5xx（服务端临时错误）值得重试；其余（比如 401/400 参数错误）重试没有意义，直接抛出
+        const retryable = res.status===429 || res.status>=500;
+        lastError = new Error(`接口返回错误 ${res.status}：${errText.slice(0,150)}`);
+        if(retryable && netAttempt < maxNetworkAttempts-1){ await new Promise(r=>setTimeout(r,900+netAttempt*900)); continue; }
+        throw lastError;
+      }
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if(!content){
+        lastError = new Error("接口返回了空内容，请检查模型名称/接口地址是否正确");
+        if(netAttempt < maxNetworkAttempts-1){ await new Promise(r=>setTimeout(r,700+netAttempt*700)); continue; }
+        throw lastError;
+      }
+      return normalizeReply(content);
     }
-    if(!res.ok){
-      const errText = await res.text().catch(()=>"");
-      throw new Error(`接口返回错误 ${res.status}：${errText.slice(0,150)}`);
-    }
-    const data = await res.json();
-    const content = data?.choices?.[0]?.message?.content;
-    if(!content) throw new Error("接口返回了空内容，请检查模型名称/接口地址是否正确");
-    return normalizeReply(content);
+    throw lastError||new Error("接口请求失败");
   };
 
   // 每轮强制重贴人设，并对AI腔自动重写
@@ -4082,17 +4099,21 @@ ${offlineMemory}
     let lastScore = 100;
 
     try{
-      for(let attempt=0; attempt<3; attempt++){
+      for(let attempt=0; attempt<4; attempt++){
         const attemptMessages = [...messages];
+        attemptMessages.push({
+          role:"system",
+          content:"【最高优先级铁律】必须100%贴合角色人设发言，绝对不能OOC、不能变成通用助手腔、不能突然礼貌客套或讲道理。宁可说得少、说得怪、说得任性，也不能背离这个角色本来的脾气。"
+        });
         if(attempt > 0){
           attemptMessages.push({
             role:"system",
-            content:`上一版回复AI腔过重或不贴人设（评分${lastScore}/100）。请完全重写：更短、更口语、更像真实私聊，严格服从角色说话习惯；禁止关心作息、提供帮助、礼貌解释和长段落。`
+            content:`上一版回复AI腔过重或不贴人设（评分${lastScore}/100，要求低于20才合格）。请完全重写：更短、更口语、更像真实私聊，严格服从角色说话习惯；禁止关心作息、提供帮助、礼貌解释和长段落。`
           });
         }
         lastReply = await window.sendChatCompletion(attemptMessages);
         lastScore = aiStyleScore(lastReply);
-        if(lastScore < 35) break;
+        if(lastScore < 20) break;
       }
 
       window.baobaoLastPersonaDebug = {
@@ -14736,6 +14757,7 @@ async function baobaoVision(payload){
     applySmsSettings();
     renderSmsMessages();
     updateSmsSendButton();
+    maybeDeliverPendingAppeal(activePersonaId);
     setTimeout(()=>document.getElementById("smsInput")?.focus(),80);
   };
 
@@ -14809,6 +14831,80 @@ async function baobaoVision(payload){
       person.setting?("补充设定："+person.setting):"",
       person.prompt?("专属要求："+person.prompt):""
     ].filter(Boolean).join("\n");
+  }
+
+  function smsSafeParse(raw,fallback){
+    try{return JSON.parse(raw)}catch(e){return fallback}
+  }
+
+  function smsTerms(value){
+    return Array.from(new Set(String(value||"").toLowerCase().match(/[\u4e00-\u9fff]{1,4}|[a-z0-9]{2,}/g)||[]));
+  }
+
+  function roleSpeechSamples(personId){
+    const wechat=state.chatRecords&&Array.isArray(state.chatRecords[personId])
+      ?state.chatRecords[personId]
+      :[];
+    const sms=threadFor(personId,true).thread.messages||[];
+    return [...wechat,...sms]
+      .filter(m=>m&&m.role==="assistant"&&!m.hiddenSystem&&!m.recalled&&!m.generationFailed)
+      .slice(-12)
+      .map(m=>String(m.content||m.text||"").replace(/\s+/g," ").trim().slice(0,180))
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  function smsMemoryContext(person,userText){
+    const id=String(person&&person.id||"");
+    const db=smsSafeParse(localStorage.getItem("baobao_memory_engine_v1"),{})||{};
+    const own=db.personas&&db.personas[id]||{};
+    const shared=db.shared||{};
+    const query=String(userText||"").toLowerCase();
+    const qWords=smsTerms(query);
+    const list=[...(Array.isArray(own.memories)?own.memories:[]),...(Array.isArray(shared.memories)?shared.memories:[])];
+    const ranked=list.filter(m=>m&&m.active!==false&&String(m.text||"").trim()).map(m=>{
+      const text=String(m.text||"");
+      const keys=[...(Array.isArray(m.keywords)?m.keywords:[]),...smsTerms(text)].map(String);
+      let score=Number(m.importance||0)+(m.pinned?10:0);
+      for(const word of qWords){if(word.length>=2&&(text.toLowerCase().includes(word)||keys.some(k=>String(k).toLowerCase().includes(word))))score+=8;}
+      if(m.type==="relationship")score+=2;
+      return {m,score};
+    }).filter(x=>x.score>=8).sort((a,b)=>b.score-a.score).slice(0,7).map(x=>String(x.m.text||"").trim());
+    const lines=[];
+    if(String(own.summary||"").trim())lines.push("关系总结："+String(own.summary).trim().slice(0,900));
+    ranked.forEach((text,i)=>lines.push((i+1)+". "+text.slice(0,500)));
+    return lines.join("\n");
+  }
+
+  function smsWorldBookContext(person,userText){
+    const store=smsSafeParse(localStorage.getItem("baobao_world_books_v230"),{})||{};
+    const entries=Array.isArray(store.entries)?store.entries:[];
+    const id=String(person&&person.id||"");
+    const name=String(person&&person.name||"");
+    const context=(String(userText||"")+"\n"+recentWechat(id)+"\n"+recentSms(id)).toLowerCase();
+    return entries.filter(entry=>{
+      if(!entry||entry.enabled===false)return false;
+      const scope=String(entry.scope||"global");
+      if(scope==="persona"&&String(entry.personaId||"")!==id&&String(entry.personaName||"")!==name)return false;
+      if(String(entry.mode||"always")==="always")return true;
+      const keys=Array.isArray(entry.keywords)?entry.keywords:String(entry.keywords||"").split(/[，,、\s]+/).filter(Boolean);
+      return keys.some(key=>context.includes(String(key).toLowerCase()));
+    }).sort((a,b)=>Number(b.priority||0)-Number(a.priority||0)).slice(0,8)
+      .map(entry=>"〔"+String(entry.name||"世界书")+"〕\n"+String(entry.content||"").trim().slice(0,1200))
+      .filter(Boolean).join("\n\n");
+  }
+
+  function strictSmsPersonaContext(person,userText){
+    const id=String(person&&person.id||"");
+    const samples=roleSpeechSamples(id);
+    const memory=smsMemoryContext(person,userText);
+    const world=smsWorldBookContext(person,userText);
+    return [
+      "【完整角色档案｜最高优先级】\n"+personaContext(person),
+      samples?"【角色过去真实说话样本】\n"+samples:"",
+      memory?"【仅属于这个角色的相关记忆】\n"+memory:"",
+      world?"【当前触发的世界书】\n"+world:""
+    ].filter(Boolean).join("\n\n");
   }
 
   function recentWechat(personId){
@@ -14887,21 +14983,45 @@ async function baobaoVision(payload){
     return ["我不想我们就这样断掉。","再给我一次把话说清楚的机会。"];
   }
 
+  // 312.1：带自动重试的短信生成请求，尽量避免出现"生成失败"
+  async function smsCompletionWithRetry(messages,timeoutMs,label,maxAttempts){
+    maxAttempts = maxAttempts || 3;
+    let lastErr = null;
+    for(let attempt=0; attempt<maxAttempts; attempt++){
+      try{
+        const task=Promise.resolve().then(()=>window.sendChatCompletion(messages));
+        const reply=await Promise.race([
+          task,
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error((label||"短信")+"生成超时")),timeoutMs||30000))
+        ]);
+        return reply;
+      }catch(e){
+        lastErr = e;
+        console.warn((label||"短信")+"生成失败，第"+(attempt+1)+"次尝试：",e&&e.message);
+        if(attempt < maxAttempts-1){
+          await new Promise(resolve=>setTimeout(resolve,900+attempt*900));
+        }
+      }
+    }
+    throw lastErr||new Error((label||"短信")+"生成失败");
+  }
+
   async function generateAppeal(person,blockedAt){
     const messages=[
       {
         role:"system",
         content:
-          "你就是下面这个角色本人。用户刚刚在微信把你拉黑了，你只能改用手机短信联系。"+
-          "请根据角色完整人设、脾气、关系和最近微信聊天，写1到3条真实短信。"+
-          "目标是解释、挽回或求复合，但不是每个角色都卑微道歉：冷淡的人会克制，嘴硬的人会逞强，强势的人会追问，温柔的人会给空间。"+
-          "禁止客服腔、心理分析、括号动作、旁白、标题、角色名和引号。"+
-          "每条短信2到50字，多条用换行分隔。不要说自己是AI。"
+          "你就是下面这个角色本人，正在使用手机短信。完整人设、过去真实说话样本、当前关系和已经发生的聊天是绝对最高优先级。"+
+          "用户刚刚在微信把你拉黑了。先判断这个角色此刻到底会不会改用短信联系；不得因为任务写了‘挽回’就强迫冷淡、骄傲、疏离或已经失望的角色突然卑微。"+
+          "若按人设此刻根本不会发短信，只输出 [[SILENT]]。否则写1到3条这个角色本人真正会发的短信。"+
+          "必须复刻角色自己的句长、标点、称呼、口癖、情绪边界和表达习惯；宁可短、沉默或只问一句，也不要通用挽回模板。"+
+          "禁止客服腔、心理分析、说教、括号动作、旁白、标题、编号、角色名、引号、偶像剧套话和无依据的关系升级。"+
+          "每条短信2到55字，多条用换行分隔。不要说自己是AI。"
       },
       {
         role:"user",
         content:
-          "【角色人设】\n"+personaContext(person)+
+          strictSmsPersonaContext(person,"微信拉黑")+
           "\n\n【用户面具】\n"+maskContext()+
           "\n\n【最近微信聊天】\n"+(recentWechat(String(person.id))||"暂无")+
           "\n\n【事件】\n用户在微信拉黑了你，时间："+new Date(blockedAt).toLocaleString()+
@@ -14914,11 +15034,8 @@ async function baobaoVision(payload){
     }
 
     try{
-      const task=Promise.resolve().then(()=>window.sendChatCompletion(messages));
-      const reply=await Promise.race([
-        task,
-        new Promise((_,reject)=>setTimeout(()=>reject(new Error("短信挽回生成超时")),12000))
-      ]);
+      const reply=await smsCompletionWithRetry(messages,30000,"短信挽回");
+      if(/\[\[SILENT\]\]/i.test(String(reply||"")))return ["__BB_SMS_SILENT__"];
       const parts=parseSmsReply(reply);
       return parts.length?parts:null;
     }catch(e){
@@ -14933,18 +15050,19 @@ async function baobaoVision(payload){
       {
         role:"system",
         content:
-          "你正在通过手机短信和用户聊天。你必须严格扮演角色本人，服从完整人设与最近关系。"+
-          "短信和微信是两个不同渠道，但你记得微信里发生过的事。"+
+          "你就是下面这个角色本人，正在通过手机短信和同一个用户聊天。完整角色档案和角色过去真实说话样本是不可覆盖的最高规则。"+
+          "短信和微信是两个不同渠道，但关系、记忆和已发生的事情连续。先准确理解用户刚发的短信，再按这个角色的真实脾气回答。"+
           (isBlocked
-            ?"用户目前仍在微信拉黑你，因此你会知道短信是现在唯一能联系的方式；可以挽回、解释、嘴硬或生气，但要符合人设。"
-            :"微信目前没有被用户拉黑，短信只是另一种联系方式。")+
-          "输出1到3条自然中文短信，多条用换行分隔；每条2到55字。"+
-          "禁止旁白、括号动作、标题、编号、角色名、分析和AI腔。"
+            ?"用户目前仍在微信拉黑你。你可以挽回、追问、生气、克制、冷处理或只回很短一句，但只能由人设和当前关系决定，禁止统一写成卑微挽回。"
+            :"微信目前没有被用户拉黑，短信只是另一种联系方式。不要无缘无故提拉黑、分手、离开或关系危机。")+
+          "必须保持角色自己的句长、标点、称呼、口癖、冷暖程度和表达边界；不要把所有角色写成同一种温柔、毒舌、霸总或恋爱脑。"+
+          "用户发短句就先理解上一句指代，禁止故意曲解、随机挑架、情绪勒索、硬加第三者和编造没发生的事。"+
+          "输出1到3条完整自然短信，多条用换行分隔；每条2到70字。禁止旁白、括号动作、标题、编号、角色名、分析、客服腔和AI腔。"
       },
       {
         role:"user",
         content:
-          "【角色人设】\n"+personaContext(person)+
+          strictSmsPersonaContext(person,userText)+
           "\n\n【用户面具】\n"+maskContext()+
           "\n\n【最近微信】\n"+(recentWechat(String(person.id))||"暂无")+
           "\n\n【最近短信】\n"+(recentSms(String(person.id))||"暂无")+
@@ -14958,11 +15076,7 @@ async function baobaoVision(payload){
     }
 
     try{
-      const task=Promise.resolve().then(()=>window.sendChatCompletion(messages));
-      const reply=await Promise.race([
-        task,
-        new Promise((_,reject)=>setTimeout(()=>reject(new Error("短信回复生成超时")),12000))
-      ]);
+      const reply=await smsCompletionWithRetry(messages,30000,"短信回复");
       const parts=parseSmsReply(reply);
       return parts.length?parts:null;
     }catch(e){
@@ -14971,6 +15085,7 @@ async function baobaoVision(payload){
     }
   }
 
+  const smsReplyRetryTimers={};
   async function replyToSms(personId,userText){
     const person=personaById(personId);
     if(!person||replying.has(String(personId)))return;
@@ -14989,9 +15104,15 @@ async function baobaoVision(payload){
     }
 
     if(!Array.isArray(replies)||!replies.length){
-      appendSms(personId,"system","生成失败",{source:"sms_generation_failed",generationFailed:true});
+      if(String(activePersonaId)===String(personId)&&typeof showToast==="function"){
+        showToast("网络不太稳定，正在重试…");
+      }
       replying.delete(String(personId));
       if(String(activePersonaId)===String(personId))updateSmsSendButton();
+      clearTimeout(smsReplyRetryTimers[String(personId)]);
+      smsReplyRetryTimers[String(personId)]=setTimeout(()=>{
+        replyToSms(personId,userText);
+      },12000+Math.random()*8000);
       return;
     }
 
@@ -15107,6 +15228,42 @@ async function baobaoVision(payload){
     localStorage.setItem(PENDING_KEY,JSON.stringify(data||{}));
   }
 
+  function maybeDeliverPendingAppeal(personId){
+    const key=String(personId||"");
+    if(!key)return;
+    const pending=loadPending();
+    const blockedAt=Number(pending[key]||0);
+    if(!blockedAt)return;
+    const guard="appeal:"+key;
+    if(replying.has(guard))return;
+    replying.add(guard);
+    if(String(activePersonaId)===key)document.getElementById("smsTyping")?.classList.add("show");
+    setTimeout(async()=>{
+      try{
+        await deliverAppeal(key,blockedAt);
+      }finally{
+        replying.delete(guard);
+        if(String(activePersonaId)===key){
+          document.getElementById("smsTyping")?.classList.remove("show");
+          updateSmsSendButton();
+        }
+      }
+    },180);
+  }
+
+  // 312.1：生成失败时不放弃，稍后在后台自动重试，直到成功送达
+  const appealRetryTimers={};
+  function scheduleAppealRetry(personId,blockedAt){
+    const key=String(personId);
+    clearTimeout(appealRetryTimers[key]);
+    appealRetryTimers[key]=setTimeout(()=>{
+      const pending=loadPending();
+      if(Number(pending[key]||0)===Number(blockedAt||0)){
+        maybeDeliverPendingAppeal(key);
+      }
+    },15000+Math.random()*10000);
+  }
+
   async function deliverAppeal(personId,blockedAt){
     const person=personaById(personId);
     if(!person)return;
@@ -15131,15 +15288,18 @@ async function baobaoVision(payload){
     }
 
     const replies=await generateAppeal(person,blockedAt);
+    if(Array.isArray(replies)&&replies[0]==="__BB_SMS_SILENT__"){
+      const silentPending=loadPending();
+      delete silentPending[String(personId)];
+      savePending(silentPending);
+      return;
+    }
     if(!Array.isArray(replies)||!replies.length){
-      appendSms(personId,"system","生成失败",{
-        source:"sms_generation_failed",
-        generationFailed:true,
-        blockedAt:Number(blockedAt||0)
-      });
-      const failedPending=loadPending();
-      delete failedPending[String(personId)];
-      savePending(failedPending);
+      // 312.1：不再写入"生成失败"气泡；保留待处理标记，稍后自动重试
+      if(typeof showToast==="function"&&String(activePersonaId)===String(personId)){
+        showToast("网络不太稳定，正在重试…");
+      }
+      scheduleAppealRetry(personId,blockedAt);
       return;
     }
     for(let i=0;i<replies.length;i++){
@@ -15164,16 +15324,17 @@ async function baobaoVision(payload){
     const pending=loadPending();
     pending[key]=Number(blockedAt||Date.now());
     savePending(pending);
-
-    const delay=4500+Math.floor(Math.random()*4500);
-    setTimeout(()=>deliverAppeal(key,pending[key]),delay);
+    // 312.1：不需要用户先点进对应短信会话，直接在后台生成并推送
+    maybeDeliverPendingAppeal(key);
   };
 
   function restorePendingAppeals(){
+    // 312.1：应用启动时把所有待处理的挽回短信都在后台补发一遍
     const pending=loadPending();
-    Object.entries(pending).forEach(([id,time],index)=>{
-      setTimeout(()=>deliverAppeal(id,Number(time)),1200+index*900);
+    Object.keys(pending).forEach(key=>{
+      if(Number(pending[key]))maybeDeliverPendingAppeal(key);
     });
+    if(document.getElementById("baobaoSmsApp")?.classList.contains("show"))renderSmsList();
   }
 
   function migrateDesktopApp(){
@@ -37392,10 +37553,10 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
 
   function stylePrompt(prompt,style){
     const map={
-      photo:"写实手机随手拍风格：photorealistic, realistic skin texture with visible pores, candid unedited iPhone snapshot, subtle film grain, slight motion blur, imperfect natural focus, soft natural light or single warm ambient source, natural asymmetry, slightly messy hair, realistic fabric wrinkles；背景带日常生活痕迹（吃了一半的饭菜、外卖盒、随手放的餐具、桌上散落的手机充电线等），不刻意摆拍。避免：过度磨皮、塑料感皮肤、doll-like symmetrical face、CGI/3D渲染感、过饱和影棚光、多余或畸形手指、模糊、文字、水印、边框。",
-      portrait:"精致人物头像构图，主体清晰，适合作为社交头像，保留自然皮肤质感与轻微不对称，不要文字水印，避免磨皮过度和塑料感。",
+      photo:"写实手机随手拍风格，自然光线，真实材质和生活感，不要文字水印。",
+      portrait:"精致人物头像构图，主体清晰，适合作为社交头像，不要文字水印。",
       anime:"高质量二次元插画，画面干净，人物细节完整，不要文字水印。",
-      cinema:"电影感摄影，氛围光影，构图有故事感，保留胶片颗粒与自然光影层次，不要文字水印。",
+      cinema:"电影感摄影，氛围光影，构图有故事感，不要文字水印。",
       none:""
     };
     const extra=map[style]||"";
@@ -38110,10 +38271,10 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   }
   function stylePrompt(prompt,style){
     const map={
-      photo:"写实的 iPhone 随手拍照片：photorealistic, realistic skin texture with visible pores, candid unedited snapshot, subtle film grain, slight motion blur, imperfect natural focus, soft natural or single warm ambient light, natural asymmetry, slightly messy hair, realistic fabric wrinkles；背景带真实日常生活痕迹（吃了一半的饭菜、外卖盒、随手放的餐具、桌面散落的手机充电线小票等），非摆拍感。避免：过度磨皮、塑料感/蜡质皮肤、doll-like对称脸、CGI或3D渲染感、过饱和的影棚闪光灯、多余或畸形手指、模糊、文字、水印、边框。",
-      portrait:"真实人物头像照片，适合作为社交头像，保留自然皮肤质感和轻微不对称，不要文字或水印，避免磨皮过度和塑料感。",
+      photo:"写实的 iPhone 随手拍照片，自然光线、真实皮肤和生活环境，不要文字、水印或边框。",
+      portrait:"真实人物头像照片，适合作为社交头像，自然皮肤，不要文字或水印。",
       anime:"高质量二次元插画，人物细节完整，不要文字或水印。",
-      cinema:"电影感真实摄影，氛围光影和自然构图，保留胶片颗粒感，不要文字或水印。",
+      cinema:"电影感真实摄影，氛围光影和自然构图，不要文字或水印。",
       none:""
     };
     const extra=map[clean(style)]||map.photo;
@@ -38375,4 +38536,87 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   window.addEventListener("pageshow",()=>setTimeout(install,0));
   [100,500,1200,2800,6000,11000,18000,24000].forEach(delay=>setTimeout(install,delay));
   console.log("豹豹机 311：生图中转站直连、角色自动发照片与表情包首页预览已启用");
+})();
+
+
+/* baobao-desktop-component-and-sms-persona-v312 */
+/* =========================================================
+   豹豹机 312
+   - 首页文字组件只允许出现在桌面，不再跟进设置/API 子页。
+   - 短信未打开时不调用 API、不生成失败；短信文风严格服从角色人设。
+   ========================================================= */
+(function(){
+  "use strict";
+  if(window.__bbDesktopComponentSmsPersonaV312)return;
+  window.__bbDesktopComponentSmsPersonaV312=true;
+
+  function ensureStyle(){
+    if(document.getElementById("bbDesktopComponentSmsPersonaV312Style"))return;
+    const style=document.createElement("style");
+    style.id="bbDesktopComponentSmsPersonaV312Style";
+    style.textContent=`
+      html body.bb-v312-subpage-open #desktop #deskIns,
+      html body #desktop.hidden #deskIns{
+        display:none!important;
+        visibility:hidden!important;
+        opacity:0!important;
+        pointer-events:none!important;
+        position:absolute!important;
+        z-index:-1!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function visible(el){
+    if(!el)return false;
+    const cs=getComputedStyle(el);
+    return cs.display!=="none"&&cs.visibility!=="hidden"&&!el.classList.contains("hidden");
+  }
+
+  function syncDesktopComponent(){
+    const desktop=document.getElementById("desktop");
+    const anyPanel=[...document.querySelectorAll(".panel")].some(visible);
+    const fullApps=[
+      "chatDemo","chatRoom","baobaoSmsApp","baobaoOfflineMode","subjectPhoneApp",
+      "bbWorldBookPanel","bbMusicApp","bbMusicPlayer","memoryV1Panel"
+    ].some(id=>visible(document.getElementById(id)));
+    const shouldHide=!visible(desktop)||anyPanel||fullApps;
+    document.body.classList.toggle("bb-v312-subpage-open",shouldHide);
+  }
+
+  function wrap(name){
+    const current=window[name];
+    if(typeof current!=="function"||current.__bbDesktopGuardV312)return;
+    const wrapped=function(){
+      const result=current.apply(this,arguments);
+      requestAnimationFrame(syncDesktopComponent);
+      setTimeout(syncDesktopComponent,40);
+      return result;
+    };
+    wrapped.__bbDesktopGuardV312=true;
+    wrapped.__bbOriginal=current;
+    window[name]=wrapped;
+    try{eval(name+"=wrapped")}catch(_){ }
+  }
+
+  function watch(){
+    document.querySelectorAll(".panel,#chatDemo,#chatRoom,#baobaoSmsApp,#baobaoOfflineMode,#subjectPhoneApp,#bbWorldBookPanel,#memoryV1Panel").forEach(el=>{
+      if(el.__bbDesktopGuardObservedV312)return;
+      el.__bbDesktopGuardObservedV312=true;
+      new MutationObserver(()=>requestAnimationFrame(syncDesktopComponent)).observe(el,{attributes:true,attributeFilter:["class","style"]});
+    });
+  }
+
+  function install(){
+    ensureStyle();
+    ["openPanel","closePanel","openSmsApp","closeSmsApp","openOfflineMode","closeOfflineMode","openBaobaoWorldBook","closeBaobaoWorldBook"].forEach(wrap);
+    watch();
+    syncDesktopComponent();
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  [300,900,1800,3500,7000].forEach(ms=>setTimeout(install,ms));
+  console.log("豹豹机 312：首页组件桌面限定与短信人设强化已启用");
 })();
