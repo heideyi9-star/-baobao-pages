@@ -41088,3 +41088,290 @@ window.updateArchiveChatStyleHintV324=function(){
   document.addEventListener("DOMContentLoaded",init);
   window.addEventListener("load",init);
 })();
+
+/* baobao-page1-showcase-order-fix-v326 */
+(function(){
+  "use strict";
+  if(window.__bbPage1ShowcaseOrderFixV326)return;
+  window.__bbPage1ShowcaseOrderFixV326=true;
+
+  function injectStyle(){
+    var old=document.getElementById("bbPage1ShowcaseOrderFixV326Style");
+    if(old)old.remove();
+    var style=document.createElement("style");
+    style.id="bbPage1ShowcaseOrderFixV326Style";
+    style.textContent=`
+      /* 第一页：只留一个三图组件，八个 App 放在组件下面 */
+      html body #desktop:not(.page-two-mode) .desk-scroll > #clock,
+      html body #desktop:not(.page-two-mode) .desk-scroll > #desktopNote,
+      html body #desktop:not(.page-two-mode) .desk-scroll > .avatar-box,
+      html body #desktop:not(.page-two-mode) .desk-scroll > #deskIns{
+        display:none!important;
+        visibility:hidden!important;
+        opacity:0!important;
+        height:0!important;
+        min-height:0!important;
+        margin:0!important;
+        padding:0!important;
+        overflow:hidden!important;
+        pointer-events:none!important;
+      }
+      html body #desktop:not(.page-two-mode) .desk-scroll{
+        padding-top:76px!important;
+        padding-bottom:118px!important;
+      }
+      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+        display:block!important;
+        position:relative!important;
+        width:calc(100% - 34px)!important;
+        max-width:none!important;
+        height:auto!important;
+        min-height:0!important;
+        margin:0 auto 16px!important;
+        padding:0!important;
+        inset:auto!important;
+        transform:none!important;
+        opacity:1!important;
+        visibility:visible!important;
+        overflow:visible!important;
+        z-index:15!important;
+      }
+      html body #desktop.page-two-mode .desk-scroll > #photoWidget.bb-page1-showcase{
+        display:none!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
+        width:100%!important;
+        min-height:0!important;
+        height:auto!important;
+        padding:15px 14px 14px!important;
+        border-radius:27px!important;
+        background:rgba(255,255,255,.67)!important;
+        border:1px solid rgba(255,255,255,.78)!important;
+        box-shadow:0 10px 28px rgba(0,0,0,.055)!important;
+        -webkit-backdrop-filter:blur(18px)!important;
+        backdrop-filter:blur(18px)!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-head{
+        display:grid!important;
+        grid-template-columns:62px minmax(0,1fr) auto!important;
+        align-items:center!important;
+        gap:11px!important;
+        min-height:62px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-left{
+        width:62px!important;
+        height:62px!important;
+        flex:none!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
+        width:62px!important;
+        height:62px!important;
+        min-width:62px!important;
+        min-height:62px!important;
+        border-radius:50%!important;
+        transform:none!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
+        width:21px!important;
+        height:21px!important;
+        right:-1px!important;
+        bottom:-1px!important;
+        font-size:10px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-titlebox{
+        min-width:0!important;
+        padding:0!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-line1{
+        display:flex!important;
+        align-items:center!important;
+        gap:8px!important;
+        flex-wrap:nowrap!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
+        min-width:54px!important;
+        width:auto!important;
+        padding:8px 10px!important;
+        border-radius:999px!important;
+        font-size:13px!important;
+        line-height:1!important;
+        white-space:nowrap!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-title{
+        display:block!important;
+        min-width:0!important;
+        font-size:15px!important;
+        line-height:1.15!important;
+        letter-spacing:.7px!important;
+        white-space:nowrap!important;
+        overflow:hidden!important;
+        text-overflow:ellipsis!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
+        margin-top:8px!important;
+        font-size:11px!important;
+        line-height:1.35!important;
+        white-space:nowrap!important;
+        overflow:hidden!important;
+        text-overflow:ellipsis!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-date{
+        align-self:center!important;
+        margin:0!important;
+        padding:0!important;
+        font-size:11px!important;
+        white-space:nowrap!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
+        display:grid!important;
+        grid-template-columns:repeat(3,minmax(0,1fr))!important;
+        gap:8px!important;
+        width:100%!important;
+        margin:13px 0 0!important;
+        padding:0!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
+        display:flex!important;
+        position:relative!important;
+        width:100%!important;
+        min-width:0!important;
+        max-width:none!important;
+        height:82px!important;
+        min-height:82px!important;
+        margin:0!important;
+        padding:0!important;
+        inset:auto!important;
+        transform:none!important;
+        rotate:none!important;
+        clip-path:none!important;
+        writing-mode:horizontal-tb!important;
+        border-radius:8px!important;
+        overflow:hidden!important;
+        align-items:center!important;
+        justify-content:center!important;
+        flex-direction:column!important;
+        background:rgba(255,255,255,.72)!important;
+        border:1px solid rgba(255,255,255,.94)!important;
+        box-shadow:none!important;
+        color:#a3a3a3!important;
+        font-size:19px!important;
+        line-height:1!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo span{
+        display:block!important;
+        margin:5px 0 0!important;
+        writing-mode:horizontal-tb!important;
+        transform:none!important;
+        font-size:10px!important;
+        line-height:1!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo img{
+        display:block!important;
+        width:100%!important;
+        height:100%!important;
+        object-fit:cover!important;
+        border-radius:0!important;
+        transform:none!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
+        display:flex!important;
+        align-items:center!important;
+        position:relative!important;
+        width:100%!important;
+        height:45px!important;
+        margin:13px 0 0!important;
+        padding:0 13px!important;
+        border-radius:999px!important;
+        background:rgba(255,255,255,.92)!important;
+        overflow:hidden!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-pill{
+        display:block!important;
+        flex:1!important;
+        height:1px!important;
+        min-height:0!important;
+        background:transparent!important;
+        box-shadow:none!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
+        display:flex!important;
+        align-items:center!important;
+        gap:18px!important;
+        margin:0!important;
+        padding:0!important;
+        position:static!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-action{
+        width:20px!important;
+        height:20px!important;
+        margin:0!important;
+        padding:0!important;
+        font-size:20px!important;
+        transform:none!important;
+      }
+      html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
+        display:block!important;
+        order:2!important;
+        width:100%!important;
+        margin:0!important;
+        padding:0!important;
+        overflow:hidden!important;
+      }
+      html body #desktop:not(.page-two-mode) .pages-container{
+        margin:0!important;
+      }
+      html body #desktop:not(.page-two-mode) .apps-page{
+        padding-top:0!important;
+        margin-top:0!important;
+        align-content:start!important;
+      }
+      html body #desktop:not(.page-two-mode) .dots{
+        margin-top:7px!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function enforceLayout(){
+    var desktop=document.getElementById("desktop");
+    var scroll=desktop&&desktop.querySelector(".desk-scroll");
+    var widget=document.getElementById("photoWidget");
+    var viewport=scroll&&scroll.querySelector(":scope > .pages-viewport");
+    if(!scroll||!widget||!viewport)return;
+
+    [document.getElementById("clock"),document.getElementById("desktopNote"),document.getElementById("deskIns"),scroll.querySelector(":scope > .avatar-box")].forEach(function(el){
+      if(!el)return;
+      if(!desktop.classList.contains("page-two-mode")){
+        el.style.setProperty("display","none","important");
+      }else{
+        el.style.removeProperty("display");
+      }
+    });
+
+    if(widget.nextElementSibling!==viewport){
+      scroll.insertBefore(widget,viewport);
+    }
+    widget.style.setProperty("display",desktop.classList.contains("page-two-mode")?"none":"block","important");
+  }
+
+  function install(){
+    injectStyle();
+    enforceLayout();
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",function(){setTimeout(install,0)});
+  [50,180,500,1200,2600,5200].forEach(function(ms){setTimeout(install,ms)});
+
+  var started=false;
+  function observe(){
+    if(started)return;
+    var desktop=document.getElementById("desktop");
+    if(!desktop){setTimeout(observe,100);return;}
+    started=true;
+    new MutationObserver(function(){requestAnimationFrame(enforceLayout)}).observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:["class","style"]});
+  }
+  observe();
+})();

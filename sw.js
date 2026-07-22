@@ -1,5 +1,5 @@
-/* 豹豹机 324：年下黏糊 / 年上简洁双极人设版。 */
-const CACHE_NAME = "baobao-shell-v324";
+/* 豹豹机 326：年下黏糊 / 年上简洁双极人设版。 */
+const CACHE_NAME = "baobao-shell-v326";
 const SHELL = [
   "./",
   "./index.html",
