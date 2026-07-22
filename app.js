@@ -41129,7 +41129,7 @@ window.updateArchiveChatStyleHintV324=function(){
       max-width:none!important;
       margin:0 0 -24px 10px!important;
       padding:0!important;
-      transform:translateY(-25px)!important;
+      transform:translateY(-15px)!important;
       z-index:15!important;
       overflow:visible!important;
     }
@@ -41400,7 +41400,7 @@ window.updateArchiveChatStyleHintV324=function(){
     if(widget){
       widget.style.setProperty('width','calc(100% - 20px)','important');
       widget.style.setProperty('margin','0 0 -24px 10px','important');
-      widget.style.setProperty('transform','translateY(-25px)','important');
+      widget.style.setProperty('transform','translateY(-15px)','important');
     }
     if(viewport){
       viewport.style.setProperty('height','244px','important');
