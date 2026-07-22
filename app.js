@@ -38620,3 +38620,374 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
   [300,900,1800,3500,7000].forEach(ms=>setTimeout(install,ms));
   console.log("豹豹机 312：首页组件桌面限定与短信人设强化已启用");
 })();
+
+/* baobao-v313-strict-persona-core */
+/* =========================================================
+   豹豹机 313｜人设硬锁核心
+   - 清除旧聊天包装器对普通私聊的干扰
+   - 原始人设/性格/补充设定拥有最高优先级
+   - 历史 AI 回复只作为已发生事实，不作为口吻范本
+   - 短信、朋友圈、心声、照片等角色任务统一追加人设硬锁
+   ========================================================= */
+(function(){
+  "use strict";
+  if(window.__bbStrictPersonaCoreV313)return;
+  window.__bbStrictPersonaCoreV313=true;
+
+  const clean=value=>String(value==null?"":value).trim();
+  const clamp=(value,min,max)=>Math.max(min,Math.min(max,Number(value)||0));
+  const safeJSON=(raw,fallback)=>{try{return JSON.parse(raw)}catch(_){return fallback}};
+
+  function appState(){
+    try{return window.state||state||{}}catch(_){return window.state||{}};
+  }
+  function currentPersona(){
+    const s=appState();
+    return window.currentChatPersona||s.currentChatPersona||
+      (Array.isArray(s.personas)?s.personas.find(item=>String(item&&item.id||"")===String(s.activeChatId||"")):null)||{};
+  }
+  function personaKey(person=currentPersona()){
+    return String(person.id||person.wechatId||person.wechat||person.name||"default");
+  }
+  function smartClip(value,max){
+    const text=clean(value);
+    if(text.length<=max)return text;
+    const head=Math.floor(max*.72),tail=max-head-24;
+    return text.slice(0,head)+"\n……（中间内容保留但为控制上下文省略）……\n"+text.slice(-Math.max(0,tail));
+  }
+  function tagsOf(person){
+    return Array.isArray(person.tags)?person.tags.filter(Boolean).join("、"):clean(person.tags);
+  }
+  function userProfile(){
+    const s=appState();
+    const masks=Array.isArray(s.userMasks)?s.userMasks:[];
+    const mask=masks.find(item=>String(item&&item.id||"")===String(s.activeUserMaskId||""))||masks[0]||{};
+    return [
+      `名字：${clean(mask.name)||clean(s.wechatProfile&&s.wechatProfile.name)||clean(s.profileName)||clean(s.name)||"用户"}`,
+      clean(mask.alias)&&`身份：${clean(mask.alias)}`,
+      clean(mask.summary)&&`当前状态：${smartClip(mask.summary,900)}`,
+      clean(mask.bio)&&`个签：${smartClip(mask.bio,500)}`,
+      clean(mask.note)&&`用户设定：${smartClip(mask.note,1800)}`
+    ].filter(Boolean).join("\n");
+  }
+  function personaSource(person=currentPersona()){
+    const chunks=[
+      `角色姓名：${clean(person.name)||"未命名角色"}`,
+      `当前关系：${clean(person.relationship)||"只依据人设与已经发生的聊天判断，禁止擅自升级关系"}`,
+      `标签：${tagsOf(person)||"未填写"}`,
+      `【完整人物背景】\n${smartClip(person.persona,11000)||"未填写"}`,
+      `【完整性格、语气与说话习惯】\n${smartClip(person.personality,8500)||"未填写"}`,
+      clean(person.brief)&&`【补充/简量人设】\n${smartClip(person.brief,4200)}`,
+      clean(person.setting)&&`【额外设定】\n${smartClip(person.setting,3200)}`,
+      clean(person.prompt)&&`【角色专属要求】\n${smartClip(person.prompt,3200)}`,
+      clean(person.bio)&&`【角色简介】\n${smartClip(person.bio,1200)}`
+    ];
+    return chunks.filter(Boolean).join("\n\n");
+  }
+  function explicitSpeechEvidence(person=currentPersona()){
+    const raw=[person.persona,person.personality,person.brief,person.setting,person.prompt].map(clean).filter(Boolean).join("\n");
+    if(!raw)return "";
+    const lines=raw.split(/\n+/).map(clean).filter(Boolean);
+    const picked=[];
+    const labelRE=/(?:语气|口癖|说话|聊天|标点|称呼|台词|示例|常说|习惯|消息风格|文字风格)/i;
+    for(const line of lines){
+      if(labelRE.test(line)&&line.length<=500)picked.push(line);
+      if(picked.length>=18)break;
+    }
+    const quoted=[];
+    const quoteRE=/[“"]([^”"\n]{1,90})[”"]/g;
+    let match;
+    while((match=quoteRE.exec(raw))&&quoted.length<14){
+      const value=clean(match[1]);
+      if(value&&!quoted.includes(value))quoted.push(value);
+    }
+    return [...picked,...quoted.map(value=>`明确台词样本：${value}`)].slice(0,24).join("\n");
+  }
+
+  function messageForAI(message){
+    if(!message)return "";
+    try{
+      if(typeof window.baobaoMessageForAI==="function"){
+        const value=window.baobaoMessageForAI(message);
+        if(clean(value))return smartClip(value,1800);
+      }
+    }catch(_){ }
+    const type=clean(message.type||"text").toLowerCase();
+    if(type==="image")return message.visionDesc?`[用户/角色发送图片：${smartClip(message.visionDesc,900)}]`:"[发送了一张图片，当前没有可靠识图结果]";
+    if(type==="sticker")return `【表情包：${clean(message.name||message.stickerName||message.label)||"未命名"}】`;
+    if(type==="voice")return `【语音：${smartClip(message.transcript||message.content,1200)}】`;
+    if(type==="transfer")return `【转账：¥${Number(message.amount||message.content||0).toFixed(2)}；备注：${clean(message.note)||"无"}；状态：${clean(message.transferStatus)||"待处理"}】`;
+    return smartClip(message.content||message.text,1800);
+  }
+  function visibleHistory(limit=26){
+    const s=appState();
+    const list=Array.isArray(s.chatMessages)?s.chatMessages:[];
+    return list.filter(message=>message&&!message.hiddenSystem&&!message.recalled&&["user","assistant"].includes(message.role))
+      .slice(-limit)
+      .map(message=>({role:message.role,content:messageForAI(message)}))
+      .filter(message=>clean(message.content));
+  }
+  function latestUserMessage(){
+    const s=appState();
+    const list=Array.isArray(s.chatMessages)?s.chatMessages:[];
+    return list.slice().reverse().find(message=>message&&message.role==="user"&&!message.hiddenSystem&&!message.recalled)||null;
+  }
+  function worldBookContext(history){
+    const store=safeJSON(localStorage.getItem("baobao_world_books_v230"),{})||{};
+    const entries=Array.isArray(store.entries)?store.entries:[];
+    if(!entries.length)return "";
+    const person=currentPersona(),id=personaKey(person);
+    const context=(history||[]).slice(-10).map(item=>clean(item.content)).join("\n").toLowerCase();
+    const active=entries.filter(entry=>{
+      if(!entry||entry.enabled===false)return false;
+      const scope=clean(entry.scope||"global");
+      if(scope==="persona"&&String(entry.personaId||"")!==id&&clean(entry.personaName)!==clean(person.name))return false;
+      if(clean(entry.mode||"always")==="always")return true;
+      const keys=Array.isArray(entry.keywords)?entry.keywords:clean(entry.keywords).split(/[，,、\s]+/).filter(Boolean);
+      return keys.some(key=>context.includes(clean(key).toLowerCase()));
+    }).sort((a,b)=>Number(b.priority||0)-Number(a.priority||0));
+    let remain=5200;
+    const blocks=[];
+    for(const entry of active){
+      const body=clean(entry.content);
+      if(!body||remain<120)continue;
+      const part=smartClip(body,Math.min(1800,remain));
+      remain-=part.length;
+      blocks.push(`〔${clean(entry.name)||"世界书"}〕\n${part}`);
+    }
+    return blocks.join("\n\n");
+  }
+  function memoryContext(latest){
+    try{
+      if(typeof window.baobaoBuildMemoryPrompt==="function")return smartClip(window.baobaoBuildMemoryPrompt(latest),4600);
+    }catch(_){ }
+    return "";
+  }
+  function offlineContext(){
+    try{
+      const store=safeJSON(localStorage.getItem("baobao_offline_mode_v191"),{})||{};
+      const bucket=store[personaKey()];
+      if(!bucket||!Array.isArray(bucket.sessions)||!bucket.sessions.length)return "";
+      const session=bucket.sessions.slice().sort((a,b)=>Number(b.updatedAt||0)-Number(a.updatedAt||0))[0];
+      if(!session||!Array.isArray(session.entries))return "";
+      return session.entries.slice(-7).map(entry=>{
+        if(!entry)return "";
+        if(entry.role==="user")return `用户在线下说/做：${smartClip(entry.text,480)}`;
+        const blocks=Array.isArray(entry.blocks)?entry.blocks:[];
+        const text=blocks.filter(block=>block&&block.type!=="thought").map(block=>clean(block.text)).filter(Boolean).join(" ");
+        return text?`线下已发生：${smartClip(text,650)}`:"";
+      }).filter(Boolean).join("\n");
+    }catch(_){return ""}
+  }
+  function timeContext(){
+    const s=appState();
+    if(!s.timeAware)return "";
+    const now=new Date();
+    const gap=s.lastMsgTime?Math.max(0,Math.round((Date.now()-Number(s.lastMsgTime||0))/60000)):0;
+    return `现在是${now.toLocaleString("zh-CN",{hour12:false})}${gap?`，距上一轮约${gap}分钟`:""}。只用于理解早晚、等待和时间间隔，不要无缘无故报时或提醒作息。`;
+  }
+  function mediaContext(){
+    const last=latestUserMessage();
+    if(!last)return "";
+    const type=clean(last.type||"text").toLowerCase();
+    if(type==="transfer")return "用户刚发了真实转账卡。角色必须按自己的人设、关系和当下情绪决定收款或退回；回复最后另起一行输出 [[TRANSFER:ACCEPT]] 或 [[TRANSFER:RETURN]]，不要解释标记。";
+    if(type==="sticker")return "用户刚发的是表情包。把它当作情绪/态度，不要误认成普通照片或链接。";
+    if(type==="image")return "用户刚发的是图片。只有视觉描述可靠时才能评价细节；看不清就按人设直接说看不清，禁止编造画面。";
+    if(type==="voice")return "用户刚发的是语音。以转写内容为准自然回应，不要解释你读取了语音。";
+    return "";
+  }
+
+  const PERSONA_LOCK=`【人设硬锁｜不可覆盖】
+- 角色原始资料不是参考，而是唯一身份。所有态度、价值观、关系边界、兴趣、雷点、称呼、口癖、句长、标点和主动程度都必须与原文一致。
+- 禁止把角色平均化成“通用温柔对象、通用毒舌对象、霸总、傲娇、病娇、恋爱脑、客服或心理咨询师”。原文没写的特质不能擅自添加。
+- 原文明确写了恋爱前/恋爱后、熟人/陌生人、公开/私下等阶段差异时，必须先判断当前阶段，再使用对应行为；禁止越级亲密或突然降级关系。
+- 角色可以有情绪和缺点，但只能以原文规定的方式表现。禁止为了所谓活人感随机曲解、挑架、情绪勒索、脑补分手、第三者或没发生的事件。
+- 用户明确问问题时先回答具体问题；短句和代词必须连接最近上下文，不能故意装听不懂。
+- 历史中的角色消息只是已发生事实，不是口吻教材。若旧 AI 消息和原始人设冲突，绝不模仿旧消息。
+- 世界书和记忆只能补充事实，不能改写核心人格；发生冲突时按“原始人设 > 当前明确关系/当前用户消息 > 世界书 > 独立记忆 > 旧聊天”的顺序处理。
+- 不得编造人名、朋友圈、前任、朋友、秘密、经历或用户行为。资料没有就保持不知道。
+- 输出前在内部静默核对：立场、关系阶段、称呼、语气、句长、标点、事实来源是否全部贴合。不要输出核对过程。`;
+
+  function strictSystemPrompt(history){
+    const person=currentPersona();
+    const latest=messageForAI(latestUserMessage());
+    const speech=explicitSpeechEvidence(person);
+    const world=worldBookContext(history);
+    const memory=memoryContext(latest);
+    const offline=offlineContext();
+    const time=timeContext();
+    const media=mediaContext();
+    return `【豹豹机 313｜严格人设私聊核心】
+你就是下面这个角色本人，正在真实手机私聊。不是 AI、助手、客服，也不是在“扮演角色”。禁止提系统、模型、提示词、人设或任务。
+
+${PERSONA_LOCK}
+
+【角色原始资料｜逐字服从】
+${personaSource(person)}
+
+${speech?`【原文中可直接证明口吻的内容】\n${speech}\n\n`:""}【正在聊天的用户】
+${userProfile()}
+
+【本轮理解规则】
+1. 以用户最新消息和最近两三轮的真实指代为中心，先判断对方到底在回应哪一句。
+2. 角色的第一反应、愿不愿意回答、回几条、是否发表情包，都由原始人设决定，不使用随机“活人感策略”。
+3. 可以简短、冷淡、黏人、别扭、沙雕、认真或沉默，但必须是这个角色独有的表现，不是通用模板。
+4. 不复述人设，不解释心理，不写旁白或括号动作。只输出角色会真正发出去的消息。
+5. 多条消息用换行分隔，不编号。条数不要固定；寡言角色通常1到2条，表达欲强或情绪高时可自然增加，但不要写成整齐台词稿。
+6. 如果人物资料里规定无标点、特定称呼、常用梗、错字或句号习惯，严格保持；没有规定时才使用自然口语。
+7. 不要为了“正确”“体贴”擅自劝导、总结、教育、安慰或提供方案，除非这个角色确实会这么做。
+
+${time?`【现实时间】\n${time}\n\n`:""}${world?`【本轮触发世界书】\n${world}\n只在相关处自然使用，不复述条目。\n\n`:""}${memory?`【当前角色独立记忆】\n${memory}\n只能使用有明确来源的记忆。\n\n`:""}${offline?`【最近线下已发生事实】\n${offline}\n只保持连续性，不写线下叙事。\n\n`:""}${media?`【媒体处理】\n${media}\n\n`:""}【最终输出】
+只输出这个角色此刻会发出的聊天正文。`;
+  }
+
+  function getAPI(apiOverride){
+    if(apiOverride)return apiOverride;
+    try{
+      if(typeof window.getChatAPI==="function")return window.getChatAPI()||{};
+    }catch(_){ }
+    return safeJSON(localStorage.getItem("chatAPI"),{})||{};
+  }
+  function normalizeEndpoint(value){
+    const endpoint=clean(value).replace(/\/+$/g,"");
+    if(!endpoint)return "";
+    if(/\/chat\/completions$/i.test(endpoint))return endpoint;
+    return endpoint+"/chat/completions";
+  }
+  function responseText(data){
+    const choice=data&&data.choices&&data.choices[0]||{};
+    let out=(choice.message&&choice.message.content)??choice.text??data.output_text??data.response??data.result??data.text??(data.data&&data.data.content)??"";
+    if(Array.isArray(out))out=out.map(item=>typeof item==="string"?item:(item&&item.text&&item.text.value)||item&&item.text||item&&item.content||"").join("");
+    if(out&&typeof out==="object")out=(out.text&&out.text.value)||out.text||out.content||out.value||"";
+    return clean(out);
+  }
+  function isRoleGeneration(messages){
+    const text=(Array.isArray(messages)?messages:[]).map(message=>clean(message&&message.content)).join("\n");
+    const positive=/(?:角色本人|角色原始|完整角色|完整人设|人物背景|性格和说话|正在.*(?:私聊|短信)|朋友圈|心声|内心活动|自动发送照片|手机内容|角色回复)/i.test(text);
+    const negative=/(?:压缩助手|视觉识别|翻译器|摘要器|总结助手|只提取|接口测试|连接测试)/i.test(text);
+    return positive&&!negative;
+  }
+  function injectPersonaLock(messages){
+    const copy=(Array.isArray(messages)?messages:[]).map(message=>message&&typeof message==="object"?{...message}:message);
+    if(!isRoleGeneration(copy))return copy;
+    const system=copy.find(message=>message&&message.role==="system");
+    const lock=`【统一人设硬锁 313】\n${PERSONA_LOCK}\n本任务中已经提供的角色资料就是唯一角色来源。不要用通用恋爱、毒舌、傲娇、卑微挽回或客服模板补齐空白。输出必须在语气、标点、称呼、关系阶段和价值观上与资料一致。`;
+    if(system)system.content=lock+"\n\n"+clean(system.content);
+    else copy.unshift({role:"system",content:lock});
+    return copy;
+  }
+  async function cleanCompletion(messages,apiOverride){
+    const api=getAPI(apiOverride);
+    if(!clean(api.endpoint)||!clean(api.key))throw new Error("请先在「API 设置 → 对话 API」填写地址和 Key");
+    const finalMessages=injectPersonaLock(messages);
+    const temperature=clamp(api.temperature==null?.58:Number(api.temperature),.2,.82);
+
+    if(clean(api.endpoint).includes("generativelanguage.googleapis.com")){
+      const base=clean(api.endpoint).replace(/\/+$/g,"");
+      const model=clean(api.model)||"gemini-2.5-flash";
+      const url=`${base}/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(api.key)}`;
+      const system=finalMessages.filter(message=>message&&message.role==="system").map(message=>clean(message.content)).join("\n\n");
+      const normal=finalMessages.filter(message=>message&&message.role!=="system").map(message=>({role:message.role==="assistant"?"model":"user",parts:[{text:clean(message.content)}]}));
+      if(system)normal.unshift({role:"user",parts:[{text:system}]});
+      const response=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:normal,generationConfig:{temperature,maxOutputTokens:1800}})});
+      const raw=await response.text();
+      let data={};try{data=raw?JSON.parse(raw):{}}catch(_){ }
+      if(!response.ok)throw new Error(clean(data&&data.error&&data.error.message||raw||`接口错误 ${response.status}`).slice(0,220));
+      const parts=data&&data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts;
+      const result=Array.isArray(parts)?parts.map(part=>part&&part.text||"").join(""):"";
+      if(!clean(result))throw new Error("接口返回了空内容");
+      return clean(result);
+    }
+
+    let response;
+    try{
+      response=await fetch(normalizeEndpoint(api.endpoint),{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+api.key},
+        body:JSON.stringify({
+          model:clean(api.model)||"gpt-3.5-turbo",
+          messages:finalMessages,
+          temperature,
+          top_p:.9,
+          max_tokens:1800,
+          stream:false
+        })
+      });
+    }catch(_){throw new Error("连接失败：检查网络、API 地址或浏览器跨域权限")}
+    const raw=await response.text();
+    let data={};try{data=raw?JSON.parse(raw):{}}catch(_){ }
+    if(!response.ok)throw new Error(clean(data&&data.error&&data.error.message||data&&data.message||raw||`接口错误 ${response.status}`).slice(0,220));
+    const result=responseText(data);
+    if(!result)throw new Error("接口返回了空内容，请检查模型与接口兼容性");
+    return result;
+  }
+  function cleanReply(value){
+    return clean(value)
+      .replace(/<think>[\s\S]*?<\/think>/gi,"")
+      .replace(/<thinking>[\s\S]*?<\/thinking>/gi,"")
+      .replace(/^```(?:text|markdown)?\s*/i,"")
+      .replace(/```$/g,"")
+      .replace(/^(?:角色|回复|assistant|助手)\s*[:：]\s*/i,"")
+      .replace(/\n{3,}/g,"\n\n")
+      .trim();
+  }
+  async function strictRequest(){
+    try{
+      const history=visibleHistory(26);
+      if(!history.length)return null;
+      const pending=(Array.isArray(appState().chatMessages)?appState().chatMessages:[])
+        .filter(message=>message&&message.type==="image"&&message._visionPromise&&!message.visionDesc)
+        .map(message=>message._visionPromise);
+      if(pending.length)await Promise.race([Promise.allSettled(pending),new Promise(resolve=>setTimeout(resolve,3200))]);
+      const prompt=strictSystemPrompt(history);
+      const raw=await cleanCompletion([{role:"system",content:prompt},...history]);
+      const reply=cleanReply(raw);
+      if(!reply)throw new Error("接口返回了空回复");
+      const s=appState();
+      s.lastMsgTime=Date.now();
+      try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(_){ }
+      window.baobaoLastPersonaDebug={engine:"Strict Persona Core v313",personaName:clean(currentPersona().name)||"角色",prompt,rawReply:reply,checkedAt:new Date().toISOString()};
+      return reply;
+    }catch(error){
+      if(typeof window.showToast==="function")window.showToast(clean(error&&error.message)||"回复失败",true);
+      else if(typeof showToast==="function")showToast(clean(error&&error.message)||"回复失败",true);
+      return null;
+    }
+  }
+  function splitByPersona(reply){
+    const person=currentPersona();
+    const raw=[person.persona,person.personality,person.brief,person.setting,person.prompt].map(clean).join("\n");
+    let max=3;
+    if(/寡言|少话|话少|简短|惜字如金|不爱说话/.test(raw))max=2;
+    if(/话多|碎碎念|表达欲强|消息轰炸|一连串|唠叨/.test(raw))max=5;
+    let parts=cleanReply(reply).split(/\n+/).map(clean).filter(Boolean);
+    parts=parts.filter((part,index)=>index===0||part!==parts[index-1]);
+    if(parts.length>max)parts=[...parts.slice(0,max-1),parts.slice(max-1).join("")];
+    return parts.length?parts:["嗯"];
+  }
+
+  cleanCompletion.__bbStrictPersonaV313=true;
+  strictRequest.__bbStrictPersonaV313=true;
+  strictRequest.__bbSingleChatCoreV307=true;
+  strictRequest.__memoryV2=true;
+  strictRequest.__worldBookV230=true;
+  strictRequest.__visionWrapped=true;
+
+  function pin(){
+    window.sendChatCompletion=cleanCompletion;
+    try{sendChatCompletion=cleanCompletion}catch(_){ }
+    window.requestChatReply=strictRequest;
+    try{requestChatReply=strictRequest}catch(_){ }
+    window.BaobaoPersonaEngine=window.BaobaoPersonaEngine||{};
+    window.BaobaoPersonaEngine.splitHumanMessages=splitByPersona;
+    window.BaobaoPersonaEngine.buildPersonaPrompt=()=>strictSystemPrompt(visibleHistory(26));
+    window.BaobaoPersonaEngine.getDebug=()=>window.baobaoLastPersonaDebug||null;
+    window.BaobaoStrictPersonaV313={request:strictRequest,complete:cleanCompletion,prompt:()=>strictSystemPrompt(visibleHistory(26)),split:splitByPersona};
+  }
+
+  pin();
+  [80,260,700,1600,3600,7600,14000,24000].forEach(delay=>setTimeout(pin,delay));
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pin,{once:true});
+  window.addEventListener("pageshow",()=>setTimeout(pin,0));
+  console.log("豹豹机 313：严格人设硬锁核心已启用");
+})();

@@ -1,5 +1,5 @@
-/* 豹豹机 312：首页组件桌面限定与短信人设强化。 */
-const CACHE_NAME = "baobao-shell-v312";
+/* 豹豹机 313：严格人设硬锁核心。 */
+const CACHE_NAME = "baobao-shell-v313";
 const SHELL = [
   "./",
   "./index.html",
