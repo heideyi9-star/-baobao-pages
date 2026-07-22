@@ -1,5 +1,5 @@
-/* 豹豹机 348：仅把中间八个图标整体下移10px。 */
-const CACHE_NAME = "baobao-shell-v348";
+/* 豹豹机 349：仅把中间八个图标整体下移10px。 */
+const CACHE_NAME = "baobao-shell-v349";
 const SHELL = [
   "./",
   "./index.html",

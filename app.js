@@ -41093,10 +41093,10 @@ window.updateArchiveChatStyleHintV324=function(){
 /* baobao-page1-single-layout-v342 */
 (function(){
   "use strict";
-  if(window.__bbPage1SingleLayoutV348)return;
-  window.__bbPage1SingleLayoutV348=true;
+  if(window.__bbPage1SingleLayoutV349)return;
+  window.__bbPage1SingleLayoutV349=true;
 
-  var STYLE_ID='bbPage1SingleLayoutV348Style';
+  var STYLE_ID='bbPage1SingleLayoutV349Style';
   var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
   var scheduled=false;
 
@@ -41260,7 +41260,7 @@ window.updateArchiveChatStyleHintV324=function(){
       column-gap:8px!important;
       row-gap:18px!important;
       align-content:start!important;
-      padding:24px 20px 0!important;
+      padding:29px 20px 0!important;
       margin:0!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page > .app{
@@ -41336,7 +41336,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
 
     /* 设置/美化打开后不与桌面叠加 */
-    html body.bb-v348-panel-open #desktop{
+    html body.bb-v349-panel-open #desktop{
       visibility:hidden!important;
       opacity:0!important;
       pointer-events:none!important;
@@ -41377,7 +41377,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function syncPanelState(){
     var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
-    document.body.classList.toggle('bb-v348-panel-open',open);
+    document.body.classList.toggle('bb-v349-panel-open',open);
   }
 
   function applyInline(){
@@ -41409,7 +41409,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     desktop.querySelectorAll('.apps-page').forEach(function(page){
       page.style.setProperty('height','244px','important');
-      page.style.setProperty('padding','24px 20px 0','important');
+      page.style.setProperty('padding','29px 20px 0','important');
       page.style.setProperty('row-gap','18px','important');
     });
     desktop.querySelectorAll('.apps-page > .app').forEach(function(item){
@@ -41446,7 +41446,7 @@ window.updateArchiveChatStyleHintV324=function(){
     var oldOpen=window.openPanel;
     if(typeof oldOpen==='function'&&!oldOpen.__bbV344){
       var wrappedOpen=function(){
-        document.body.classList.add('bb-v348-panel-open');
+        document.body.classList.add('bb-v349-panel-open');
         var result=oldOpen.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,30);
@@ -41492,4 +41492,94 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener('load',install);
   window.addEventListener('pageshow',function(){setTimeout(install,0)});
   [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms);});
+})();
+
+
+/* baobao-v349-page2-dock-consistency */
+(function(){
+  "use strict";
+  if(window.__bbV349DockConsistency)return;
+  window.__bbV349DockConsistency=true;
+  var STYLE_ID='bbV349DockConsistencyStyle';
+  var busy=false;
+
+  function putStyle(){
+    var st=document.getElementById(STYLE_ID);
+    if(!st){st=document.createElement('style');st.id=STYLE_ID;}
+    st.textContent=`
+      html body #desktop > .dock,
+      html body #desktop .dock{
+        position:absolute!important;
+        left:12px!important;
+        right:12px!important;
+        top:auto!important;
+        bottom:4px!important;
+        width:auto!important;
+        height:92px!important;
+        min-height:92px!important;
+        max-height:92px!important;
+        margin:0!important;
+        transform:none!important;
+        z-index:80!important;
+        display:flex!important;
+        align-items:center!important;
+        justify-content:space-around!important;
+        overflow:visible!important;
+      }
+      html body #desktop .dock > .dock-icon{
+        position:relative!important;
+        z-index:82!important;
+        pointer-events:auto!important;
+        transform:none!important;
+      }
+      html body #desktop:not(.page-two-mode) .apps-page{
+        padding-top:29px!important;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function enforce(){
+    putStyle();
+    var desktop=document.getElementById('desktop');
+    if(!desktop)return;
+    var dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
+    if(dock){
+      dock.style.setProperty('position','absolute','important');
+      dock.style.setProperty('left','12px','important');
+      dock.style.setProperty('right','12px','important');
+      dock.style.setProperty('top','auto','important');
+      dock.style.setProperty('bottom','4px','important');
+      dock.style.setProperty('height','92px','important');
+      dock.style.setProperty('min-height','92px','important');
+      dock.style.setProperty('max-height','92px','important');
+      dock.style.setProperty('transform','none','important');
+      dock.style.setProperty('z-index','80','important');
+    }
+    if(!desktop.classList.contains('page-two-mode')){
+      desktop.querySelectorAll('.apps-page').forEach(function(page){
+        page.style.setProperty('padding','29px 20px 0','important');
+      });
+    }
+  }
+
+  function schedule(){
+    if(busy)return;
+    busy=true;
+    requestAnimationFrame(function(){busy=false;enforce();});
+  }
+
+  function install(){
+    enforce();
+    var desktop=document.getElementById('desktop');
+    if(desktop&&!desktop.__bbV349DockObserver){
+      desktop.__bbV349DockObserver=new MutationObserver(schedule);
+      desktop.__bbV349DockObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',install);
+  [0,80,250,700,1500,3200,6000].forEach(function(ms){setTimeout(install,ms);});
 })();
