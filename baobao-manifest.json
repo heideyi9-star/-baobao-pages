@@ -1,7 +1,7 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机私人聊天空间 · 339 首页微调版",
+  "description": "豹豹机私人聊天空间 · 340 首页缩组件+底栏上移版",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
