@@ -43023,3 +43023,176 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener('pageshow',function(){setTimeout(install,0)});
   [100,500,1200,2600,5200].forEach(function(ms){setTimeout(install,ms)});
 })();
+
+/* baobao-dock-inside-screen-v337 */
+(function(){
+  "use strict";
+  if(window.__bbDockInsideScreenV337)return;
+  window.__bbDockInsideScreenV337=true;
+
+  var STYLE_ID='bbDockInsideScreenV337Style';
+  var scheduled=false;
+
+  function cssText(){return `
+    /* 只修底栏：完整收回手机屏幕内，不再改大组件 */
+    html body #desktop:not(.page-two-mode) > .dock,
+    html body #desktop:not(.page-two-mode) .dock{
+      position:absolute!important;
+      top:auto!important;
+      bottom:6px!important;
+      left:12px!important;
+      right:12px!important;
+      height:92px!important;
+      transform:none!important;
+      margin:0!important;
+      z-index:80!important;
+      overflow:visible!important;
+    }
+  `}
+
+  function disconnectOldDockWriter(){
+    try{document.head.__bbV335Observer&&document.head.__bbV335Observer.disconnect()}catch(e){}
+    var desktop=document.getElementById('desktop');
+    try{desktop&&desktop.__bbV335Observer&&desktop.__bbV335Observer.disconnect()}catch(e){}
+  }
+
+  function putLast(){
+    var style=document.getElementById(STYLE_ID);
+    if(!style){style=document.createElement('style');style.id=STYLE_ID;}
+    style.textContent=cssText();
+    document.head.appendChild(style);
+  }
+
+  function enforce(){
+    disconnectOldDockWriter();
+    putLast();
+    var desktop=document.getElementById('desktop');
+    if(!desktop||desktop.classList.contains('page-two-mode'))return;
+    var dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
+    if(!dock)return;
+    dock.style.setProperty('position','absolute','important');
+    dock.style.setProperty('top','auto','important');
+    dock.style.setProperty('bottom','6px','important');
+    dock.style.setProperty('left','12px','important');
+    dock.style.setProperty('right','12px','important');
+    dock.style.setProperty('height','92px','important');
+    dock.style.setProperty('transform','none','important');
+    dock.style.setProperty('z-index','80','important');
+  }
+
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(function(){scheduled=false;enforce();});
+  }
+
+  function install(){
+    enforce();
+    var desktop=document.getElementById('desktop');
+    if(desktop&&!desktop.__bbV337DockObserver){
+      desktop.__bbV337DockObserver=new MutationObserver(schedule);
+      desktop.__bbV337DockObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',function(){setTimeout(install,0)});
+  [0,50,150,400,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms)});
+})();
+
+/* baobao-position-micro-correction-v338 */
+(function(){
+  "use strict";
+  if(window.__bbPositionMicroV338)return;
+  window.__bbPositionMicroV338=true;
+
+  var STYLE_ID='bbPositionMicroV338Style';
+  var scheduled=false;
+
+  function cssText(){return `
+    /* 只修位置：组件从过高的位置向下收回，尺寸保持不变 */
+    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+      margin:0 0 -40px -27px!important;
+      transform:translateY(-30px)!important;
+    }
+
+    /* 底栏只轻微超出一点，不再整块跑出去，也不抬得太高 */
+    html body #desktop:not(.page-two-mode) > .dock,
+    html body #desktop:not(.page-two-mode) .dock{
+      position:absolute!important;
+      top:auto!important;
+      bottom:-8px!important;
+      left:12px!important;
+      right:12px!important;
+      height:92px!important;
+      transform:none!important;
+      margin:0!important;
+      z-index:80!important;
+    }
+  `}
+
+  function stopOldWriters(){
+    try{document.head.__bbV335Observer&&document.head.__bbV335Observer.disconnect()}catch(e){}
+    try{document.head.__bbV337DockObserver&&document.head.__bbV337DockObserver.disconnect()}catch(e){}
+    var desktop=document.getElementById('desktop');
+    try{desktop&&desktop.__bbV335Observer&&desktop.__bbV335Observer.disconnect()}catch(e){}
+    try{desktop&&desktop.__bbV337DockObserver&&desktop.__bbV337DockObserver.disconnect()}catch(e){}
+  }
+
+  function putLast(){
+    var style=document.getElementById(STYLE_ID);
+    if(!style){style=document.createElement('style');style.id=STYLE_ID;}
+    style.textContent=cssText();
+    document.head.appendChild(style);
+  }
+
+  function applyInline(){
+    var desktop=document.getElementById('desktop');
+    if(!desktop||desktop.classList.contains('page-two-mode'))return;
+    var widget=document.getElementById('photoWidget');
+    var dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
+    if(widget){
+      widget.style.setProperty('margin','0 0 -40px -27px','important');
+      widget.style.setProperty('transform','translateY(-30px)','important');
+    }
+    if(dock){
+      dock.style.setProperty('position','absolute','important');
+      dock.style.setProperty('top','auto','important');
+      dock.style.setProperty('bottom','-8px','important');
+      dock.style.setProperty('left','12px','important');
+      dock.style.setProperty('right','12px','important');
+      dock.style.setProperty('height','92px','important');
+      dock.style.setProperty('transform','none','important');
+      dock.style.setProperty('z-index','80','important');
+    }
+  }
+
+  function enforce(){
+    stopOldWriters();
+    putLast();
+    applyInline();
+  }
+
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(function(){scheduled=false;enforce();});
+  }
+
+  function install(){
+    enforce();
+    var desktop=document.getElementById('desktop');
+    if(desktop&&!desktop.__bbV338Observer){
+      desktop.__bbV338Observer=new MutationObserver(schedule);
+      desktop.__bbV338Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',function(){setTimeout(install,0)});
+  [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms)});
+})();
