@@ -238,18 +238,37 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 <div class="pages-container" id="pagesContainer"></div>
 </div>
 
-<div class="photo-widget" id="photoWidget">
-  <div class="memory-top-pill">
-    <label class="memory-top-avatar" id="memoryTopAvatar" for="memoryAvatarInput"></label>
-<input id="memoryAvatarInput" type="file" accept="image/*" style="display:none" onchange="changeMemoryAvatar(event)">
-    <div class="memory-top-text">MEMORY SPACE</div>
+<div class="photo-widget bb-page1-showcase" id="photoWidget">
+  <div class="bb-showcase-shell">
+    <div class="bb-showcase-head">
+      <div class="bb-showcase-left">
+        <label class="memory-top-avatar bb-showcase-avatar" id="memoryTopAvatar" for="memoryAvatarInput"></label>
+        <div class="bb-showcase-avatar-tip">✎</div>
+      </div>
+      <div class="bb-showcase-titlebox">
+        <div class="bb-showcase-line1">
+          <div class="bb-showcase-temp" id="showcaseTemp" contenteditable="true" spellcheck="false" onblur="saveShowcaseText()">5℃</div>
+          <div class="bb-showcase-title" id="showcaseTitle" contenteditable="true" spellcheck="false" onblur="saveShowcaseText()">MEMORY TRACE</div>
+        </div>
+        <div class="bb-showcase-sub" id="showcaseSub" contenteditable="true" spellcheck="false" onblur="saveShowcaseText()">记录今天想保存的小碎片</div>
+      </div>
+      <div class="bb-showcase-date" id="showcaseDate" contenteditable="true" spellcheck="false" onblur="saveShowcaseText()">07-22</div>
+    </div>
+    <div class="bb-showcase-grid">
+      <div class="photo-slot bb-showcase-photo" onclick="triggerMemoryPhoto(0)">＋<span>照片 1</span></div>
+      <div class="photo-slot bb-showcase-photo" onclick="triggerMemoryPhoto(1)">＋<span>照片 2</span></div>
+      <div class="photo-slot bb-showcase-photo" onclick="triggerMemoryPhoto(2)">＋<span>照片 3</span></div>
+    </div>
+    <div class="bb-showcase-footer">
+      <div class="bb-showcase-pill"></div>
+      <div class="bb-showcase-actions">
+        <button type="button" class="bb-showcase-action" onclick="cycleShowcaseIcon(event,'heart')">♡</button>
+        <button type="button" class="bb-showcase-action" onclick="cycleShowcaseIcon(event,'lock')">⌂</button>
+        <button type="button" class="bb-showcase-action" onclick="cycleShowcaseIcon(event,'star')">★</button>
+      </div>
+    </div>
   </div>
-  <div class="photo-widget-title">MEMORY BOARD</div>
-  <div class="photo-widget-grid">
-    <div class="photo-slot" onclick="triggerMemoryPhoto(0)">＋<span>照片 1</span></div>
-    <div class="photo-slot" onclick="triggerMemoryPhoto(1)">＋<span>照片 2</span></div>
-    <div class="photo-slot" onclick="triggerMemoryPhoto(2)">＋<span>照片 3</span></div>
-  </div>
+  <input id="memoryAvatarInput" type="file" accept="image/*" style="display:none" onchange="changeMemoryAvatar(event)">
 </div>
 <input class="hidden-input" type="file" accept="image/*" id="memoryPhotoInput" onchange="memoryPhotoChosen(this)">
 

@@ -40779,3 +40779,312 @@ window.updateArchiveChatStyleHintV324=function(){
   };
   hint.textContent=map[select.value]||map.auto;
 };
+
+/* baobao-page1-single-showcase-v325 */
+(function(){
+  "use strict";
+  if(window.__bbPage1SingleShowcaseV325)return;
+  window.__bbPage1SingleShowcaseV325=true;
+
+  const SHOWCASE_KEY="bb_page1_showcase_text_v325";
+  const SHOWCASE_ICON_KEY="bb_page1_showcase_icons_v325";
+
+  function injectStyle(){
+    if(document.getElementById("bbPage1SingleShowcaseV325Style"))return;
+    const style=document.createElement("style");
+    style.id="bbPage1SingleShowcaseV325Style";
+    style.textContent=`
+      #desktop #desktopNote,
+      #desktop .avatar-box,
+      #desktop #deskIns{
+        display:none!important;
+      }
+      #desktop .desk-scroll{
+        padding-top:72px!important;
+      }
+      #desktop #photoWidget.bb-page1-showcase{
+        display:block!important;
+        width:calc(100% - 34px)!important;
+        margin:8px auto 12px!important;
+        position:relative!important;
+        z-index:6!important;
+      }
+      #desktop.page-two-mode #photoWidget.bb-page1-showcase{
+        display:none!important;
+      }
+      #desktop.page-two-mode .dots{
+        margin-top:10px!important;
+      }
+      #desktop .bb-showcase-shell{
+        position:relative;
+        border-radius:30px;
+        padding:18px 16px 16px;
+        background:rgba(255,255,255,.72);
+        -webkit-backdrop-filter:blur(16px);
+        backdrop-filter:blur(16px);
+        border:1px solid rgba(255,255,255,.8);
+        box-shadow:0 12px 30px rgba(0,0,0,.06);
+      }
+      #desktop .bb-showcase-head{
+        display:flex;
+        align-items:flex-start;
+        gap:12px;
+      }
+      #desktop .bb-showcase-left{
+        position:relative;
+        flex:0 0 74px;
+      }
+      #desktop .bb-showcase-avatar{
+        display:block;
+        width:74px;
+        height:74px;
+        border-radius:50%;
+        overflow:hidden;
+        background:rgba(255,255,255,.92);
+        border:2px solid rgba(255,255,255,.96);
+        box-shadow:0 6px 18px rgba(0,0,0,.06);
+      }
+      #desktop .bb-showcase-avatar img{
+        width:100%;
+        height:100%;
+        object-fit:cover;
+      }
+      #desktop .bb-showcase-avatar-tip{
+        position:absolute;
+        right:-2px;
+        bottom:-2px;
+        width:24px;
+        height:24px;
+        border-radius:50%;
+        background:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:12px;
+        color:#777;
+        box-shadow:0 4px 10px rgba(0,0,0,.08);
+        pointer-events:none;
+      }
+      #desktop .bb-showcase-titlebox{
+        flex:1;
+        min-width:0;
+        padding-top:2px;
+      }
+      #desktop .bb-showcase-line1{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+      }
+      #desktop .bb-showcase-temp{
+        min-width:68px;
+        padding:9px 14px;
+        border-radius:999px;
+        background:rgba(30,30,30,.72);
+        color:#fff;
+        font-size:14px;
+        font-weight:700;
+        line-height:1;
+        text-align:center;
+        box-shadow:0 5px 12px rgba(0,0,0,.08);
+      }
+      #desktop .bb-showcase-title{
+        flex:1;
+        min-width:90px;
+        color:#575757;
+        font-size:19px;
+        font-weight:800;
+        letter-spacing:1px;
+      }
+      #desktop .bb-showcase-sub,
+      #desktop .bb-showcase-date,
+      #desktop .bb-showcase-title,
+      #desktop .bb-showcase-temp{
+        outline:none;
+      }
+      #desktop .bb-showcase-sub{
+        margin-top:10px;
+        color:#8a8a8a;
+        font-size:13px;
+        line-height:1.45;
+      }
+      #desktop .bb-showcase-date{
+        margin-left:auto;
+        padding-top:48px;
+        color:#989898;
+        font-size:12px;
+        font-weight:700;
+        letter-spacing:.4px;
+        white-space:nowrap;
+      }
+      #desktop .bb-showcase-grid{
+        margin-top:16px;
+        display:grid;
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        gap:8px;
+      }
+      #desktop .bb-showcase-photo{
+        height:108px;
+        border-radius:8px;
+        overflow:hidden;
+        background:rgba(255,255,255,.66);
+        border:1.2px solid rgba(255,255,255,.94);
+        color:#a0a0a0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        flex-direction:column;
+        font-size:24px;
+        font-weight:300;
+        box-shadow:none;
+      }
+      #desktop .bb-showcase-photo span{
+        display:block;
+        margin-top:4px;
+        font-size:12px;
+        font-weight:600;
+        color:#a9a9a9;
+      }
+      #desktop .bb-showcase-photo img{
+        width:100%;
+        height:100%;
+        display:block;
+        object-fit:cover;
+      }
+      #desktop .bb-showcase-footer{
+        display:flex;
+        align-items:center;
+        gap:12px;
+        margin-top:18px;
+      }
+      #desktop .bb-showcase-pill{
+        flex:1;
+        height:58px;
+        border-radius:999px;
+        background:rgba(255,255,255,.94);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.95);
+      }
+      #desktop .bb-showcase-actions{
+        display:flex;
+        align-items:center;
+        gap:14px;
+        margin-left:-104px;
+        padding-right:10px;
+        position:relative;
+        z-index:1;
+      }
+      #desktop .bb-showcase-action{
+        border:none;
+        background:transparent;
+        color:#9b9b9b;
+        font-size:22px;
+        line-height:1;
+        padding:0;
+        width:22px;
+        height:22px;
+      }
+      #desktop .bb-showcase-action.bb-active{
+        color:#5d5d5d;
+      }
+      #desktop .pages-viewport{
+        margin-top:0!important;
+        margin-bottom:0!important;
+      }
+      #desktop .dots{
+        margin-top:10px!important;
+      }
+      #desktop:not(.page-two-mode) .apps-page{
+        padding-top:2px!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function defaults(){
+    return {
+      temp:"5℃",
+      title:"MEMORY TRACE",
+      sub:"记录今天想保存的小碎片",
+      date:(function(){
+        const d=new Date();
+        const m=String(d.getMonth()+1).padStart(2,"0");
+        const day=String(d.getDate()).padStart(2,"0");
+        return m+"-"+day;
+      })(),
+      icons:{heart:false,lock:false,star:true}
+    };
+  }
+
+  function readData(){
+    let data=defaults();
+    try{
+      const raw=JSON.parse(localStorage.getItem(SHOWCASE_KEY)||"null");
+      if(raw&&typeof raw==="object") data=Object.assign(data,raw);
+    }catch(e){}
+    try{
+      const iconRaw=JSON.parse(localStorage.getItem(SHOWCASE_ICON_KEY)||"null");
+      if(iconRaw&&typeof iconRaw==="object") data.icons=Object.assign({},data.icons,iconRaw);
+    }catch(e){}
+    return data;
+  }
+
+  function writeData(data){
+    try{
+      localStorage.setItem(SHOWCASE_KEY,JSON.stringify({
+        temp:String(data.temp||""),
+        title:String(data.title||""),
+        sub:String(data.sub||""),
+        date:String(data.date||"")
+      }));
+      localStorage.setItem(SHOWCASE_ICON_KEY,JSON.stringify(data.icons||{}));
+    }catch(e){}
+  }
+
+  function fillText(){
+    const data=readData();
+    const map={showcaseTemp:data.temp,showcaseTitle:data.title,showcaseSub:data.sub,showcaseDate:data.date};
+    Object.keys(map).forEach(id=>{
+      const el=document.getElementById(id);
+      if(el && !String(el.textContent||"").trim()) el.textContent=map[id];
+      else if(el) el.textContent=map[id];
+    });
+    applyIcons(data.icons||{});
+  }
+
+  function applyIcons(icons){
+    ["heart","lock","star"].forEach(name=>{
+      const btn=document.querySelector('.bb-showcase-action[onclick*="\''+name+'\'"]');
+      if(!btn)return;
+      btn.classList.toggle("bb-active",!!icons[name]);
+    });
+  }
+
+  window.saveShowcaseText=function(){
+    const data=readData();
+    data.temp=(document.getElementById("showcaseTemp")||{}).textContent||data.temp;
+    data.title=(document.getElementById("showcaseTitle")||{}).textContent||data.title;
+    data.sub=(document.getElementById("showcaseSub")||{}).textContent||data.sub;
+    data.date=(document.getElementById("showcaseDate")||{}).textContent||data.date;
+    writeData(data);
+  };
+
+  window.cycleShowcaseIcon=function(event,name){
+    if(event){
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    const data=readData();
+    data.icons=data.icons||{};
+    data.icons[name]=!data.icons[name];
+    writeData(data);
+    applyIcons(data.icons);
+  };
+
+  function init(){
+    injectStyle();
+    fillText();
+  }
+
+  document.addEventListener("DOMContentLoaded",init);
+  window.addEventListener("load",init);
+})();
