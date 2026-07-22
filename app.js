@@ -42176,3 +42176,146 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener('pageshow',function(){setTimeout(install,0)});
   [0,60,180,420,900,1800,3600,6000,10000].forEach(function(ms){setTimeout(install,ms)});
 })();
+
+
+/* baobao-page1-spacing-fix-v333 */
+(function(){
+  "use strict";
+  if(window.__bbPage1SpacingFixV333)return;
+  window.__bbPage1SpacingFixV333=true;
+
+  var STYLE_ID='bbPage1SpacingFixV333Style';
+  var scheduled=false;
+
+  function cssText(){return `
+    html body #desktop:not(.page-two-mode) .desk-scroll{
+      padding-top:64px!important;
+      padding-bottom:38px!important;
+    }
+    html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+      width:calc(100% + 56px)!important;
+      margin:-8px 0 8px -28px!important;
+      z-index:15!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-shell{
+      padding:24px 28px 22px!important;
+      border-radius:40px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-head{
+      grid-template-columns:94px minmax(0,1fr) auto!important;
+      gap:16px!important;
+      min-height:90px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-left,
+    html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
+      width:94px!important;height:94px!important;min-width:94px!important;min-height:94px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
+      width:29px!important;height:29px!important;right:-4px!important;bottom:-4px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-temp{
+      min-width:72px!important;padding:11px 15px!important;font-size:17px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-title{
+      font-size:19px!important;letter-spacing:.35px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-sub{
+      margin-top:12px!important;font-size:13px!important;line-height:1.45!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-date{
+      padding-top:52px!important;font-size:13px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-grid{
+      gap:12px!important;margin-top:18px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
+      height:134px!important;min-height:134px!important;border-radius:14px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-footer,
+    html body #desktop:not(.page-two-mode) .bb-showcase-pill{
+      height:64px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-footer{
+      margin-top:18px!important;padding:0 22px!important;
+    }
+    html body #desktop:not(.page-two-mode) .bb-showcase-actions{
+      gap:24px!important;
+    }
+    html body #desktop:not(.page-two-mode) .desk-scroll > .pages-viewport{
+      margin:4px 0 0!important;
+      overflow:visible!important;
+    }
+    html body #desktop:not(.page-two-mode) .apps-page{
+      padding-top:2px!important;
+      row-gap:22px!important;
+    }
+    html body #desktop:not(.page-two-mode) .apps-page > .app{
+      transform:scale(1)!important;
+      transform-origin:center top!important;
+      margin:0!important;
+    }
+    html body #desktop:not(.page-two-mode) .apps-page > .app .icon{
+      margin-bottom:8px!important;
+    }
+    html body #desktop:not(.page-two-mode) .dots{
+      margin-top:8px!important;
+      margin-bottom:0!important;
+    }
+    html body #desktop:not(.page-two-mode) .dock{
+      top:auto!important;
+      bottom:2px!important;
+      z-index:25!important;
+    }
+  `}
+
+  function putLast(){
+    var style=document.getElementById(STYLE_ID);
+    if(!style){
+      style=document.createElement('style');
+      style.id=STYLE_ID;
+    }
+    style.textContent=cssText();
+    document.head.appendChild(style);
+  }
+
+  function enforce(){
+    putLast();
+    var desktop=document.getElementById('desktop');
+    if(!desktop || desktop.classList.contains('page-two-mode'))return;
+    var widget=document.getElementById('photoWidget');
+    var scroll=desktop.querySelector('.desk-scroll');
+    var viewport=scroll&&scroll.querySelector(':scope > .pages-viewport');
+    if(scroll && widget && viewport && widget.nextElementSibling!==viewport){
+      scroll.insertBefore(widget, viewport);
+    }
+    desktop.querySelectorAll('.apps-page > .app').forEach(function(app){
+      app.style.transform='scale(1)';
+      app.style.margin='0';
+    });
+  }
+
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(function(){scheduled=false;enforce();});
+  }
+
+  function install(){
+    enforce();
+    if(!document.head.__bbV333Observer){
+      document.head.__bbV333Observer=new MutationObserver(schedule);
+      document.head.__bbV333Observer.observe(document.head,{childList:true});
+    }
+    var desktop=document.getElementById('desktop');
+    if(desktop && !desktop.__bbV333Observer){
+      desktop.__bbV333Observer=new MutationObserver(schedule);
+      desktop.__bbV333Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',install);
+  [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms);});
+})();
