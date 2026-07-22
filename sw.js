@@ -1,5 +1,5 @@
-/* 豹豹机 351：上方组件不动，中间八个图标再下移4px。 */
-const CACHE_NAME = "baobao-shell-v351";
+/* 豹豹机 352：上方组件不动，中间八个图标再下移4px。 */
+const CACHE_NAME = "baobao-shell-v352";
 const SHELL = [
   "./",
   "./index.html",

@@ -41093,10 +41093,10 @@ window.updateArchiveChatStyleHintV324=function(){
 /* baobao-page1-single-layout-v342 */
 (function(){
   "use strict";
-  if(window.__bbPage1SingleLayoutV351)return;
-  window.__bbPage1SingleLayoutV351=true;
+  if(window.__bbPage1SingleLayoutV352)return;
+  window.__bbPage1SingleLayoutV352=true;
 
-  var STYLE_ID='bbPage1SingleLayoutV351Style';
+  var STYLE_ID='bbPage1SingleLayoutV352Style';
   var PANEL_IDS=['settings','beautify','apiSettings','chatAPI','visionAPI','imageAPI','minimaxAPI','chatBgSettings','chatSettingsPanel','dualAvatarPanel','personaDebugPage','dataManagerPage'];
   var scheduled=false;
 
@@ -41226,10 +41226,25 @@ window.updateArchiveChatStyleHintV324=function(){
       height:54px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-footer{
+      position:relative!important;
+      display:block!important;
       margin-top:14px!important;
       padding:0 18px!important;
     }
+    html body #desktop:not(.page-two-mode) .bb-showcase-pill{
+      position:absolute!important;
+      left:18px!important;
+      right:18px!important;
+      top:0!important;
+      width:auto!important;
+    }
     html body #desktop:not(.page-two-mode) .bb-showcase-actions{
+      position:absolute!important;
+      right:34px!important;
+      top:50%!important;
+      transform:translateY(-50%)!important;
+      margin-left:0!important;
+      padding-right:0!important;
       gap:21px!important;
     }
     html body #desktop:not(.page-two-mode) .bb-showcase-action{
@@ -41260,7 +41275,7 @@ window.updateArchiveChatStyleHintV324=function(){
       column-gap:8px!important;
       row-gap:18px!important;
       align-content:start!important;
-      padding:36px 20px 0!important;
+      padding:40px 20px 0!important;
       margin:0!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page > .app{
@@ -41336,7 +41351,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
 
     /* 设置/美化打开后不与桌面叠加 */
-    html body.bb-v351-panel-open #desktop{
+    html body.bb-v352-panel-open #desktop{
       visibility:hidden!important;
       opacity:0!important;
       pointer-events:none!important;
@@ -41377,7 +41392,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function syncPanelState(){
     var open=PANEL_IDS.some(function(id){return isVisible(document.getElementById(id));});
-    document.body.classList.toggle('bb-v351-panel-open',open);
+    document.body.classList.toggle('bb-v352-panel-open',open);
   }
 
   function applyInline(){
@@ -41409,7 +41424,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     desktop.querySelectorAll('.apps-page').forEach(function(page){
       page.style.setProperty('height','244px','important');
-      page.style.setProperty('padding','36px 20px 0','important');
+      page.style.setProperty('padding','40px 20px 0','important');
       page.style.setProperty('row-gap','18px','important');
     });
     desktop.querySelectorAll('.apps-page > .app').forEach(function(item){
@@ -41446,7 +41461,7 @@ window.updateArchiveChatStyleHintV324=function(){
     var oldOpen=window.openPanel;
     if(typeof oldOpen==='function'&&!oldOpen.__bbV344){
       var wrappedOpen=function(){
-        document.body.classList.add('bb-v351-panel-open');
+        document.body.classList.add('bb-v352-panel-open');
         var result=oldOpen.apply(this,arguments);
         requestAnimationFrame(syncPanelState);
         setTimeout(syncPanelState,30);
@@ -41495,12 +41510,12 @@ window.updateArchiveChatStyleHintV324=function(){
 })();
 
 
-/* baobao-v351-page2-dock-consistency */
+/* baobao-v352-page2-dock-consistency */
 (function(){
   "use strict";
-  if(window.__bbV351DockConsistency)return;
-  window.__bbV351DockConsistency=true;
-  var STYLE_ID='bbV351DockConsistencyStyle';
+  if(window.__bbV352DockConsistency)return;
+  window.__bbV352DockConsistency=true;
+  var STYLE_ID='bbV352DockConsistencyStyle';
   var busy=false;
 
   function putStyle(){
@@ -41533,7 +41548,7 @@ window.updateArchiveChatStyleHintV324=function(){
         transform:none!important;
       }
       html body #desktop:not(.page-two-mode) .apps-page{
-        padding-top:36px!important;
+        padding-top:40px!important;
       }
     `;
     document.head.appendChild(st);
@@ -41558,7 +41573,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     if(!desktop.classList.contains('page-two-mode')){
       desktop.querySelectorAll('.apps-page').forEach(function(page){
-        page.style.setProperty('padding','36px 20px 0','important');
+        page.style.setProperty('padding','40px 20px 0','important');
       });
     }
   }
@@ -41572,9 +41587,9 @@ window.updateArchiveChatStyleHintV324=function(){
   function install(){
     enforce();
     var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV351DockObserver){
-      desktop.__bbV351DockObserver=new MutationObserver(schedule);
-      desktop.__bbV351DockObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    if(desktop&&!desktop.__bbV352DockObserver){
+      desktop.__bbV352DockObserver=new MutationObserver(schedule);
+      desktop.__bbV352DockObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
     }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
