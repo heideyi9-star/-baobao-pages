@@ -41674,3 +41674,119 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("pageshow",function(){ setTimeout(install,0); });
   [80,260,700,1600,3200].forEach(function(ms){ setTimeout(install,ms); });
 })();
+
+/* baobao-page1-showcase-fill-screen-v330 */
+(function(){
+  "use strict";
+  if(window.__bbPage1ShowcaseFillV330)return;
+  window.__bbPage1ShowcaseFillV330=true;
+
+  function injectStyle(){
+    var old=document.getElementById("bbPage1ShowcaseFillV330Style");
+    if(old)old.remove();
+    var style=document.createElement("style");
+    style.id="bbPage1ShowcaseFillV330Style";
+    style.textContent=`
+      html body #desktop:not(.page-two-mode) .desk-scroll{
+        padding-top:96px!important;
+        padding-bottom:88px!important;
+      }
+      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+        width:calc(100% + 36px)!important;
+        margin:16px 0 26px -18px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
+        padding:24px 24px 22px!important;
+        border-radius:38px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-head{
+        grid-template-columns:88px minmax(0,1fr) auto!important;
+        gap:16px!important;
+        min-height:88px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-left,
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
+        width:88px!important;
+        height:88px!important;
+        min-width:88px!important;
+        min-height:88px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
+        width:28px!important;
+        height:28px!important;
+        right:-4px!important;
+        bottom:-4px!important;
+        font-size:12px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
+        min-width:72px!important;
+        padding:12px 14px!important;
+        font-size:16px!important;
+        border-radius:18px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-title{
+        font-size:20px!important;
+        letter-spacing:.6px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
+        margin-top:12px!important;
+        font-size:13px!important;
+        line-height:1.5!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-date{
+        padding-top:56px!important;
+        font-size:13px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
+        gap:12px!important;
+        margin-top:20px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
+        height:136px!important;
+        min-height:136px!important;
+        border-radius:13px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-footer,
+      html body #desktop:not(.page-two-mode) .bb-showcase-pill{
+        height:66px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
+        margin-top:20px!important;
+        padding:0 22px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
+        gap:26px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-action{
+        width:27px!important;
+        height:27px!important;
+        font-size:27px!important;
+      }
+      html body #desktop:not(.page-two-mode) .pages-viewport{
+        margin-top:20px!important;
+      }
+      html body #desktop:not(.page-two-mode) .apps-page{
+        padding-top:18px!important;
+        row-gap:30px!important;
+      }
+      html body #desktop:not(.page-two-mode) .apps-page > .app{
+        transform:scale(1.03)!important;
+        transform-origin:center top!important;
+      }
+      html body #desktop:not(.page-two-mode) .dots{
+        margin-top:22px!important;
+      }
+      html body #desktop:not(.page-two-mode) .dock{
+        bottom:24px!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function install(){ injectStyle(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",function(){ setTimeout(install,0); });
+  [80,260,700,1600,3200].forEach(function(ms){ setTimeout(install,ms); });
+})();
