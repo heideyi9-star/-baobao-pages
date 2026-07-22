@@ -41464,3 +41464,103 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("pageshow",function(){setTimeout(install,0)});
   [80,300,900,2200].forEach(function(ms){setTimeout(install,ms)});
 })();
+
+/* baobao-page1-showcase-wider-v328 */
+(function(){
+  "use strict";
+  if(window.__bbPage1ShowcaseWiderV328)return;
+  window.__bbPage1ShowcaseWiderV328=true;
+
+  function injectStyle(){
+    var old=document.getElementById("bbPage1ShowcaseWiderV328Style");
+    if(old)old.remove();
+    var style=document.createElement("style");
+    style.id="bbPage1ShowcaseWiderV328Style";
+    style.textContent=`
+      html body #desktop:not(.page-two-mode) .desk-scroll{
+        padding-top:76px!important;
+        padding-bottom:108px!important;
+      }
+      html body #desktop:not(.page-two-mode) .desk-scroll > #photoWidget.bb-page1-showcase{
+        width:calc(100% - 4px)!important;
+        margin:0 auto 20px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-shell{
+        padding:20px 20px 18px!important;
+        border-radius:34px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-head{
+        grid-template-columns:76px minmax(0,1fr) auto!important;
+        gap:14px!important;
+        min-height:76px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-left,
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar{
+        width:76px!important;
+        height:76px!important;
+        min-width:76px!important;
+        min-height:76px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-avatar-tip{
+        width:24px!important;
+        height:24px!important;
+        right:-2px!important;
+        bottom:-2px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-temp{
+        min-width:64px!important;
+        padding:10px 13px!important;
+        font-size:15px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-title{
+        font-size:18px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-sub{
+        margin-top:10px!important;
+        font-size:12px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-date{
+        font-size:13px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid{
+        gap:11px!important;
+        margin-top:16px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-grid > .photo-slot.bb-showcase-photo{
+        height:102px!important;
+        min-height:102px!important;
+        border-radius:11px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-footer{
+        height:54px!important;
+        margin-top:16px!important;
+        padding:0 18px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-actions{
+        gap:22px!important;
+      }
+      html body #desktop:not(.page-two-mode) .bb-showcase-action{
+        width:24px!important;
+        height:24px!important;
+        font-size:24px!important;
+      }
+      html body #desktop:not(.page-two-mode) .pages-viewport{
+        margin-top:2px!important;
+      }
+      html body #desktop:not(.page-two-mode) .dots{
+        margin-top:10px!important;
+      }
+      html body #desktop:not(.page-two-mode) .dock{
+        bottom:14px!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function install(){ injectStyle(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",function(){setTimeout(install,0)});
+  [80,280,800,1800,3600].forEach(function(ms){setTimeout(install,ms)});
+})();
