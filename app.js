@@ -42256,3 +42256,273 @@ window.updateArchiveChatStyleHintV324=function(){
 })();
 
 /* baobao-v358: 第一页图标区高度由244px扩到304px，使用下方空白并避免第二排文字被裁切。 */
+
+
+/* baobao-v363: 桌面改成“整页翻”——上方组件 + 图标区一起整页左右翻。 */
+(function(){
+  const STYLE_ID = 'bb-whole-page-swipe-v363';
+  function injectStyle(){
+    if(document.getElementById(STYLE_ID)) return;
+    const style=document.createElement('style');
+    style.id=STYLE_ID;
+    style.textContent = `
+      html body #desktop .desk-scroll{
+        position:absolute!important;
+        inset:0!important;
+        width:100%!important;
+        height:100%!important;
+        padding:58px 0 106px!important;
+        overflow:hidden!important;
+        display:flex!important;
+        flex-direction:column!important;
+      }
+      html body #desktop .desk-scroll>#clock,
+      html body #desktop .desk-scroll>#desktopNote,
+      html body #desktop .desk-scroll>.avatar-box{
+        display:none!important;
+      }
+      html body #desktop .desk-scroll>.pages-viewport{
+        position:relative!important;
+        width:100%!important;
+        flex:1 1 auto!important;
+        height:auto!important;
+        min-height:0!important;
+        margin:0!important;
+        padding:0!important;
+        overflow:hidden!important;
+      }
+      html body #desktop .pages-container{
+        display:flex!important;
+        align-items:flex-start!important;
+        height:100%!important;
+        min-height:100%!important;
+        will-change:transform!important;
+        transform:translate3d(0,0,0);
+        transition:transform .32s cubic-bezier(.22,1,.36,1)!important;
+      }
+      html body #desktop .bb-whole-page{
+        flex:0 0 100%!important;
+        width:100%!important;
+        min-width:100%!important;
+        height:100%!important;
+        padding:10px 0 0!important;
+        display:flex!important;
+        flex-direction:column!important;
+        align-items:stretch!important;
+        overflow:hidden!important;
+      }
+      html body #desktop .bb-whole-top{
+        flex:0 0 auto!important;
+        width:100%!important;
+      }
+      html body #desktop .bb-whole-page-1 #photoWidget.bb-page1-showcase{
+        display:block!important;
+        position:relative!important;
+        width:calc(100% - 20px)!important;
+        max-width:none!important;
+        margin:0 auto 10px!important;
+        padding:0!important;
+        transform:none!important;
+        overflow:visible!important;
+        z-index:15!important;
+      }
+      html body #desktop .bb-whole-page-2 #deskIns{
+        display:block!important;
+        position:relative!important;
+        width:calc(100% - 24px)!important;
+        margin:0 auto 16px!important;
+        min-height:120px!important;
+      }
+      html body #desktop .bb-whole-page .bb-showcase-shell{
+        width:100%!important;
+      }
+      html body #desktop .bb-whole-page .apps-page{
+        width:100%!important;
+        height:auto!important;
+        display:grid!important;
+        grid-template-columns:repeat(4,minmax(0,1fr))!important;
+        grid-template-rows:repeat(2,112px)!important;
+        column-gap:10px!important;
+        row-gap:26px!important;
+        align-content:start!important;
+        justify-content:stretch!important;
+        padding:8px 20px 0!important;
+        margin:0!important;
+        flex:0 0 auto!important;
+      }
+      html body #desktop .bb-whole-page .apps-page>.app{
+        position:relative!important;
+        display:flex!important;
+        flex-direction:column!important;
+        align-items:center!important;
+        justify-content:flex-start!important;
+        width:auto!important;
+        height:112px!important;
+        min-height:112px!important;
+        margin:0!important;
+        padding:0!important;
+        background:transparent!important;
+        box-shadow:none!important;
+        pointer-events:none!important;
+        z-index:20!important;
+      }
+      html body #desktop .bb-whole-page .apps-page>.app .icon{
+        flex:0 0 auto!important;
+        margin:0 0 9px!important;
+        pointer-events:none!important;
+      }
+      html body #desktop .bb-whole-page-1 .apps-page{ margin-top:6px!important; }
+      html body #desktop .bb-whole-page-2 .apps-page{ margin-top:4px!important; }
+      html body #desktop .desk-scroll>#photoWidget,
+      html body #desktop .desk-scroll>#deskIns{
+        display:none!important;
+      }
+      html body #desktop .dots{
+        position:relative!important;
+        flex:0 0 auto!important;
+        margin:10px 0 0!important;
+        z-index:21!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function buildWholeDesktopPageOne(){
+    const page=document.createElement('div');
+    page.className='bb-whole-page bb-whole-page-1';
+    const top=document.createElement('div');
+    top.className='bb-whole-top';
+    const widget=document.getElementById('photoWidget');
+    if(widget) top.appendChild(widget);
+    page.appendChild(top);
+    page.appendChild(buildPage1());
+    return page;
+  }
+
+  function buildWholeDesktopPageTwo(){
+    const page=document.createElement('div');
+    page.className='bb-whole-page bb-whole-page-2';
+    const top=document.createElement('div');
+    top.className='bb-whole-top';
+    const ins=document.getElementById('deskIns');
+    if(ins) top.appendChild(ins);
+    page.appendChild(top);
+    page.appendChild(buildPage2());
+    return page;
+  }
+
+  function wholeRenderPages(){
+    const container=document.getElementById('pagesContainer');
+    if(!container) return;
+    injectStyle();
+    container.innerHTML='';
+    container.appendChild(buildWholeDesktopPageOne());
+    container.appendChild(buildWholeDesktopPageTwo());
+    if(typeof renderDots==='function') renderDots();
+    wholeGoToPage((window.state&&Number.isFinite(state.page)?state.page:0), false);
+  }
+
+  function wholeGoToPage(idx, animate){
+    const container=document.getElementById('pagesContainer');
+    const viewport=container && container.parentElement;
+    const desktop=document.getElementById('desktop');
+    if(!container || !viewport || !window.state) return;
+    idx=Math.max(0, Math.min((window.TOTAL_PAGES||2)-1, idx));
+    state.page=idx;
+    if(typeof saveLocal==='function') saveLocal();
+    const width=viewport.clientWidth || 1;
+    container.style.transition = animate===false ? 'none' : 'transform .32s cubic-bezier(.22,1,.36,1)';
+    container.style.transform = 'translate3d(' + (-idx * width) + 'px,0,0)';
+    if(desktop){
+      if(idx===1) desktop.classList.add('page-two-mode');
+      else desktop.classList.remove('page-two-mode');
+    }
+    if(typeof renderDots==='function') renderDots();
+  }
+
+  let startX=0, startY=0, moving=false, swiping=false, dragDX=0, startTime=0, viewWidth=0;
+  function wholeInitSwipe(){
+    const desktop=document.getElementById('desktop');
+    const viewport=document.querySelector('#desktop .pages-viewport');
+    const container=document.getElementById('pagesContainer');
+    if(!desktop || !viewport || !container || desktop.__bbWholeSwipeV363) return;
+    desktop.__bbWholeSwipeV363=true;
+
+    function usableTarget(target){
+      if(!target) return true;
+      if(target.closest && target.closest('.dock')) return false;
+      if(target.closest && target.closest('[contenteditable="true"],input,textarea,select,button')) return false;
+      return true;
+    }
+
+    viewport.addEventListener('touchstart', function(e){
+      if(!usableTarget(e.target)) return;
+      const t=e.touches && e.touches[0];
+      if(!t) return;
+      startX=t.clientX; startY=t.clientY;
+      moving=true; swiping=false; dragDX=0; startTime=Date.now();
+      viewWidth=viewport.clientWidth || 1;
+      container.style.transition='none';
+    }, {passive:true});
+
+    viewport.addEventListener('touchmove', function(e){
+      if(!moving) return;
+      const t=e.touches && e.touches[0];
+      if(!t) return;
+      const dx=t.clientX-startX; const dy=t.clientY-startY;
+      if(!swiping){
+        if(Math.abs(dx)>10 && Math.abs(dx)>Math.abs(dy)) swiping=true;
+        else if(Math.abs(dy)>10){ moving=false; return; }
+      }
+      if(swiping){
+        e.preventDefault();
+        let drag=dx;
+        if((state.page===0 && dx>0) || (state.page===((window.TOTAL_PAGES||2)-1) && dx<0)) drag=dx*0.35;
+        dragDX=drag;
+        container.style.transform='translate3d(' + ((-state.page * viewWidth) + drag) + 'px,0,0)';
+      }
+    }, {passive:false});
+
+    function finish(){
+      if(!moving) return;
+      moving=false;
+      if(swiping){
+        const elapsed=Date.now()-startTime;
+        const velocity=dragDX/Math.max(elapsed,1);
+        const threshold=viewWidth*0.16;
+        let target=state.page;
+        if(dragDX<=-threshold || velocity<-0.35) target=state.page+1;
+        else if(dragDX>=threshold || velocity>0.35) target=state.page-1;
+        wholeGoToPage(target);
+      }
+      swiping=false; dragDX=0;
+    }
+
+    viewport.addEventListener('touchend', finish, {passive:true});
+    viewport.addEventListener('touchcancel', function(){
+      if(swiping) wholeGoToPage(state.page);
+      moving=false; swiping=false; dragDX=0;
+    }, {passive:true});
+    window.addEventListener('resize', function(){ wholeGoToPage(state.page, false); });
+  }
+
+  function install(){
+    if(typeof buildPage1!=='function' || typeof buildPage2!=='function') return;
+    injectStyle();
+    window.renderPages=wholeRenderPages;
+    window.goToPage=wholeGoToPage;
+    window.initSwipe=wholeInitSwipe;
+    try{renderPages=wholeRenderPages;}catch(_){ }
+    try{goToPage=wholeGoToPage;}catch(_){ }
+    try{initSwipe=wholeInitSwipe;}catch(_){ }
+    wholeRenderPages();
+    wholeInitSwipe();
+    setTimeout(function(){ wholeGoToPage((window.state&&state.page)||0, false); }, 0);
+    setTimeout(function(){ wholeGoToPage((window.state&&state.page)||0, false); }, 120);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', install, {once:true});
+  else install();
+  window.addEventListener('load', install);
+  window.addEventListener('pageshow', install);
+})();
