@@ -1,5 +1,5 @@
-/* 豹豹机 375：Chat 顶部磨砂、移除换图文字、新建聊天室仅装饰。 */
-const CACHE_NAME = "baobao-shell-v375";
+/* 豹豹机 379：Chat 顶部磨砂、移除换图文字、新建聊天室仅装饰。 */
+const CACHE_NAME = "baobao-shell-v379";
 const SHELL = [
   "./",
   "./index.html",

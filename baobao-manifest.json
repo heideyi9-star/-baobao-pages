@@ -1,7 +1,7 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 375 · Chat 顶部磨砂与装饰条修复",
+  "description": "豹豹机 379 · 聊天子页面即时置顶修复",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

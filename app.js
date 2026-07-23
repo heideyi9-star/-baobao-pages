@@ -42266,3 +42266,157 @@ window.updateArchiveChatStyleHintV324=function(){
   document.addEventListener("click",schedule,true);
   [0,80,220,600,1400,3000].forEach(function(ms){setTimeout(install,ms)});
 })();
+
+/* =========================================================
+   豹豹机 379｜聊天子页面即时置顶修复
+   修复：人设、表情包、收藏、聊天设置、工具箱点开后被聊天室压在下面，
+   必须先返回才会出现。只调整这些真实弹层的层级，不改布局和按压样式。
+   ========================================================= */
+(function(){
+  "use strict";
+  if(window.__bbChatSubpageFrontV379)return;
+  window.__bbChatSubpageFrontV379=true;
+
+  const PHONE_SELECTOR=".phone";
+  const FULL_LAYER_IDS=new Set([
+    "personaSelectPanel","friendSearchPanel","personaArchive","textEdit","modal",
+    "favoriteMsgOverlay","chatSettingsPanel","dualAvatarPanel","personaDebugPage",
+    "dataManagerPage","momentsSubpanel"
+  ]);
+  const FLOAT_LAYER_IDS=new Set([
+    "bbToolBackdrop","bbToolSheet","bbToolModal","bbStickerPicker",
+    "bbTimestampMask","bbBlacklistMask","innerVoiceOverlay","msgEditOverlay"
+  ]);
+  const ALL_IDS=[...FULL_LAYER_IDS,...FLOAT_LAYER_IDS];
+  const BASE_Z=6200;
+
+  function phoneRoot(){
+    return document.querySelector(PHONE_SELECTOR)||document.body;
+  }
+
+  function moveToPhone(el){
+    if(!el)return;
+    const root=phoneRoot();
+    if(root&&el.parentNode!==root){
+      try{root.appendChild(el);}catch(_){ }
+    }
+  }
+
+  function makeFront(el,extra){
+    if(!el)return;
+    moveToPhone(el);
+    try{el.removeAttribute("inert");}catch(_){ }
+    if(el.getAttribute("aria-hidden")==="true")el.setAttribute("aria-hidden","false");
+    el.style.setProperty("z-index",String(BASE_Z+(extra||0)),"important");
+    el.style.setProperty("pointer-events","auto","important");
+    el.style.setProperty("visibility","visible","important");
+  }
+
+  function elevateId(id){
+    const el=document.getElementById(id);
+    if(!el)return;
+    let extra=0;
+    if(id==="favoriteMsgOverlay")extra=30;
+    else if(id==="bbToolBackdrop")extra=40;
+    else if(id==="bbToolSheet")extra=41;
+    else if(id==="bbToolModal")extra=50;
+    else if(id==="bbStickerPicker")extra=60;
+    else if(id==="innerVoiceOverlay")extra=70;
+    makeFront(el,extra);
+  }
+
+  function visible(el){
+    if(!el)return false;
+    const cs=getComputedStyle(el);
+    return cs.display!=="none"&&cs.visibility!=="hidden"&&Number(cs.opacity||1)!==0;
+  }
+
+  function refreshVisible(){
+    ALL_IDS.forEach(id=>{
+      const el=document.getElementById(id);
+      if(el&&visible(el))elevateId(id);
+    });
+  }
+
+  function afterOpen(ids){
+    const list=Array.isArray(ids)?ids:[ids];
+    list.forEach(elevateId);
+    requestAnimationFrame(()=>list.forEach(elevateId));
+    setTimeout(()=>list.forEach(elevateId),0);
+    setTimeout(()=>list.forEach(elevateId),80);
+  }
+
+  function replaceGlobal(name,wrapped){
+    window[name]=wrapped;
+    try{(0,eval)(name+"=window['"+name+"']");}catch(_){ }
+  }
+
+  function wrap(name,ids){
+    const old=window[name];
+    if(typeof old!=="function"||old.__bbFrontV379)return;
+    const wrapped=function(){
+      const result=old.apply(this,arguments);
+      afterOpen(ids);
+      return result;
+    };
+    wrapped.__bbFrontV379=true;
+    wrapped.__bbOriginal=old;
+    replaceGlobal(name,wrapped);
+  }
+
+  function install(){
+    ALL_IDS.forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el)return;
+      moveToPhone(el);
+      if(!el.__bbFrontObserverV379){
+        el.__bbFrontObserverV379=true;
+        new MutationObserver(()=>{
+          if(visible(el))requestAnimationFrame(()=>elevateId(id));
+        }).observe(el,{attributes:true,attributeFilter:["style","class","aria-hidden","inert"]});
+      }
+    });
+
+    const oldOpenPanel=window.openPanel;
+    if(typeof oldOpenPanel==="function"&&!oldOpenPanel.__bbFrontV379){
+      const wrapped=function(id){
+        const result=oldOpenPanel.apply(this,arguments);
+        if(FULL_LAYER_IDS.has(String(id||"")))afterOpen(String(id));
+        return result;
+      };
+      wrapped.__bbFrontV379=true;
+      wrapped.__bbOriginal=oldOpenPanel;
+      replaceGlobal("openPanel",wrapped);
+    }
+
+    wrap("openPersonaSelect","personaSelectPanel");
+    wrap("openFriendSearch","friendSearchPanel");
+    wrap("openPersonaEdit",["textEdit","personaArchive"]);
+    wrap("openTextEdit","textEdit");
+    wrap("openCreatePersonaPanel","personaArchive");
+    wrap("openEditPersonaPanel","personaArchive");
+    wrap("openStickerManager","modal");
+    wrap("openFavoriteMessages","favoriteMsgOverlay");
+    wrap("openChatSettings","chatSettingsPanel");
+    wrap("openChatAvatarSettings","dualAvatarPanel");
+    wrap("openTools",["bbToolBackdrop","bbToolSheet"]);
+    wrap("openBaobaoTools",["bbToolBackdrop","bbToolSheet"]);
+    wrap("openBaobaoStickerPicker","bbStickerPicker");
+    wrap("openInnerVoicePanel","innerVoiceOverlay");
+
+    if(!document.__bbFrontClickRefreshV379){
+      document.__bbFrontClickRefreshV379=true;
+      document.addEventListener("click",()=>{
+        setTimeout(refreshVisible,0);
+        setTimeout(refreshVisible,70);
+      },false);
+      document.addEventListener("pointerup",()=>setTimeout(refreshVisible,40),false);
+    }
+    refreshVisible();
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  [100,500,1400,3000,6000,9000,18000].forEach(ms=>setTimeout(install,ms));
+})();

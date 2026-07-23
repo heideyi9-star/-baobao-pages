@@ -164,7 +164,7 @@ html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row
 html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=378"></script>
+<script defer src="./app.js?v=379"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -390,6 +390,21 @@ html body #desktop .dock>.dock-icon::after{
 }
 </style>
 
+
+<style id="bb-chat-subpage-front-v379">
+/* 只让聊天里的真实子页面盖在聊天室上面，不改按钮尺寸、背景和按压效果。 */
+#personaSelectPanel,#friendSearchPanel,#personaArchive,#textEdit,#modal,
+#favoriteMsgOverlay,#chatSettingsPanel,#dualAvatarPanel,#personaDebugPage,#dataManagerPage,#momentsSubpanel{
+  z-index:6200!important;
+  pointer-events:auto!important;
+}
+#bbToolBackdrop{z-index:6240!important;pointer-events:auto!important;}
+#bbToolSheet{z-index:6241!important;pointer-events:auto!important;}
+#bbToolModal{z-index:6250!important;pointer-events:auto!important;}
+#bbStickerPicker{z-index:6260!important;pointer-events:auto!important;}
+#bbTimestampMask,#bbBlacklistMask{z-index:6265!important;pointer-events:auto!important;}
+#innerVoiceOverlay,#msgEditOverlay{z-index:6270!important;pointer-events:auto!important;}
+</style>
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
