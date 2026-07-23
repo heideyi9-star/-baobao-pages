@@ -1,5 +1,5 @@
-/* 豹豹机 368：稳定回滚，保留黑色按压方块修复与聊天底栏修复。 */
-const CACHE_NAME = "baobao-shell-v368";
+/* 豹豹机 371：桌面图标区域继续下移10px，保留黑色按压方块修复与聊天底栏修复。 */
+const CACHE_NAME = "baobao-shell-v371";
 const SHELL = [
   "./",
   "./index.html",
