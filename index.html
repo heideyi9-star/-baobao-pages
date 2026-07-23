@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=360">
+<link rel="manifest" href="./baobao-manifest.json?v=361">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=360",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=361",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 360 图标再小5px版</title>
+<title>豹豹机4.9 · 361 整页翻页修复版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -164,7 +164,7 @@ html body #desktop:not(.page-two-mode) .apps-page{padding-top:18px!important;row
 html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=360"></script>
+<script defer src="./app.js?v=361"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -2038,6 +2038,99 @@ API Key<br>
   window.addEventListener('load',install);
   window.addEventListener('pageshow',install);
   [0,80,260,700,1600,3000,5200].forEach(ms=>setTimeout(install,ms));
+})();
+</script>
+
+<script>
+/* baobao-v361-whole-page-swipe-lock */
+(function(){
+  "use strict";
+  if(window.__bbV361WholePageSwipe)return;
+  window.__bbV361WholePageSwipe=true;
+
+  const STYLE_ID='bbV361WholePageSwipeStyle';
+  function installStyle(){
+    let style=document.getElementById(STYLE_ID);
+    if(!style){
+      style=document.createElement('style');
+      style.id=STYLE_ID;
+    }
+    style.textContent=`
+      html body #desktop .pages-viewport{
+        width:100%!important;
+        max-width:100%!important;
+        overflow:hidden!important;
+      }
+      html body #desktop .pages-container{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:stretch!important;
+        width:100%!important;
+        max-width:none!important;
+        min-width:100%!important;
+        overflow:visible!important;
+        will-change:transform!important;
+      }
+      html body #desktop .pages-container>.apps-page{
+        flex:0 0 100%!important;
+        flex-grow:0!important;
+        flex-shrink:0!important;
+        flex-basis:100%!important;
+        width:100%!important;
+        min-width:100%!important;
+        max-width:100%!important;
+        box-sizing:border-box!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function enforce(){
+    installStyle();
+    const viewport=document.querySelector('#desktop .pages-viewport');
+    const container=document.getElementById('pagesContainer');
+    if(viewport){
+      viewport.style.setProperty('width','100%','important');
+      viewport.style.setProperty('max-width','100%','important');
+      viewport.style.setProperty('overflow','hidden','important');
+    }
+    if(container){
+      container.style.setProperty('display','flex','important');
+      container.style.setProperty('flex-direction','row','important');
+      container.style.setProperty('flex-wrap','nowrap','important');
+      container.style.setProperty('width','100%','important');
+      container.style.setProperty('min-width','100%','important');
+      container.querySelectorAll(':scope > .apps-page').forEach(page=>{
+        page.style.setProperty('flex','0 0 100%','important');
+        page.style.setProperty('flex-grow','0','important');
+        page.style.setProperty('flex-shrink','0','important');
+        page.style.setProperty('flex-basis','100%','important');
+        page.style.setProperty('width','100%','important');
+        page.style.setProperty('min-width','100%','important');
+        page.style.setProperty('max-width','100%','important');
+      });
+      const current=(window.state&&Number.isFinite(Number(state.page)))?Number(state.page):0;
+      if(!container.__bbV361Dragging){
+        container.style.transform=`translate3d(${-current*100}%,0,0)`;
+      }
+    }
+  }
+
+  function install(){
+    enforce();
+    const container=document.getElementById('pagesContainer');
+    if(container&&!container.__bbV361Observer){
+      container.__bbV361Observer=new MutationObserver(()=>requestAnimationFrame(enforce));
+      container.__bbV361Observer.observe(container,{childList:true,subtree:false});
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',install);
+  [0,80,250,700,1600,3000].forEach(ms=>setTimeout(install,ms));
 })();
 </script>
 </body>

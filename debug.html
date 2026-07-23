@@ -2030,6 +2030,99 @@ API Key<br>
   [0,80,260,700,1600,3000,5200].forEach(ms=>setTimeout(install,ms));
 })();
 </script>
+
+<script>
+/* baobao-v361-whole-page-swipe-lock */
+(function(){
+  "use strict";
+  if(window.__bbV361WholePageSwipe)return;
+  window.__bbV361WholePageSwipe=true;
+
+  const STYLE_ID='bbV361WholePageSwipeStyle';
+  function installStyle(){
+    let style=document.getElementById(STYLE_ID);
+    if(!style){
+      style=document.createElement('style');
+      style.id=STYLE_ID;
+    }
+    style.textContent=`
+      html body #desktop .pages-viewport{
+        width:100%!important;
+        max-width:100%!important;
+        overflow:hidden!important;
+      }
+      html body #desktop .pages-container{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:stretch!important;
+        width:100%!important;
+        max-width:none!important;
+        min-width:100%!important;
+        overflow:visible!important;
+        will-change:transform!important;
+      }
+      html body #desktop .pages-container>.apps-page{
+        flex:0 0 100%!important;
+        flex-grow:0!important;
+        flex-shrink:0!important;
+        flex-basis:100%!important;
+        width:100%!important;
+        min-width:100%!important;
+        max-width:100%!important;
+        box-sizing:border-box!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function enforce(){
+    installStyle();
+    const viewport=document.querySelector('#desktop .pages-viewport');
+    const container=document.getElementById('pagesContainer');
+    if(viewport){
+      viewport.style.setProperty('width','100%','important');
+      viewport.style.setProperty('max-width','100%','important');
+      viewport.style.setProperty('overflow','hidden','important');
+    }
+    if(container){
+      container.style.setProperty('display','flex','important');
+      container.style.setProperty('flex-direction','row','important');
+      container.style.setProperty('flex-wrap','nowrap','important');
+      container.style.setProperty('width','100%','important');
+      container.style.setProperty('min-width','100%','important');
+      container.querySelectorAll(':scope > .apps-page').forEach(page=>{
+        page.style.setProperty('flex','0 0 100%','important');
+        page.style.setProperty('flex-grow','0','important');
+        page.style.setProperty('flex-shrink','0','important');
+        page.style.setProperty('flex-basis','100%','important');
+        page.style.setProperty('width','100%','important');
+        page.style.setProperty('min-width','100%','important');
+        page.style.setProperty('max-width','100%','important');
+      });
+      const current=(window.state&&Number.isFinite(Number(state.page)))?Number(state.page):0;
+      if(!container.__bbV361Dragging){
+        container.style.transform=`translate3d(${-current*100}%,0,0)`;
+      }
+    }
+  }
+
+  function install(){
+    enforce();
+    const container=document.getElementById('pagesContainer');
+    if(container&&!container.__bbV361Observer){
+      container.__bbV361Observer=new MutationObserver(()=>requestAnimationFrame(enforce));
+      container.__bbV361Observer.observe(container,{childList:true,subtree:false});
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',install);
+  [0,80,250,700,1600,3000].forEach(ms=>setTimeout(install,ms));
+})();
+</script>
 </body>';},2500);});</script>
 <script>
 /* baobao-v357-desktop-icon-fit-and-fill */
@@ -2255,6 +2348,99 @@ API Key<br>
   window.addEventListener('load',install);
   window.addEventListener('pageshow',install);
   [0,80,260,700,1600,3000,5200].forEach(ms=>setTimeout(install,ms));
+})();
+</script>
+
+<script>
+/* baobao-v361-whole-page-swipe-lock */
+(function(){
+  "use strict";
+  if(window.__bbV361WholePageSwipe)return;
+  window.__bbV361WholePageSwipe=true;
+
+  const STYLE_ID='bbV361WholePageSwipeStyle';
+  function installStyle(){
+    let style=document.getElementById(STYLE_ID);
+    if(!style){
+      style=document.createElement('style');
+      style.id=STYLE_ID;
+    }
+    style.textContent=`
+      html body #desktop .pages-viewport{
+        width:100%!important;
+        max-width:100%!important;
+        overflow:hidden!important;
+      }
+      html body #desktop .pages-container{
+        display:flex!important;
+        flex-direction:row!important;
+        flex-wrap:nowrap!important;
+        align-items:stretch!important;
+        width:100%!important;
+        max-width:none!important;
+        min-width:100%!important;
+        overflow:visible!important;
+        will-change:transform!important;
+      }
+      html body #desktop .pages-container>.apps-page{
+        flex:0 0 100%!important;
+        flex-grow:0!important;
+        flex-shrink:0!important;
+        flex-basis:100%!important;
+        width:100%!important;
+        min-width:100%!important;
+        max-width:100%!important;
+        box-sizing:border-box!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function enforce(){
+    installStyle();
+    const viewport=document.querySelector('#desktop .pages-viewport');
+    const container=document.getElementById('pagesContainer');
+    if(viewport){
+      viewport.style.setProperty('width','100%','important');
+      viewport.style.setProperty('max-width','100%','important');
+      viewport.style.setProperty('overflow','hidden','important');
+    }
+    if(container){
+      container.style.setProperty('display','flex','important');
+      container.style.setProperty('flex-direction','row','important');
+      container.style.setProperty('flex-wrap','nowrap','important');
+      container.style.setProperty('width','100%','important');
+      container.style.setProperty('min-width','100%','important');
+      container.querySelectorAll(':scope > .apps-page').forEach(page=>{
+        page.style.setProperty('flex','0 0 100%','important');
+        page.style.setProperty('flex-grow','0','important');
+        page.style.setProperty('flex-shrink','0','important');
+        page.style.setProperty('flex-basis','100%','important');
+        page.style.setProperty('width','100%','important');
+        page.style.setProperty('min-width','100%','important');
+        page.style.setProperty('max-width','100%','important');
+      });
+      const current=(window.state&&Number.isFinite(Number(state.page)))?Number(state.page):0;
+      if(!container.__bbV361Dragging){
+        container.style.transform=`translate3d(${-current*100}%,0,0)`;
+      }
+    }
+  }
+
+  function install(){
+    enforce();
+    const container=document.getElementById('pagesContainer');
+    if(container&&!container.__bbV361Observer){
+      container.__bbV361Observer=new MutationObserver(()=>requestAnimationFrame(enforce));
+      container.__bbV361Observer.observe(container,{childList:true,subtree:false});
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',install);
+  [0,80,250,700,1600,3000].forEach(ms=>setTimeout(install,ms));
 })();
 </script>
 </body>
