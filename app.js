@@ -188,8 +188,9 @@ const state = {
     { id:"anniv", icon:"", label:"小红书", action:"placeholder" },
     { id:"couple", icon:"", label:"情侣空间", action:"placeholder" }
   ],
-  page2DialogueLines: ["今天有好好吃饭吗", "等你回来再慢慢说"],
-  page2DialogueWallpaper: null,
+  page2ProfileText: "自定义文字",
+  page2ProfileHandle: "@collapse_official.com",
+  page2ProfileAvatar: null,
   timeAware: true,       // 时间感知：把真实时间/时间差告诉AI
   lastMsgTime: null,     // 上一条消息发送的时间戳
   lockPassword: "0601",  // 锁屏密码，默认 0601
@@ -232,14 +233,16 @@ if(state.activeChatId&&state.chatRecords&&Array.isArray(state.chatRecords[state.
 }
 if(!Array.isArray(state.chatMessages)) state.chatMessages=[];
 
-if(!Array.isArray(state.page2DialogueLines)) state.page2DialogueLines = ["今天有好好吃饭吗", "等你回来再慢慢说"];
-state.page2DialogueLines = [0,1].map(function(i){
-  const fallback = i===0 ? "今天有好好吃饭吗" : "等你回来再慢慢说";
-  const value = String(state.page2DialogueLines[i] == null ? fallback : state.page2DialogueLines[i]).trim();
-  return value || fallback;
-});
-if(typeof state.page2DialogueWallpaper !== "string" || !state.page2DialogueWallpaper.startsWith("data:image/")){
-  state.page2DialogueWallpaper = null;
+if(typeof state.page2ProfileText !== "string" || !state.page2ProfileText.trim()){
+  state.page2ProfileText = Array.isArray(state.page2DialogueLines) && state.page2DialogueLines[0]
+    ? String(state.page2DialogueLines[0]).trim()
+    : "自定义文字";
+}
+if(typeof state.page2ProfileHandle !== "string" || !state.page2ProfileHandle.trim()){
+  state.page2ProfileHandle = "@collapse_official.com";
+}
+if(typeof state.page2ProfileAvatar !== "string" || !state.page2ProfileAvatar.startsWith("data:image/")){
+  state.page2ProfileAvatar = null;
 }
 if(!Array.isArray(state.stickers)) state.stickers = [];
 if(!state.wallet || typeof state.wallet !== "object") state.wallet = { balance: 0, history: [] };
@@ -733,86 +736,75 @@ function buildPage1(){
 }
 
 // ---- 第二页：完全独立的构建函数，自己的数据源、事件与交互 ----
-function buildPage2DialogueWidget(){
+function buildPage2ProfileWidget(){
   const widget = document.createElement("section");
-  widget.className = "p2-dialogue-widget" + (state.page2DialogueWallpaper ? " has-wallpaper" : "");
-  widget.setAttribute("aria-label", "可编辑双对话组件");
+  widget.className = "p2-profile-widget";
+  widget.setAttribute("aria-label", "可编辑复古资料卡组件");
 
-  const now = new Date();
-  const stamp = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
-  const lines = state.page2DialogueLines;
+  const avatarSource = state.page2ProfileAvatar || state.charAvatar || state.avatar || "";
+  const avatarHtml = avatarSource
+    ? `<img src="${avatarSource}" alt="组件头像">`
+    : `<span class="p2-profile-avatar-placeholder">人</span>`;
 
   widget.innerHTML = `
-    <div class="p2-dialogue-wallpaper"></div>
-    <button type="button" class="p2-dialogue-wallpaper-hit" aria-label="更换对话组件壁纸"></button>
-    <input class="p2-dialogue-wallpaper-input" type="file" accept="image/*">
-    <div class="p2-dialogue-head">
-      <span>DIALOGUE ARCHIVE</span>
-      <span class="p2-dialogue-count">02 / ${stamp}</span>
+    <div class="p2-profile-top">
+      <span class="p2-profile-userdot" aria-hidden="true"></span>
+      <span>4/8</span>
+      <span class="p2-profile-spark" aria-hidden="true">✦</span>
     </div>
-    <div class="p2-dialogue-row left">
-      <span class="p2-dialogue-mark">Y</span>
-      <button type="button" class="p2-dialogue-bubble" data-p2-dialogue="0">${escapeHtml(lines[0])}</button>
+    <div class="p2-profile-handle">${escapeHtml(state.page2ProfileHandle)}</div>
+    <div class="p2-profile-main">
+      <button type="button" class="p2-profile-avatar-btn" aria-label="更换组件头像">${avatarHtml}</button>
+      <input class="p2-profile-avatar-input" type="file" accept="image/*">
+      <div class="p2-profile-copy">
+        <div class="p2-profile-script"><small>SOFT BREATH</small>Feel coded</div>
+        <div class="p2-profile-meta">— WRTHORIA · 401N, 60W —</div>
+        <button type="button" class="p2-profile-text-btn" aria-label="修改自定义文字">${escapeHtml(state.page2ProfileText)}</button>
+      </div>
     </div>
-    <div class="p2-dialogue-row right">
-      <button type="button" class="p2-dialogue-bubble" data-p2-dialogue="1">${escapeHtml(lines[1])}</button>
-      <span class="p2-dialogue-mark">M</span>
-    </div>
-    <div class="p2-dialogue-foot">
-      <span>EDIT DIALOGUE</span><span class="p2-dialogue-line"></span><span>CHANGE WALLPAPER</span>
-    </div>`;
+    <div class="p2-profile-footer"><span>Collapss</span><span>· ✦ · ♡ · ✦ ·</span><span>Collapss</span></div>`;
 
-  const wallpaper = widget.querySelector(".p2-dialogue-wallpaper");
-  const picker = widget.querySelector(".p2-dialogue-wallpaper-input");
-  const wallpaperHit = widget.querySelector(".p2-dialogue-wallpaper-hit");
+  const avatarButton = widget.querySelector(".p2-profile-avatar-btn");
+  const avatarInput = widget.querySelector(".p2-profile-avatar-input");
+  const textButton = widget.querySelector(".p2-profile-text-btn");
 
-  function renderWallpaper(){
-    const source = state.page2DialogueWallpaper;
-    widget.classList.toggle("has-wallpaper", !!source);
-    wallpaper.style.backgroundImage = source ? `url(${JSON.stringify(source)})` : "none";
-  }
-  renderWallpaper();
-
-  wallpaperHit.addEventListener("click", function(event){
+  avatarButton.addEventListener("click", function(event){
     event.preventDefault();
     event.stopPropagation();
-    picker.click();
+    avatarInput.click();
   });
 
-  picker.addEventListener("change", async function(){
-    const file = picker.files && picker.files[0];
-    picker.value = "";
+  avatarInput.addEventListener("change", async function(){
+    const file = avatarInput.files && avatarInput.files[0];
+    avatarInput.value = "";
     if(!file) return;
     try{
-      state.page2DialogueWallpaper = await compressImageToBudget(file,{
-        maxDim:1000,
-        quality:.78,
-        maxChars:260000,
-        minDim:480,
-        minQuality:.48,
+      state.page2ProfileAvatar = await compressImageToBudget(file,{
+        maxDim:720,
+        quality:.82,
+        maxChars:180000,
+        minDim:360,
+        minQuality:.50,
         mime:"image/webp"
       });
-      renderWallpaper();
+      avatarButton.innerHTML = `<img src="${state.page2ProfileAvatar}" alt="组件头像">`;
       saveLocal();
-      if(typeof showToast === "function") showToast("对话组件壁纸已更换");
+      if(typeof showToast === "function") showToast("组件头像已更换");
     }catch(error){
-      if(typeof showToast === "function") showToast("图片读取失败",true);
+      if(typeof showToast === "function") showToast("头像读取失败",true);
     }
   });
 
-  widget.addEventListener("click", function(event){
-    const bubble = event.target && event.target.closest ? event.target.closest("[data-p2-dialogue]") : null;
-    if(!bubble) return;
+  textButton.addEventListener("click", function(event){
     event.preventDefault();
     event.stopPropagation();
-    const index = Number(bubble.getAttribute("data-p2-dialogue"));
-    const current = String(state.page2DialogueLines[index] || "");
-    const next = window.prompt(index === 0 ? "修改第一句对话" : "修改第二句对话", current);
+    const current = String(state.page2ProfileText || "自定义文字");
+    const next = window.prompt("修改组件文字", current);
     if(next === null) return;
     const cleaned = String(next).trim();
     if(!cleaned) return;
-    state.page2DialogueLines[index] = cleaned;
-    bubble.textContent = cleaned;
+    state.page2ProfileText = cleaned;
+    textButton.textContent = cleaned;
     saveLocal();
   });
 
@@ -841,7 +833,7 @@ function buildPage2(){
     pageDiv.appendChild(appDiv);
   });
 
-  pageDiv.appendChild(buildPage2DialogueWidget());
+  pageDiv.appendChild(buildPage2ProfileWidget());
   return pageDiv;
 }
 

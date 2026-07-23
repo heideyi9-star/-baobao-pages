@@ -197,7 +197,7 @@ html body #desktop.page-two-mode .desk-scroll>#deskIns{
 .p2h-temp{font-size:22px;font-weight:800}
 .p2h-wtext{font-size:12px;opacity:.85;margin-top:2px}
 
-/* 第二页双对话组件：跟随第二页 App 网格，不影响第一页与底栏 */
+/* 第二页复古资料卡组件：头像可换、文字可改，不影响第一页与底栏 */
 html body #desktop.page-two-mode .pages-viewport{
   height:430px!important;
   min-height:430px!important;
@@ -216,165 +216,195 @@ html body #desktop.page-two-mode .apps-page.page2-only{
   overflow:visible!important;
   padding-bottom:0!important;
 }
-html body #desktop.page-two-mode .p2-dialogue-widget{
+html body #desktop.page-two-mode .p2-profile-widget{
   grid-column:1 / -1!important;
   position:relative!important;
   width:calc(100% - 8px)!important;
   min-width:0!important;
-  height:184px!important;
+  height:176px!important;
   margin:4px 4px 0!important;
-  padding:14px 15px 12px!important;
-  border-radius:26px!important;
+  border-radius:25px!important;
   overflow:hidden!important;
-  color:#242424!important;
-  background:rgba(255,255,255,.64)!important;
-  border:1px solid rgba(255,255,255,.88)!important;
-  box-shadow:0 10px 26px rgba(55,55,55,.07)!important;
+  color:#555!important;
+  background:
+    radial-gradient(circle at 18px 18px,rgba(255,255,255,.68) 0 3px,transparent 3.5px) 0 0/28px 28px,
+    linear-gradient(180deg,rgba(247,247,247,.95),rgba(233,233,233,.82))!important;
+  border:1px solid rgba(255,255,255,.95)!important;
+  box-shadow:0 10px 26px rgba(55,55,55,.08)!important;
   -webkit-backdrop-filter:blur(18px)!important;
   backdrop-filter:blur(18px)!important;
   z-index:22!important;
   touch-action:manipulation!important;
+  -webkit-tap-highlight-color:transparent!important;
 }
-html body #desktop.page-two-mode .p2-dialogue-widget.has-wallpaper{
-  background:rgba(255,255,255,.48)!important;
-}
-.p2-dialogue-wallpaper{
-  position:absolute;
-  inset:0;
-  z-index:0;
-  pointer-events:none;
-  background-position:center bottom;
-  background-size:cover;
-  background-repeat:no-repeat;
-  opacity:.72;
-}
-.p2-dialogue-wallpaper::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background:linear-gradient(180deg,rgba(255,255,255,.48),rgba(255,255,255,.20) 52%,rgba(255,255,255,.38));
-}
-.p2-dialogue-wallpaper-hit{
-  position:absolute;
-  inset:0;
-  z-index:1;
-  display:block;
-  border:0;
-  outline:0;
-  padding:0;
-  margin:0;
-  background:transparent;
-  cursor:pointer;
-  -webkit-tap-highlight-color:transparent;
-}
-.p2-dialogue-wallpaper-input{display:none!important}
-html body #desktop.page-two-mode .p2-dialogue-widget::before{
-  content:"";
-  position:absolute;
-  width:112px;
-  height:112px;
-  right:-36px;
-  top:-52px;
-  border:1px solid rgba(80,80,80,.08);
-  border-radius:50%;
-  pointer-events:none;
-}
-html body #desktop.page-two-mode .p2-dialogue-widget::after{
-  content:"✦";
-  position:absolute;
-  right:19px;
-  top:13px;
-  font-size:13px;
-  color:rgba(50,50,50,.44);
-  pointer-events:none;
-}
-.p2-dialogue-head{
+.p2-profile-top{
   position:relative;
   z-index:3;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding-right:22px;
-  margin-bottom:10px;
-  font-size:10px;
-  line-height:1;
-  letter-spacing:2.2px;
-  font-weight:700;
-  color:rgba(45,45,45,.52);
-}
-.p2-dialogue-count{
-  letter-spacing:1px;
-  font-variant-numeric:tabular-nums;
-}
-.p2-dialogue-row{
-  position:relative;
-  z-index:3;
-  display:flex;
-  align-items:flex-end;
-  gap:7px;
-  margin-top:7px;
-}
-.p2-dialogue-row.right{justify-content:flex-end}
-.p2-dialogue-mark{
-  width:24px;
-  height:24px;
-  flex:0 0 24px;
-  border-radius:50%;
+  height:35px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:10px;
-  font-weight:800;
-  color:#606060;
-  background:rgba(255,255,255,.78);
-  border:1px solid rgba(255,255,255,.96);
+  color:#fff;
+  background:linear-gradient(180deg,rgba(112,112,112,.62),rgba(100,100,100,.45));
+  border-bottom:1px solid rgba(255,255,255,.66);
+  font-size:15px;
+  font-weight:700;
+  letter-spacing:2px;
 }
-.p2-dialogue-bubble{
+.p2-profile-userdot{
+  position:absolute;
+  left:14px;
+  top:7px;
+  width:21px;
+  height:21px;
+  border-radius:50%;
+  background:rgba(255,255,255,.90);
+  box-shadow:0 1px 5px rgba(0,0,0,.12);
+}
+.p2-profile-userdot::before{
+  content:"";
+  position:absolute;
+  width:7px;
+  height:7px;
+  left:7px;
+  top:4px;
+  border-radius:50%;
+  background:#999;
+}
+.p2-profile-userdot::after{
+  content:"";
+  position:absolute;
+  width:12px;
+  height:6px;
+  left:4.5px;
+  bottom:3px;
+  border-radius:8px 8px 4px 4px;
+  background:#999;
+}
+.p2-profile-spark{position:absolute;right:16px;top:7px;font-size:16px;color:rgba(255,255,255,.86)}
+.p2-profile-handle{
+  position:absolute;
+  z-index:3;
+  left:13px;
+  right:13px;
+  top:43px;
+  height:28px;
+  padding:0 13px;
+  display:flex;
+  align-items:center;
+  border-radius:10px;
+  background:rgba(255,255,255,.90);
+  box-shadow:0 3px 9px rgba(0,0,0,.08);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.35px;
+  color:#8b8b8b;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.p2-profile-main{
+  position:absolute;
+  z-index:3;
+  left:14px;
+  right:14px;
+  top:78px;
+  bottom:25px;
+  display:grid;
+  grid-template-columns:78px 1fr;
+  gap:14px;
+  align-items:center;
+}
+.p2-profile-avatar-btn{
+  width:76px;
+  height:76px;
+  padding:0;
+  border:1px solid rgba(130,130,130,.28);
+  border-radius:12px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(255,255,255,.90);
+  box-shadow:0 4px 10px rgba(0,0,0,.10);
+  -webkit-tap-highlight-color:transparent;
+}
+.p2-profile-avatar-btn img{width:100%;height:100%;object-fit:cover;display:block}
+.p2-profile-avatar-placeholder{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:31px;font-weight:700;color:#777;background:linear-gradient(145deg,#fff,#ececec)
+}
+.p2-profile-avatar-btn:active,.p2-profile-text-btn:active{transform:scale(.985);opacity:.88}
+.p2-profile-avatar-input{display:none!important}
+.p2-profile-copy{
+  min-width:0;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:center;
+  position:relative;
+}
+.p2-profile-script{
+  position:absolute;
+  top:-3px;
+  right:4px;
+  font-family:Georgia,"Times New Roman",serif;
+  font-style:italic;
+  font-size:18px;
+  line-height:.9;
+  color:rgba(115,115,115,.50);
+  transform:rotate(-3deg);
+  pointer-events:none;
+}
+.p2-profile-script small{display:block;font-family:Arial,sans-serif;font-style:normal;font-size:7px;letter-spacing:1.4px;text-align:center}
+.p2-profile-meta{
+  margin:18px 0 7px 3px;
+  font-size:7px;
+  letter-spacing:1.1px;
+  color:rgba(95,95,95,.48);
+  pointer-events:none;
+}
+.p2-profile-text-btn{
+  width:100%;
+  height:40px;
+  padding:0 12px;
   border:0;
   outline:0;
-  max-width:78%;
-  min-width:82px;
-  padding:10px 12px;
-  text-align:left;
+  border-radius:12px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 4px 10px rgba(0,0,0,.07);
+  color:#676767;
   font:inherit;
   font-size:13px;
-  line-height:1.35;
-  color:#333;
-  background:rgba(255,255,255,.92);
-  border-radius:16px 16px 16px 5px;
-  box-shadow:0 4px 12px rgba(0,0,0,.035);
+  font-weight:600;
+  text-align:center;
   white-space:nowrap;
   overflow:hidden;
   text-overflow:ellipsis;
   -webkit-tap-highlight-color:transparent;
 }
-.p2-dialogue-row.right .p2-dialogue-bubble{
-  color:#fff;
-  background:rgba(55,55,55,.78);
-  border-radius:16px 16px 5px 16px;
-  text-align:right;
-}
-.p2-dialogue-bubble:active{transform:scale(.985);opacity:.86}
-.p2-dialogue-foot{
+.p2-profile-footer{
   position:absolute;
   z-index:3;
-  left:16px;
-  right:16px;
-  bottom:11px;
+  left:0;
+  right:0;
+  bottom:0;
+  height:23px;
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  font-size:9px;
-  letter-spacing:1.5px;
-  color:rgba(45,45,45,.42);
-  pointer-events:none;
+  justify-content:space-around;
+  padding:0 14px;
+  color:rgba(255,255,255,.88);
+  background:linear-gradient(180deg,rgba(116,116,116,.48),rgba(92,92,92,.62));
+  border-top:1px solid rgba(255,255,255,.78);
+  font-family:Georgia,"Times New Roman",serif;
+  font-size:8px;
+  font-style:italic;
+  letter-spacing:.5px;
 }
-.p2-dialogue-line{
-  flex:1;
-  height:1px;
-  margin:0 9px;
-  background:rgba(55,55,55,.10);
-}
+.p2-profile-footer span:nth-child(2){font-family:Arial,sans-serif;font-style:normal;letter-spacing:2px;font-size:8px}
+
 </style>
 <style id="bb-page1-stable-first-paint-v331">
 html body #desktop:not(.page-two-mode) .desk-scroll{padding-top:96px!important;padding-bottom:88px!important}
