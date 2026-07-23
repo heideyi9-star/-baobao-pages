@@ -41411,18 +41411,18 @@ window.updateArchiveChatStyleHintV324=function(){
       display:block!important;
       position:relative!important;
       width:100%!important;
-      height:244px!important;
+      height:304px!important;
       margin:0!important;
       padding:0!important;
       overflow:hidden!important;
       z-index:18!important;
     }
     html body #desktop:not(.page-two-mode) .pages-container{
-      height:244px!important;
+      height:304px!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page{
       width:100%!important;
-      height:244px!important;
+      height:304px!important;
       display:grid!important;
       grid-template-columns:repeat(4,minmax(0,1fr))!important;
       grid-template-rows:repeat(2,104px)!important;
@@ -41572,12 +41572,12 @@ window.updateArchiveChatStyleHintV324=function(){
       widget.style.setProperty('transform','translateY(10px)','important');
     }
     if(viewport){
-      viewport.style.setProperty('height','244px','important');
+      viewport.style.setProperty('height','304px','important');
       viewport.style.setProperty('margin','0','important');
       viewport.style.setProperty('overflow','hidden','important');
     }
     desktop.querySelectorAll('.apps-page').forEach(function(page){
-      page.style.setProperty('height','244px','important');
+      page.style.setProperty('height','304px','important');
       page.style.setProperty('padding','40px 20px 0','important');
       page.style.setProperty('row-gap','18px','important');
     });
@@ -42254,3 +42254,5 @@ window.updateArchiveChatStyleHintV324=function(){
   document.addEventListener("click",schedule,true);
   [0,80,220,600,1400,3000].forEach(function(ms){setTimeout(install,ms)});
 })();
+
+/* baobao-v358: 第一页图标区高度由244px扩到304px，使用下方空白并避免第二排文字被裁切。 */
