@@ -42430,3 +42430,177 @@ window.updateArchiveChatStyleHintV324=function(){
 
 
 console.log("豹豹机 391：人设核心已去除姓名硬编码、重复覆盖和过度重写");
+
+// ===== v391 第二页 hero 组件：头像+日期+天气+电量+消息推送预览 =====
+(function(){
+  const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  let revertTimer = null;
+  let weatherLoaded = false;
+
+  function el(id){ return document.getElementById(id); }
+
+  function renderAvatar(){
+    const box = el("p2hAvatar");
+    if(!box) return;
+    if(state && state.avatar){
+      box.innerHTML = '<img src="'+String(state.avatar).replace(/"/g,"&quot;")+'" alt="">';
+    }else{
+      box.textContent = "豹";
+    }
+  }
+
+  function renderDateTime(){
+    const now = new Date();
+    const dateEl = el("p2hDate");
+    const weekEl = el("p2hWeek");
+    if(dateEl) dateEl.textContent = (now.getMonth()+1)+"月"+now.getDate()+"日";
+    if(weekEl) weekEl.textContent = WEEKDAYS[now.getDay()];
+  }
+
+  function renderIdlePreview(){
+    const preview = el("p2hPreview");
+    const card = el("p2hCard");
+    if(!preview || !card) return;
+    if(card.__hasMessage) return; // 有未读推送时不覆盖
+    preview.textContent = (state && state.p2hMotto) || "今天也要元气满满 ⋆｡°✩";
+  }
+
+  // ---- 电量：仅在浏览器真正支持 Battery API 时显示，避免展示虚假数据 ----
+  function initBattery(){
+    if(!(navigator && typeof navigator.getBattery === "function")) return;
+    navigator.getBattery().then(function(bat){
+      function update(){
+        const wrap = el("p2hBattery");
+        const label = el("p2hBatteryLabel");
+        const pct = el("p2hBatteryPct");
+        const ring = el("p2hRingFg");
+        if(!wrap) return;
+        wrap.style.display = "flex";
+        const percent = Math.round(bat.level*100);
+        label.textContent = bat.charging ? "充电中" : "电量";
+        pct.textContent = percent+"%";
+        if(ring){
+          const c = 2*Math.PI*16;
+          ring.style.strokeDasharray = c.toFixed(1);
+          ring.style.strokeDashoffset = (c*(1-percent/100)).toFixed(1);
+        }
+      }
+      update();
+      bat.addEventListener("levelchange", update);
+      bat.addEventListener("chargingchange", update);
+    }).catch(function(){});
+  }
+
+  // ---- 天气：Open-Meteo 无需 API Key，仅在用户授权定位后才请求 ----
+  const WCODE = {
+    0:"晴",1:"大部晴朗",2:"多云",3:"阴",45:"雾",48:"雾凇",
+    51:"小毛雨",53:"毛雨",55:"大毛雨",61:"小雨",63:"中雨",65:"大雨",
+    71:"小雪",73:"中雪",75:"大雪",80:"阵雨",81:"阵雨",82:"强阵雨",
+    95:"雷雨",96:"雷雨伴冰雹",99:"雷雨伴冰雹"
+  };
+  function initWeather(){
+    if(weatherLoaded) return;
+    if(!(navigator && navigator.geolocation)) return;
+    const cached = (function(){
+      try{ return JSON.parse(localStorage.getItem("bb_p2h_weather")||"null"); }catch(e){ return null; }
+    })();
+    if(cached && (Date.now()-cached.time) < 30*60*1000){
+      applyWeather(cached.temp, cached.text, cached.city);
+      weatherLoaded = true;
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function(pos){
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      fetch("https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&current_weather=true")
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          if(!data || !data.current_weather) return;
+          const temp = Math.round(data.current_weather.temperature);
+          const text = WCODE[data.current_weather.weathercode] || "多云";
+          applyWeather(temp, text, "");
+          try{
+            localStorage.setItem("bb_p2h_weather", JSON.stringify({temp:temp,text:text,city:"",time:Date.now()}));
+          }catch(e){}
+          weatherLoaded = true;
+        }).catch(function(){});
+    }, function(){ /* 用户拒绝定位：保持默认隐藏，不展示虚假天气 */ }, {timeout:8000});
+  }
+  function applyWeather(temp, text, city){
+    const wrap = el("p2hWeather"), tempEl = el("p2hTemp"), textEl = el("p2hWtext");
+    if(!wrap) return;
+    wrap.style.display = "block";
+    if(tempEl) tempEl.textContent = temp+"°";
+    if(textEl) textEl.textContent = (city? ("in "+city+" "):"")+"it's "+text;
+  }
+
+  function renderAll(){
+    renderAvatar();
+    renderDateTime();
+    renderIdlePreview();
+    initBattery();
+    initWeather();
+  }
+
+  // ---- 消息推送：复用现有的 baobaoNotifyIncomingReply 通知管线 ----
+  function wrapNotify(){
+    const orig = window.baobaoNotifyIncomingReply;
+    if(typeof orig !== "function" || orig.__p2hWrapped) return;
+    const wrapped = function(message){
+      const r = orig.apply(this, arguments);
+      try{ showPushPreview(message); }catch(e){}
+      return r;
+    };
+    wrapped.__p2hWrapped = true;
+    window.baobaoNotifyIncomingReply = wrapped;
+  }
+
+  function showPushPreview(message){
+    const text = String(message||"").trim();
+    if(!text) return;
+    const card = el("p2hCard");
+    const preview = el("p2hPreview");
+    const avatar = el("p2hAvatar");
+    if(!card || !preview) return;
+    const p = window.currentChatPersona || {};
+    const name = p.name ? (p.name+"：") : "";
+    preview.textContent = name + text;
+    card.classList.add("has-message");
+    card.__hasMessage = true;
+    if(avatar){
+      const src = p.avatar || p.image || p.photo || "";
+      if(src) avatar.innerHTML = '<img src="'+String(src).replace(/"/g,"&quot;")+'" alt="">';
+    }
+    if(revertTimer) clearTimeout(revertTimer);
+    revertTimer = setTimeout(function(){
+      card.classList.remove("has-message");
+      card.__hasMessage = false;
+      renderAvatar();
+      renderIdlePreview();
+    }, 8000);
+  }
+
+  function wrapGoToPage(){
+    const orig = window.goToPage;
+    if(typeof orig !== "function" || orig.__p2hWrapped) return;
+    const wrapped = function(){
+      const r = orig.apply(this, arguments);
+      renderAll();
+      return r;
+    };
+    wrapped.__p2hWrapped = true;
+    window.goToPage = wrapped;
+  }
+
+  function install(){
+    renderAll();
+    wrapNotify();
+    wrapGoToPage();
+    setInterval(renderDateTime, 60000);
+    setTimeout(wrapNotify, 300);
+    setTimeout(wrapGoToPage, 300);
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, {once:true});
+  else install();
+  window.addEventListener("load", function(){ setTimeout(install, 200); });
+})();
