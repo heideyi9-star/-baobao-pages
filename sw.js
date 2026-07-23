@@ -1,5 +1,5 @@
-/* 豹豹机 379：Chat 顶部磨砂、移除换图文字、新建聊天室仅装饰。 */
-const CACHE_NAME = "baobao-shell-v379";
+/* 豹豹机 380：图片自动压缩与缓存整理。 */
+const CACHE_NAME = "baobao-shell-v380";
 const SHELL = [
   "./",
   "./index.html",

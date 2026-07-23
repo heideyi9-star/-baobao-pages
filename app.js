@@ -42420,3 +42420,390 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("pageshow",()=>setTimeout(install,0));
   [100,500,1400,3000,6000,9000,18000].forEach(ms=>setTimeout(install,ms));
 })();
+
+
+;/* ===== 豹豹机 380：图片自动压缩 + 存储缓存整理 ===== */
+(function(){
+  const OPTIMIZE_MARK='mediaStorageOptimizedV380';
+  const CHAT_TRIM_TRIGGER=2000;
+  const CHAT_KEEP_RECENT=1800;
+  let optimizing=false;
+
+  function bb380IsDataImage(value){
+    return typeof value==='string' && /^data:image\//i.test(value);
+  }
+  function bb380SkipImage(value){
+    return /^data:image\/(?:gif|svg\+xml)/i.test(String(value||''));
+  }
+  function bb380UsageChars(){
+    let total=0;
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i)||'';
+        total+=k.length+(localStorage.getItem(k)||'').length;
+      }
+    }catch(e){}
+    return total;
+  }
+  function bb380FormatSize(chars){
+    const bytes=Math.max(0,Number(chars||0))*2;
+    if(bytes<1024)return bytes+' B';
+    if(bytes<1024*1024)return (bytes/1024).toFixed(1)+' KB';
+    return (bytes/1024/1024).toFixed(2)+' MB';
+  }
+  function bb380LoadImage(src){
+    return new Promise((resolve,reject)=>{
+      const img=new Image();
+      img.onload=()=>resolve(img);
+      img.onerror=()=>reject(new Error('图片解析失败'));
+      img.src=src;
+    });
+  }
+  function bb380FileToDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const r=new FileReader();
+      r.onload=()=>resolve(String(r.result||''));
+      r.onerror=()=>reject(new Error('图片读取失败'));
+      r.readAsDataURL(file);
+    });
+  }
+  async function bb380CompactImage(source,options){
+    const opt=Object.assign({
+      maxDim:760,
+      maxChars:120000,
+      quality:.70,
+      minQuality:.42,
+      minDim:280,
+      preserveAlpha:false
+    },options||{});
+    let src=source instanceof File ? await bb380FileToDataURL(source) : String(source||'');
+    if(!bb380IsDataImage(src) || bb380SkipImage(src) || src.length<=opt.maxChars)return src;
+
+    const img=await bb380LoadImage(src);
+    let width=img.naturalWidth||img.width||1;
+    let height=img.naturalHeight||img.height||1;
+    const scale=Math.min(1,opt.maxDim/Math.max(width,height));
+    width=Math.max(1,Math.round(width*scale));
+    height=Math.max(1,Math.round(height*scale));
+    let quality=opt.quality;
+    const canvas=document.createElement('canvas');
+    const ctx=canvas.getContext('2d',{alpha:!!opt.preserveAlpha});
+    let result=src;
+
+    for(let attempt=0;attempt<11;attempt++){
+      canvas.width=width;
+      canvas.height=height;
+      ctx.clearRect(0,0,width,height);
+      if(!opt.preserveAlpha){
+        ctx.fillStyle='#fff';
+        ctx.fillRect(0,0,width,height);
+      }
+      ctx.drawImage(img,0,0,width,height);
+      let mime='image/webp';
+      result=canvas.toDataURL(mime,quality);
+      if(!/^data:image\/webp/i.test(result)){
+        mime=opt.preserveAlpha?'image/png':'image/jpeg';
+        result=canvas.toDataURL(mime,quality);
+      }
+      if(result.length<=opt.maxChars)return result;
+      if(quality>opt.minQuality+.04){
+        quality=Math.max(opt.minQuality,quality-.08);
+      }else{
+        width=Math.max(opt.minDim,Math.round(width*.84));
+        height=Math.max(opt.minDim,Math.round(height*.84));
+        quality=Math.min(opt.quality,.66);
+      }
+      if(width<=opt.minDim && height<=opt.minDim && quality<=opt.minQuality)break;
+      await new Promise(r=>requestAnimationFrame(r));
+    }
+    return result;
+  }
+  function bb380OptionsForPath(path,value){
+    const p=String(path||'').toLowerCase();
+    if(/wallpaper|background|cover/.test(p))return {maxDim:1080,maxChars:300000,quality:.68,minDim:500};
+    if(/avatar|portrait|persona.*photo|user.*photo/.test(p))return {maxDim:420,maxChars:78000,quality:.74,minDim:240};
+    if(/icon/.test(p))return {maxDim:260,maxChars:52000,quality:.74,minDim:140,preserveAlpha:true};
+    if(/sticker|emoji/.test(p))return {maxDim:420,maxChars:90000,quality:.70,minDim:220,preserveAlpha:true};
+    if(/landingphoto|memoryboard|moment|message|image|photo/.test(p))return {maxDim:760,maxChars:115000,quality:.66,minDim:340};
+    return {maxDim:760,maxChars:135000,quality:.68,minDim:320};
+  }
+  async function bb380CompactTree(root){
+    const seen=new WeakSet();
+    const memo=new Map();
+    let changed=0;
+    async function walk(node,path){
+      if(!node || typeof node!=='object')return;
+      if(seen.has(node))return;
+      seen.add(node);
+      const entries=Array.isArray(node)?node.map((v,i)=>[i,v]):Object.entries(node);
+      for(const [key,value] of entries){
+        const nextPath=path?path+'.'+key:String(key);
+        if(bb380IsDataImage(value) && !bb380SkipImage(value)){
+          const opt=bb380OptionsForPath(nextPath,value);
+          if(value.length>opt.maxChars){
+            try{
+              let compact=memo.get(value);
+              if(!compact){
+                compact=await bb380CompactImage(value,opt);
+                memo.set(value,compact);
+              }
+              if(compact && compact.length<value.length){
+                node[key]=compact;
+                changed++;
+              }
+            }catch(e){}
+          }
+        }else if(value && typeof value==='object'){
+          await walk(value,nextPath);
+        }
+      }
+    }
+    await walk(root,'state');
+    return changed;
+  }
+  function bb380TrimChatCache(){
+    let removed=0;
+    const touched=new Set();
+    const trim=(arr)=>{
+      if(!Array.isArray(arr) || touched.has(arr))return;
+      touched.add(arr);
+      if(arr.length>CHAT_TRIM_TRIGGER){
+        removed+=arr.length-CHAT_KEEP_RECENT;
+        arr.splice(0,arr.length-CHAT_KEEP_RECENT);
+      }
+    };
+    trim(state.chatMessages);
+    if(state.chatRecords && typeof state.chatRecords==='object'){
+      Object.values(state.chatRecords).forEach(trim);
+    }
+    if(Array.isArray(state.chatOrder) && state.chatOrder.length>80){
+      state.chatOrder=state.chatOrder.slice(0,80);
+    }
+    return removed;
+  }
+  async function bb380CompactSeparateStorage(){
+    let changed=0;
+    async function compactArrayKey(key,opt){
+      let arr;
+      try{arr=JSON.parse(localStorage.getItem(key)||'[]');}catch(e){arr=[];}
+      if(!Array.isArray(arr))return;
+      let dirty=false;
+      for(let i=0;i<arr.length;i++){
+        const value=arr[i];
+        if(bb380IsDataImage(value) && !bb380SkipImage(value) && value.length>opt.maxChars){
+          try{
+            const out=await bb380CompactImage(value,opt);
+            if(out.length<value.length){arr[i]=out;dirty=true;changed++;}
+          }catch(e){}
+        }
+      }
+      if(dirty){try{localStorage.setItem(key,JSON.stringify(arr));}catch(e){}}
+    }
+    await compactArrayKey('memoryBoardImages',{maxDim:700,maxChars:105000,quality:.68,minDim:320});
+
+    try{
+      const avatar=localStorage.getItem('memoryCustomAvatar')||'';
+      if(bb380IsDataImage(avatar) && !bb380SkipImage(avatar) && avatar.length>76000){
+        const out=await bb380CompactImage(avatar,{maxDim:420,maxChars:76000,quality:.74,minDim:220});
+        if(out.length<avatar.length){localStorage.setItem('memoryCustomAvatar',out);changed++;}
+      }
+    }catch(e){}
+
+    try{
+      const key='baobao_moments_posts_v3';
+      const posts=JSON.parse(localStorage.getItem(key)||'[]');
+      if(Array.isArray(posts)){
+        let dirty=false;
+        for(const post of posts){
+          if(!post || !Array.isArray(post.images))continue;
+          for(let i=0;i<post.images.length;i++){
+            const value=post.images[i];
+            if(bb380IsDataImage(value) && !bb380SkipImage(value) && value.length>110000){
+              try{
+                const out=await bb380CompactImage(value,{maxDim:760,maxChars:105000,quality:.64,minDim:340});
+                if(out.length<value.length){post.images[i]=out;dirty=true;changed++;}
+              }catch(e){}
+            }
+          }
+        }
+        if(dirty)localStorage.setItem(key,JSON.stringify(posts));
+      }
+    }catch(e){}
+
+    try{
+      const key='baobaoVisionCacheV205';
+      const cache=JSON.parse(localStorage.getItem(key)||'{}')||{};
+      const entries=Object.entries(cache);
+      if(entries.length>60){
+        localStorage.setItem(key,JSON.stringify(Object.fromEntries(entries.slice(-60))));
+        changed++;
+      }
+    }catch(e){}
+
+    try{
+      const tails=[];
+      for(let i=0;i<localStorage.length;i++){
+        const key=localStorage.key(i);
+        if(key && key.indexOf('bb_reentry_tail_')===0)tails.push(key);
+      }
+      tails.sort().reverse().slice(2).forEach(key=>{localStorage.removeItem(key);changed++;});
+      localStorage.removeItem('baobao_manual_restore');
+    }catch(e){}
+    return changed;
+  }
+
+  async function bb380RunStorageCleanup(manual){
+    if(optimizing)return false;
+    if(!manual && state[OPTIMIZE_MARK])return true;
+    optimizing=true;
+    const before=bb380UsageChars();
+    try{
+      const imageChanges=await bb380CompactTree(state);
+      const removed=bb380TrimChatCache();
+      state[OPTIMIZE_MARK]=true;
+      const ok=typeof saveLocal==='function'?saveLocal():false;
+      if(!ok){
+        state[OPTIMIZE_MARK]=false;
+        if(typeof showToast==='function')showToast('存储整理失败，请先删除几张大图',true);
+        return false;
+      }
+      const externalChanges=await bb380CompactSeparateStorage();
+      const after=bb380UsageChars();
+      if(typeof renderWallpaper==='function')renderWallpaper();
+      if(typeof renderWeChatApp==='function')renderWeChatApp();
+      if(typeof applyChatBackground==='function')applyChatBackground();
+      if(typeof window.bbRenderChatLandingPhotos==='function')window.bbRenderChatLandingPhotos();
+      if(manual || imageChanges || removed || externalChanges){
+        const saved=Math.max(0,before-after);
+        if(typeof showToast==='function')showToast(saved>2000?'已整理存储，释放约 '+bb380FormatSize(saved):'图片和缓存已整理');
+      }
+      return true;
+    }catch(e){
+      console.warn('豹豹机存储整理未完成：',e);
+      if(typeof showToast==='function')showToast('存储整理未完成，稍后再试',true);
+      return false;
+    }finally{
+      optimizing=false;
+    }
+  }
+  window.bbRunStorageCleanup=bb380RunStorageCleanup;
+
+  async function bb380StaticSticker(file){
+    if(/^image\/gif$/i.test(file.type||'')){
+      if(file.size>650*1024)throw new Error('GIF_TOO_LARGE');
+      return bb380FileToDataURL(file);
+    }
+    return bb380CompactImage(file,{maxDim:420,maxChars:90000,quality:.70,minDim:220,preserveAlpha:true});
+  }
+  const stickerImport=async function(input){
+    const files=Array.from((input&&input.files)||[]);
+    if(!files.length)return;
+    let added=0,skipped=0;
+    for(const file of files){
+      try{
+        const url=await bb380StaticSticker(file);
+        const name=file.name.replace(/\.[^.]+$/,'')||('表情'+(state.stickers.length+1));
+        state.stickers.push({id:'sticker_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),url,name});
+        added++;
+      }catch(e){skipped++;}
+    }
+    if(input)input.value='';
+    if(typeof saveLocal==='function')saveLocal();
+    if(typeof renderStickerGrid==='function')renderStickerGrid();
+    if(typeof showToast==='function')showToast(skipped?'已导入 '+added+' 个，过大的 GIF 已跳过':'已导入 '+added+' 个表情',skipped&&!added);
+  };
+  window.stickerFilesChosen=stickerImport;
+  try{stickerFilesChosen=stickerImport;}catch(e){}
+
+  const iconImport=async function(input){
+    if(editingApp===null || !input || !input.files || !input.files[0])return;
+    try{
+      const data=await bb380CompactImage(input.files[0],{maxDim:260,maxChars:52000,quality:.74,minDim:140,preserveAlpha:true});
+      if(editingPage===2)state.page2Apps[editingApp].icon=data;
+      else state.page1Apps[editingApp].icon=data;
+      if(typeof saveLocal==='function')saveLocal();
+      if(typeof closePanel==='function')closePanel('iconEdit');
+      if(typeof renderPages==='function')renderPages();
+      input.value='';
+    }catch(e){if(typeof showToast==='function')showToast('图标图片读取失败',true);}
+  };
+  window.iconEditImageChosen=iconImport;
+  try{iconEditImageChosen=iconImport;}catch(e){}
+
+  const memoryPhotoImport=async function(input){
+    if(!input || !input.files || !input.files[0])return;
+    try{
+      const data=await bb380CompactImage(input.files[0],{maxDim:700,maxChars:105000,quality:.68,minDim:320});
+      const slots=document.querySelectorAll('.photo-slot');
+      if(slots[memoryPhotoIndex])slots[memoryPhotoIndex].innerHTML='<img src="'+data+'">';
+      if(typeof saveMemoryBoard==='function')saveMemoryBoard();
+      input.value='';
+    }catch(e){if(typeof showToast==='function')showToast('图片读取失败',true);}
+  };
+  window.memoryPhotoChosen=memoryPhotoImport;
+  try{memoryPhotoChosen=memoryPhotoImport;}catch(e){}
+
+  const memoryAvatarImport=async function(event){
+    const input=event&&event.target;
+    if(!input || !input.files || !input.files[0])return;
+    try{
+      const data=await bb380CompactImage(input.files[0],{maxDim:420,maxChars:76000,quality:.74,minDim:220});
+      localStorage.setItem('memoryCustomAvatar',data);
+      if(typeof renderMemoryAvatar==='function')renderMemoryAvatar();
+      input.value='';
+    }catch(e){if(typeof showToast==='function')showToast('头像读取失败',true);}
+  };
+  window.changeMemoryAvatar=memoryAvatarImport;
+  try{changeMemoryAvatar=memoryAvatarImport;}catch(e){}
+
+  const wechatAvatarImport=async function(input){
+    if(!input || !input.files || !input.files[0])return;
+    try{
+      const data=await bb380CompactImage(input.files[0],{maxDim:420,maxChars:78000,quality:.74,minDim:220});
+      const old=state.charAvatar;
+      state.charAvatar=data;
+      if(typeof renderWeChatApp==='function')renderWeChatApp();
+      if(typeof saveLocal==='function' && !saveLocal()){
+        state.charAvatar=old;
+        if(typeof renderWeChatApp==='function')renderWeChatApp();
+        if(typeof showToast==='function')showToast('存储空间不足，保留原头像',true);
+      }else if(typeof showToast==='function')showToast('头像已更换');
+      input.value='';
+    }catch(e){if(typeof showToast==='function')showToast('头像读取失败',true);}
+  };
+  window.wechatAvatarChosen=wechatAvatarImport;
+  try{wechatAvatarChosen=wechatAvatarImport;}catch(e){}
+
+  const archivePhotoImport=async function(input){
+    if(!input || !input.files || !input.files[0])return;
+    try{
+      const data=await bb380CompactImage(input.files[0],{maxDim:520,maxChars:90000,quality:.72,minDim:260});
+      archivePendingPhoto=data;
+      const box=document.getElementById('archivePhotoBox');
+      if(box)box.innerHTML='<img src="'+data+'">';
+      input.value='';
+    }catch(e){if(typeof showToast==='function')showToast('照片读取失败',true);}
+  };
+  window.archivePhotoChosen=archivePhotoImport;
+  try{archivePhotoChosen=archivePhotoImport;}catch(e){}
+
+  const landingImport=async function(input){
+    if(!input || !input.files || !input.files[0])return;
+    try{
+      if(!Array.isArray(state.chatLandingPhotos))state.chatLandingPhotos=['','',''];
+      const index=Number(window.__bbChatLandingPhotoIndex||0);
+      const data=await bb380CompactImage(input.files[0],{maxDim:760,maxChars:110000,quality:.66,minDim:340});
+      state.chatLandingPhotos[index]=data;
+      if(typeof saveLocal==='function')saveLocal();
+      if(typeof window.bbRenderChatLandingPhotos==='function')window.bbRenderChatLandingPhotos();
+      input.value='';
+    }catch(e){if(typeof showToast==='function')showToast('图片读取失败',true);}
+  };
+  window.bbHandleChatLandingPhoto=landingImport;
+
+  function bb380Start(){
+    setTimeout(()=>bb380RunStorageCleanup(false),1200);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bb380Start,{once:true});
+  else bb380Start();
+})();
