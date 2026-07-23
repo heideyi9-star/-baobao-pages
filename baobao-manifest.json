@@ -1,7 +1,7 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 386 · 桌面稳定全屏",
+  "description": "豹豹机 381 · 流畅稳定与图片压缩",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

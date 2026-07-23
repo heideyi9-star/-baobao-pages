@@ -1862,40 +1862,33 @@ function renderProfile(){
 
 // ===== 手机 / 全屏模式 =====
 function phoneMode(){
-  // 382：已取消“小手机机身”，旧入口也统一进入真全屏。
-  fullMode();
+  localStorage.setItem("screenMode","phone");
+  document.body.classList.remove("fullscreen-mode");
+  const phone = document.querySelector(".phone");
+  phone.style.width = "390px";
+  phone.style.height = "844px";
+  localStorage.setItem("screenMode","phone");
+  phone.style.border = "10px solid #111";
+  phone.style.borderRadius = "55px";
 }
 function fullMode(){
-  try{ localStorage.setItem("screenMode","full"); }catch(error){}
-  document.body.classList.add("fullscreen-mode","bb-true-fullscreen-v386");
+  localStorage.setItem("screenMode","full");
+  document.body.classList.add("fullscreen-mode");
   const phone = document.querySelector(".phone");
-  if(phone){
-    phone.style.setProperty("position","fixed","important");
-    phone.style.setProperty("inset","0","important");
-    phone.style.setProperty("width","100vw","important");
-    phone.style.setProperty("height","100vh","important");
-    phone.style.setProperty("max-width","none","important");
-    phone.style.setProperty("max-height","none","important");
-    phone.style.setProperty("border","0","important");
-    phone.style.setProperty("border-radius","0","important");
-    phone.style.setProperty("box-shadow","none","important");
-    phone.style.setProperty("margin","0","important");
-    phone.style.setProperty("transform","none","important");
-  }
-  const fakeStatus=document.getElementById("miniPhoneStatusbar");
-  if(fakeStatus) fakeStatus.style.setProperty("display","none","important");
-  const island=document.querySelector(".dynamic");
-  if(island) island.style.setProperty("display","none","important");
+  phone.style.width = "100vw";
+  phone.style.height = "100dvh";
+  localStorage.setItem("screenMode","full");
+  phone.style.border = "0";
+  phone.style.borderRadius = "0";
 }
 
-// 设置页里的“整屏显示”固定为开启。
+// 设置页里的"整屏显示"开关
 function onFullScreenToggle(checkbox){
-  fullMode();
-  if(checkbox){ checkbox.checked=true; checkbox.disabled=true; }
+  if(checkbox.checked){ fullMode(); } else { phoneMode(); }
 }
 function syncFullScreenToggle(){
   const t = $("fullScreenToggle");
-  if(t){ t.checked=true; t.disabled=true; }
+  if(t) t.checked = document.body.classList.contains("fullscreen-mode");
 }
 
 // 设置页搜索框：按行标题过滤分组列表
@@ -2981,8 +2974,15 @@ function openImagePromptEdit(){
 
 // ===== 初始化 =====
 function restoreScreenMode(){
-  // 382：每次启动都直接铺满真实视口。
-  fullMode();
+  const mode = localStorage.getItem("screenMode");
+  if(mode === "full"){
+    document.body.classList.add("fullscreen-mode");
+    const phone = document.querySelector(".phone");
+    phone.style.width = "100vw";
+    phone.style.height = "100dvh";
+    phone.style.border = "0";
+    phone.style.borderRadius = "0";
+  }
   syncFullScreenToggle();
 }
 
@@ -41618,7 +41618,7 @@ window.updateArchiveChatStyleHintV324=function(){
       item.style.setProperty('height','96px','important');
       item.style.setProperty('min-height','96px','important');
       item.style.setProperty('transform','none','important');
-      item.style.setProperty('pointer-events','auto','important');
+      item.style.setProperty('pointer-events','none','important');
     });
     if(dock){
       dock.style.setProperty('position','absolute','important');
@@ -41683,14 +41683,17 @@ window.updateArchiveChatStyleHintV324=function(){
       new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
     });
     var desktop=document.getElementById('desktop');
-    /* 386：桌面布局只初始化一次，不再监听自身 style/class 形成重排循环。 */
-    if(desktop&&!desktop.__bbV344Observer) desktop.__bbV344Observer=true;
+    if(desktop&&!desktop.__bbV344Observer){
+      desktop.__bbV344Observer=new MutationObserver(schedule);
+      desktop.__bbV344Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    }
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
-  window.addEventListener('load',install,{once:true});
-  window.addEventListener('pageshow',function(){setTimeout(syncPanelState,0)});
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',function(){setTimeout(install,0)});
+  [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms);});
 })();
 
 
@@ -41771,12 +41774,16 @@ window.updateArchiveChatStyleHintV324=function(){
   function install(){
     enforce();
     var desktop=document.getElementById('desktop');
-    /* 386：不再监听 style/class 后反复 setProperty，避免无限重排和弹动。 */
-    if(desktop&&!desktop.__bbV352DockObserver) desktop.__bbV352DockObserver=true;
+    if(desktop&&!desktop.__bbV352DockObserver){
+      desktop.__bbV352DockObserver=new MutationObserver(schedule);
+      desktop.__bbV352DockObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
+    }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
-  window.addEventListener('load',install,{once:true});
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',install);
+  [0,80,250,700,1500,3200,6000].forEach(function(ms){setTimeout(install,ms);});
 })();
 
 /* =========================================================
@@ -41934,8 +41941,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function desktopIsHome(){
     const desktop=document.getElementById("desktop");
-    /* 386：只看真正打开的功能页；全屏 .phone 外壳不再误判成遮罩。 */
-    return !!desktop && visible(desktop) && !explicitBlockerVisible();
+    return !!desktop && visible(desktop) && !explicitBlockerVisible() && !genericFullscreenBlocker();
   }
 
   function clearBlackSquareState(){
@@ -42011,15 +42017,24 @@ window.updateArchiveChatStyleHintV324=function(){
       document.addEventListener("pointerup",schedule,true);
     }
 
-    /* 386：取消全页面属性监听，防止任何 style 变化都触发桌面重新计算。 */
-    if(!document.body.__bbV354Observer) document.body.__bbV354Observer=true;
+    if(!document.body.__bbV354Observer){
+      document.body.__bbV354Observer=new MutationObserver(schedule);
+      document.body.__bbV354Observer.observe(document.body,{
+        childList:true,
+        subtree:true,
+        attributes:true,
+        attributeFilter:["class","style","hidden"]
+      });
+    }
     sync();
   }
 
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
   else install();
-  window.addEventListener("load",install,{once:true});
-  window.addEventListener("pageshow",()=>setTimeout(sync,0));
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  window.addEventListener("resize",schedule);
+  [0,80,240,600,1200,2500,5000].forEach(ms=>setTimeout(install,ms));
 })();
 
 
@@ -42830,4 +42845,4 @@ window.updateArchiveChatStyleHintV324=function(){
 })();
 
 
-console.log("豹豹机 387：气泡表情扩充已启用，新增 🐶、🐱、💋、🤭、🤣、🔥 等回应");
+console.log("豹豹机 388：已回退到 381 稳定布局，并保留扩充气泡表情");

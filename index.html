@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=387">
+<link rel="manifest" href="./baobao-manifest.json?v=388">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=387",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=388",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -39,10 +39,8 @@
 <meta name="theme-color" content="#f7f7f7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<title>豹豹机4.9 · 387 气泡表情扩充版</title>
+<title>豹豹机4.9 · 388 稳定回退·表情扩充版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -166,7 +164,7 @@ html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row
 html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=387"></script>
+<script defer src="./app.js?v=388"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -407,193 +405,6 @@ html body #desktop .dock>.dock-icon::after{
 #bbTimestampMask,#bbBlacklistMask{z-index:6265!important;pointer-events:auto!important;}
 #innerVoiceOverlay,#msgEditOverlay{z-index:6270!important;pointer-events:auto!important;}
 </style>
-
-<style id="bb-true-fullscreen-v382">
-/* 豹豹机 382：彻底移除“小手机机身”，页面直接铺满真实视口。 */
-html,
-body{
-  width:100%!important;
-  height:100%!important;
-  min-width:100%!important;
-  min-height:100%!important;
-  margin:0!important;
-  padding:0!important;
-  overflow:hidden!important;
-  background:#f7f7f7!important;
-}
-body{
-  position:fixed!important;
-  inset:0!important;
-  display:block!important;
-  align-items:initial!important;
-  justify-content:initial!important;
-  touch-action:manipulation!important;
-}
-html body .phone{
-  position:fixed!important;
-  inset:0!important;
-  left:0!important;
-  top:0!important;
-  right:0!important;
-  bottom:0!important;
-  width:100vw!important;
-  width:100vw!important;
-  height:100vh!important;
-  height:100vh!important;
-  min-width:100vw!important;
-  min-height:100vh!important;
-  max-width:none!important;
-  max-height:none!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  outline:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  overflow:hidden!important;
-  background:#f7f7f7!important;
-  transform:none!important;
-}
-html body .phone > .screen,
-html body .phone .screen{
-  inset:0!important;
-  width:100%!important;
-  height:100%!important;
-  border-radius:0!important;
-}
-/* 不再模拟第二套状态栏和灵动岛，直接使用手机真实状态栏。 */
-html body .phone > .mini-phone-statusbar,
-html body .phone #miniPhoneStatusbar,
-html body .phone .dynamic{
-  display:none!important;
-  visibility:hidden!important;
-  opacity:0!important;
-  pointer-events:none!important;
-}
-/* 所有全屏应用层也贴紧真实屏幕，不能再出现内层圆角小手机。 */
-html body .phone > [data-bb-fullscreen],
-html body .phone > .chat-demo,
-html body .phone > #chatDemo,
-html body .phone > #chatRoom,
-html body .phone > #settings,
-html body .phone > #beauty,
-html body .phone > #musicApp{
-  max-width:none!important;
-  max-height:none!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-}
-
-</style>
-
-
-<style id="bb-fullscreen-stable-fix-v385">
-/* 385：保留全屏外壳，但不再碰真实状态栏层，也不拦截桌面按钮。 */
-html,body{
-  background:#f7f7f7!important;
-  color-scheme:light!important;
-}
-html body .phone{
-  background:#f7f7f7!important;
-}
-html body #desktop{
-  pointer-events:auto!important;
-}
-html body #desktop .desk-scroll,
-html body #desktop .pages-viewport,
-html body #desktop .pages-container,
-html body #desktop .apps-page{
-  pointer-events:auto!important;
-}
-html body #desktop .apps-page>.app,
-html body #desktop .apps-page>.app *,
-html body #desktop>.dock,
-html body #desktop>.dock *{
-  pointer-events:auto!important;
-}
-/* 底栏固定在可视区域内，但不改图标 transform，避免点击位置错位。 */
-html body #desktop>.dock{
-  position:absolute!important;
-  left:12px!important;
-  right:12px!important;
-  top:auto!important;
-  bottom:calc(6px + env(safe-area-inset-bottom,0px))!important;
-  width:auto!important;
-  height:92px!important;
-  margin:0!important;
-  display:flex!important;
-  visibility:visible!important;
-  opacity:1!important;
-  align-items:center!important;
-  justify-content:space-around!important;
-  z-index:480!important;
-}
-/* 防止桌面本身做过渡时出现一弹一弹；不覆盖图标的定位 transform。 */
-html body #desktop,
-html body #desktop .desk-scroll,
-html body #desktop .pages-viewport,
-html body #desktop .pages-container{
-  animation:none!important;
-  transition:none!important;
-}
-</style>
-
-
-<style id="bb-desktop-stable-v386">
-/* 386：停止首页图标、页面容器和底栏的动画/过渡，避免一弹一弹。 */
-html body #desktop,
-html body #desktop .desk-scroll,
-html body #desktop .pages-viewport,
-html body #desktop .pages-container,
-html body #desktop .apps-page,
-html body #desktop .apps-page > .app,
-html body #desktop .apps-page > .app .icon,
-html body #desktop > .dock,
-html body #desktop > .dock .dock-icon{
-  animation:none!important;
-  transition:none!important;
-}
-
-/* 桌面显示时，底栏固定在真实屏幕安全区内。 */
-html body:not(.bb-hide-home-dock-v354) #desktop > .dock{
-  position:fixed!important;
-  left:12px!important;
-  right:12px!important;
-  top:auto!important;
-  bottom:calc(6px + env(safe-area-inset-bottom, 0px))!important;
-  width:auto!important;
-  height:92px!important;
-  min-height:92px!important;
-  max-height:92px!important;
-  margin:0!important;
-  display:flex!important;
-  visibility:visible!important;
-  opacity:1!important;
-  align-items:center!important;
-  justify-content:space-around!important;
-  transform:none!important;
-  pointer-events:auto!important;
-  z-index:700!important;
-}
-html body:not(.bb-hide-home-dock-v354) #desktop > .dock > .dock-icon{
-  pointer-events:auto!important;
-  transform:none!important;
-}
-
-/* 打开聊天、设置、音乐等页面时再隐藏底栏，避免挡住按钮。 */
-html body.bb-hide-home-dock-v354 #desktop > .dock{
-  display:none!important;
-  visibility:hidden!important;
-  opacity:0!important;
-  pointer-events:none!important;
-}
-
-/* 底栏留出空间，桌面内容不会压到它下面。 */
-html body #desktop .desk-scroll{
-  padding-bottom:calc(112px + env(safe-area-inset-bottom, 0px))!important;
-}
-</style>
-
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
@@ -2490,12 +2301,23 @@ API Key<br>
 
   function install(){
     enforce();
-    /* 386：尺寸由 CSS 固定，不再监听桌面 DOM 后反复改写，避免图标弹动。 */
+    const pages=document.getElementById('pagesContainer');
+    if(pages&&!pages.__bbV357Observer){
+      pages.__bbV357Observer=new MutationObserver(schedule);
+      pages.__bbV357Observer.observe(pages,{childList:true,subtree:true});
+    }
+    const desktop=document.getElementById('desktop');
+    if(desktop&&!desktop.__bbV357DesktopObserver){
+      desktop.__bbV357DesktopObserver=new MutationObserver(schedule);
+      desktop.__bbV357DesktopObserver.observe(desktop,{childList:true,subtree:true});
+    }
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
-  window.addEventListener('load',install,{once:true});
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',install);
+  [0,180,900].forEach(ms=>setTimeout(install,ms));
 })();
 </script>
 
@@ -2631,39 +2453,6 @@ API Key<br>
 })();
 </script>
 
-
-<script id="bb-true-fullscreen-v386-script">
-(function(){
-  "use strict";
-  function applyOnce(){
-    try{ localStorage.setItem("screenMode","full"); }catch(error){}
-    var body=document.body;
-    if(body) body.classList.add("fullscreen-mode","bb-true-fullscreen-v386");
-    var phone=document.querySelector(".phone");
-    if(phone){
-      phone.style.setProperty("position","fixed","important");
-      phone.style.setProperty("inset","0","important");
-      phone.style.setProperty("width","100%","important");
-      phone.style.setProperty("height","100vh","important");
-      phone.style.setProperty("max-width","none","important");
-      phone.style.setProperty("max-height","none","important");
-      phone.style.setProperty("border","0","important");
-      phone.style.setProperty("border-radius","0","important");
-      phone.style.setProperty("box-shadow","none","important");
-      phone.style.setProperty("margin","0","important");
-      phone.style.setProperty("transform","none","important");
-    }
-    var fakeStatus=document.getElementById("miniPhoneStatusbar");
-    if(fakeStatus) fakeStatus.style.setProperty("display","none","important");
-    var island=document.querySelector(".dynamic");
-    if(island) island.style.setProperty("display","none","important");
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',applyOnce,{once:true});
-  else applyOnce();
-})();
-</script>
-
-<!-- index(387)：扩充角色气泡上标表情，新增小狗、小猫、亲亲、害羞、疑问、生气等更多回应。 -->
 </body>
 </html>
 
