@@ -1813,6 +1813,233 @@ API Key<br>
 
 <!-- index(315)：人设读取强化；每轮先从完整人物资料提取相关锚点，涉及角色生活、经历、习惯、偏好与关系时必须自然调用具体内容，不再只模仿语气。 -->
 <!-- index(316)：AI 生图新增“读取当前角色人设外貌”，可按角色外貌与气质自动生成头像、自拍、全身图和生活照。 -->
+
+<script>
+/* baobao-v357-desktop-icon-fit-and-fill */
+(function(){
+  "use strict";
+  if(window.__bbV357DesktopIconFit)return;
+  window.__bbV357DesktopIconFit=true;
+
+  const STYLE_ID='bbV357DesktopIconFitStyle';
+  let busy=false;
+
+  function ensureStyle(){
+    let style=document.getElementById(STYLE_ID);
+    if(!style){
+      style=document.createElement('style');
+      style.id=STYLE_ID;
+    }
+    style.textContent=`
+      html body #desktop .apps-page>.app{
+        display:flex!important;
+        flex-direction:column!important;
+        align-items:center!important;
+        justify-content:flex-start!important;
+        height:110px!important;
+        min-height:110px!important;
+      }
+      html body #desktop .apps-page>.app .icon{
+        width:68px!important;
+        height:68px!important;
+        margin:0 auto 9px!important;
+        border-radius:18px!important;
+        overflow:hidden!important;
+        display:flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        flex:0 0 auto!important;
+      }
+      html body #desktop .apps-page>.app .icon>img{
+        width:118%!important;
+        height:118%!important;
+        object-fit:contain!important;
+        object-position:center!important;
+        display:block!important;
+        transform:scale(1.06)!important;
+      }
+      html body #desktop .apps-page>.app .icon>svg{
+        width:82%!important;
+        height:82%!important;
+        display:block!important;
+      }
+      html body #desktop .apps-page>.app{
+        font-size:15px!important;
+        line-height:1.15!important;
+      }
+      html body #desktop:not(.page-two-mode) .apps-page{
+        grid-template-rows:repeat(2,110px)!important;
+        column-gap:6px!important;
+        row-gap:20px!important;
+        padding:44px 16px 0!important;
+      }
+      html body #desktop.page-two-mode .apps-page,
+      html body #desktop .apps-page.page2-only{
+        column-gap:6px!important;
+        row-gap:20px!important;
+        padding-left:16px!important;
+        padding-right:16px!important;
+      }
+      html body #desktop .dock>.dock-icon{
+        width:68px!important;
+        min-width:68px!important;
+        height:76px!important;
+        display:flex!important;
+        flex-direction:column!important;
+        align-items:center!important;
+        justify-content:flex-start!important;
+      }
+      html body #desktop .dock .dock-symbol{
+        width:52px!important;
+        height:52px!important;
+        border-radius:16px!important;
+        overflow:hidden!important;
+        display:flex!important;
+        align-items:center!important;
+        justify-content:center!important;
+        flex:0 0 auto!important;
+      }
+      html body #desktop .dock .dock-symbol>img{
+        width:118%!important;
+        height:118%!important;
+        object-fit:contain!important;
+        object-position:center!important;
+        display:block!important;
+        transform:scale(1.06)!important;
+      }
+      html body #desktop .dock .dock-symbol>svg{
+        width:82%!important;
+        height:82%!important;
+        display:block!important;
+      }
+      html body #desktop .dock small{
+        margin-top:7px!important;
+        font-size:14px!important;
+        line-height:1.08!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function tuneAppIcon(app){
+    if(!app)return;
+    app.style.setProperty('height','110px','important');
+    app.style.setProperty('min-height','110px','important');
+    app.style.setProperty('justify-content','flex-start','important');
+    const icon=app.querySelector('.icon');
+    if(icon){
+      icon.style.setProperty('width','68px','important');
+      icon.style.setProperty('height','68px','important');
+      icon.style.setProperty('margin','0 auto 9px','important');
+      icon.style.setProperty('border-radius','18px','important');
+      icon.style.setProperty('overflow','hidden','important');
+      icon.style.setProperty('display','flex','important');
+      icon.style.setProperty('align-items','center','important');
+      icon.style.setProperty('justify-content','center','important');
+      const img=icon.querySelector('img');
+      if(img){
+        img.style.setProperty('width','118%','important');
+        img.style.setProperty('height','118%','important');
+        img.style.setProperty('object-fit','contain','important');
+        img.style.setProperty('object-position','center','important');
+        img.style.setProperty('display','block','important');
+        img.style.setProperty('transform','scale(1.06)','important');
+      }
+      const svg=icon.querySelector('svg');
+      if(svg){
+        svg.style.setProperty('width','82%','important');
+        svg.style.setProperty('height','82%','important');
+        svg.style.setProperty('display','block','important');
+      }
+    }
+  }
+
+  function tuneDockIcon(item){
+    if(!item)return;
+    item.style.setProperty('width','68px','important');
+    item.style.setProperty('min-width','68px','important');
+    item.style.setProperty('height','76px','important');
+    item.style.setProperty('display','flex','important');
+    item.style.setProperty('flex-direction','column','important');
+    item.style.setProperty('align-items','center','important');
+    item.style.setProperty('justify-content','flex-start','important');
+    const box=item.querySelector('.dock-symbol');
+    if(box){
+      box.style.setProperty('width','52px','important');
+      box.style.setProperty('height','52px','important');
+      box.style.setProperty('border-radius','16px','important');
+      box.style.setProperty('overflow','hidden','important');
+      box.style.setProperty('display','flex','important');
+      box.style.setProperty('align-items','center','important');
+      box.style.setProperty('justify-content','center','important');
+      const img=box.querySelector('img');
+      if(img){
+        img.style.setProperty('width','118%','important');
+        img.style.setProperty('height','118%','important');
+        img.style.setProperty('object-fit','contain','important');
+        img.style.setProperty('object-position','center','important');
+        img.style.setProperty('display','block','important');
+        img.style.setProperty('transform','scale(1.06)','important');
+      }
+      const svg=box.querySelector('svg');
+      if(svg){
+        svg.style.setProperty('width','82%','important');
+        svg.style.setProperty('height','82%','important');
+        svg.style.setProperty('display','block','important');
+      }
+    }
+    const small=item.querySelector('small');
+    if(small){
+      small.style.setProperty('margin-top','7px','important');
+      small.style.setProperty('font-size','14px','important');
+      small.style.setProperty('line-height','1.08','important');
+    }
+  }
+
+  function enforce(){
+    ensureStyle();
+    const desktop=document.getElementById('desktop');
+    if(!desktop)return;
+    desktop.querySelectorAll('.apps-page').forEach(page=>{
+      page.style.setProperty('column-gap','6px','important');
+      page.style.setProperty('row-gap','20px','important');
+      page.style.setProperty('padding-left','16px','important');
+      page.style.setProperty('padding-right','16px','important');
+      if(!desktop.classList.contains('page-two-mode')&&!page.classList.contains('page2-only')){
+        page.style.setProperty('padding-top','44px','important');
+      }
+    });
+    desktop.querySelectorAll('.apps-page>.app').forEach(tuneAppIcon);
+    desktop.querySelectorAll('.dock>.dock-icon').forEach(tuneDockIcon);
+  }
+
+  function schedule(){
+    if(busy)return;
+    busy=true;
+    requestAnimationFrame(()=>{busy=false;enforce();});
+  }
+
+  function install(){
+    enforce();
+    const pages=document.getElementById('pagesContainer');
+    if(pages&&!pages.__bbV357Observer){
+      pages.__bbV357Observer=new MutationObserver(schedule);
+      pages.__bbV357Observer.observe(pages,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    }
+    const desktop=document.getElementById('desktop');
+    if(desktop&&!desktop.__bbV357DesktopObserver){
+      desktop.__bbV357DesktopObserver=new MutationObserver(schedule);
+      desktop.__bbV357DesktopObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install);
+  window.addEventListener('pageshow',install);
+  [0,80,260,700,1600,3000,5200].forEach(ms=>setTimeout(install,ms));
+})();
+</script>
 </body>
 </html>
 
