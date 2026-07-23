@@ -1,10 +1,10 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 384 · 状态栏沉浸全屏、桌面稳定与底栏修复",
+  "description": "豹豹机 382 · 真全屏模式",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#f7f7f7",
   "theme_color": "#f7f7f7",

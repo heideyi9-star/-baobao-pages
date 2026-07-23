@@ -1862,33 +1862,40 @@ function renderProfile(){
 
 // ===== 手机 / 全屏模式 =====
 function phoneMode(){
-  localStorage.setItem("screenMode","phone");
-  document.body.classList.remove("fullscreen-mode");
-  const phone = document.querySelector(".phone");
-  phone.style.width = "390px";
-  phone.style.height = "844px";
-  localStorage.setItem("screenMode","phone");
-  phone.style.border = "10px solid #111";
-  phone.style.borderRadius = "55px";
+  // 382：已取消“小手机机身”，旧入口也统一进入真全屏。
+  fullMode();
 }
 function fullMode(){
-  localStorage.setItem("screenMode","full");
-  document.body.classList.add("fullscreen-mode");
+  try{ localStorage.setItem("screenMode","full"); }catch(error){}
+  document.body.classList.add("fullscreen-mode","bb-true-fullscreen-v382");
   const phone = document.querySelector(".phone");
-  phone.style.width = "100vw";
-  phone.style.height = "100dvh";
-  localStorage.setItem("screenMode","full");
-  phone.style.border = "0";
-  phone.style.borderRadius = "0";
+  if(phone){
+    phone.style.setProperty("position","fixed","important");
+    phone.style.setProperty("inset","0","important");
+    phone.style.setProperty("width","100dvw","important");
+    phone.style.setProperty("height","100dvh","important");
+    phone.style.setProperty("max-width","none","important");
+    phone.style.setProperty("max-height","none","important");
+    phone.style.setProperty("border","0","important");
+    phone.style.setProperty("border-radius","0","important");
+    phone.style.setProperty("box-shadow","none","important");
+    phone.style.setProperty("margin","0","important");
+    phone.style.setProperty("transform","none","important");
+  }
+  const fakeStatus=document.getElementById("miniPhoneStatusbar");
+  if(fakeStatus) fakeStatus.style.setProperty("display","none","important");
+  const island=document.querySelector(".dynamic");
+  if(island) island.style.setProperty("display","none","important");
 }
 
-// 设置页里的"整屏显示"开关
+// 设置页里的“整屏显示”固定为开启。
 function onFullScreenToggle(checkbox){
-  if(checkbox.checked){ fullMode(); } else { phoneMode(); }
+  fullMode();
+  if(checkbox){ checkbox.checked=true; checkbox.disabled=true; }
 }
 function syncFullScreenToggle(){
   const t = $("fullScreenToggle");
-  if(t) t.checked = document.body.classList.contains("fullscreen-mode");
+  if(t){ t.checked=true; t.disabled=true; }
 }
 
 // 设置页搜索框：按行标题过滤分组列表
@@ -2974,15 +2981,8 @@ function openImagePromptEdit(){
 
 // ===== 初始化 =====
 function restoreScreenMode(){
-  const mode = localStorage.getItem("screenMode");
-  if(mode === "full"){
-    document.body.classList.add("fullscreen-mode");
-    const phone = document.querySelector(".phone");
-    phone.style.width = "100vw";
-    phone.style.height = "100dvh";
-    phone.style.border = "0";
-    phone.style.borderRadius = "0";
-  }
+  // 382：每次启动都直接铺满真实视口。
+  fullMode();
   syncFullScreenToggle();
 }
 
