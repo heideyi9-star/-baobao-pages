@@ -41598,3 +41598,254 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener('pageshow',install);
   [0,80,250,700,1500,3200,6000].forEach(function(ms){setTimeout(install,ms);});
 })();
+
+/* =========================================================
+   baobao-v353-global-dock-visibility-and-touch-fix
+   底栏只在桌面显示；锁屏、聊天、查手机、音乐、设置/美化等全屏页隐藏。
+   隐藏时彻底关闭 pointer-events，避免挡住设置/音乐点击。
+   同时继续清除 iOS 长按/点击残留黑色方块。
+   ========================================================= */
+(function(){
+  "use strict";
+  if(window.__bbV353GlobalDockFix)return;
+  window.__bbV353GlobalDockFix=true;
+
+  const STYLE_ID="bbV353GlobalDockFixStyle";
+  const HIDE_CLASS="bb-hide-home-dock-v353";
+  let scheduled=false;
+
+  function injectStyle(){
+    let style=document.getElementById(STYLE_ID);
+    if(!style){
+      style=document.createElement("style");
+      style.id=STYLE_ID;
+    }
+    style.textContent=`
+      /* 非桌面页面：底栏既不可见，也绝不拦截点击。 */
+      html body.${HIDE_CLASS} #desktop > .dock,
+      html body.${HIDE_CLASS} #desktop .dock{
+        display:none!important;
+        opacity:0!important;
+        visibility:hidden!important;
+        pointer-events:none!important;
+        transform:translateY(120%)!important;
+      }
+
+      /* 全屏功能页拥有自己的点击层，不能被桌面盖住。 */
+      html body .panel.ios-settings,
+      html body #subjectsPanel,
+      html body #chatDemo,
+      html body #bbMusicApp,
+      html body #bbMusicComplete239,
+      html body #wechatProfileEditor{
+        pointer-events:auto!important;
+      }
+      html body .panel.ios-settings{z-index:1200!important;background-color:#f4f4f7!important;}
+      html body #subjectsPanel{z-index:1200!important;}
+      html body #chatDemo{z-index:1200!important;}
+      html body #bbMusicApp.show,
+      html body #bbMusicComplete239.show{z-index:1200!important;}
+      html body #lock:not(.hidden){z-index:1500!important;}
+      html body #passcodeOverlay.show{z-index:1700!important;pointer-events:auto!important;}
+
+      /* iOS：去掉图标按压黑块、系统高亮和图片拖拽预览。 */
+      html body #desktop .apps-page > .app,
+      html body #desktop .apps-page > .app:active,
+      html body #desktop .apps-page > .app:focus,
+      html body #desktop .apps-page > .app:focus-visible,
+      html body #desktop .dock > .dock-icon,
+      html body #desktop .dock > .dock-icon:active,
+      html body #desktop .dock > .dock-icon:focus{
+        background:transparent!important;
+        box-shadow:none!important;
+        filter:none!important;
+        outline:none!important;
+        -webkit-tap-highlight-color:transparent!important;
+        -webkit-touch-callout:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        -webkit-user-drag:none!important;
+        touch-action:manipulation!important;
+      }
+      html body #desktop .apps-page > .app::before,
+      html body #desktop .apps-page > .app::after,
+      html body #desktop .dock > .dock-icon::before,
+      html body #desktop .dock > .dock-icon::after{
+        content:none!important;
+        display:none!important;
+        background:transparent!important;
+        box-shadow:none!important;
+      }
+      html body #desktop .apps-page > .app img,
+      html body #desktop .apps-page > .app svg,
+      html body #desktop .apps-page > .app .icon,
+      html body #desktop .apps-page > .app .icon *,
+      html body #desktop .dock img,
+      html body #desktop .dock svg,
+      html body #desktop .dock .dock-symbol,
+      html body #desktop .dock .dock-symbol *{
+        -webkit-touch-callout:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        -webkit-user-drag:none!important;
+        -webkit-tap-highlight-color:transparent!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function visible(el){
+    if(!el || !el.isConnected)return false;
+    if(el.hidden)return false;
+    if(el.classList && el.classList.contains("hidden"))return false;
+    const cs=getComputedStyle(el);
+    if(cs.display==="none" || cs.visibility==="hidden" || Number(cs.opacity||1)===0)return false;
+    const rect=el.getBoundingClientRect();
+    return rect.width>2 && rect.height>2;
+  }
+
+  function explicitBlockerVisible(){
+    const lock=document.getElementById("lock");
+    if(visible(lock))return true;
+    const passcode=document.getElementById("passcodeOverlay");
+    if(passcode && passcode.classList.contains("show") && visible(passcode))return true;
+
+    const selectors=[
+      ".panel",
+      "#subjectsPanel",
+      "#chatDemo",
+      "#bbMusicApp.show",
+      "#bbMusicComplete239.show",
+      "#wechatProfileEditor.show",
+      ".subjects-panel",
+      ".chat-demo",
+      ".wechat-profile-editor.show",
+      ".sms-app.show",
+      ".bb-offline-mode.show",
+      "[data-bb-fullscreen].show"
+    ];
+    for(const selector of selectors){
+      for(const el of document.querySelectorAll(selector)){
+        if(visible(el))return true;
+      }
+    }
+    return false;
+  }
+
+  function genericFullscreenBlocker(){
+    const vw=Math.max(1,window.innerWidth||document.documentElement.clientWidth||1);
+    const vh=Math.max(1,window.innerHeight||document.documentElement.clientHeight||1);
+    const desktop=document.getElementById("desktop");
+    const excluded=new Set([
+      "miniPhoneStatusbar","baobaoMessageBanner","baobaoMessageBannerCount"
+    ]);
+    for(const el of document.body.children){
+      if(el===desktop || el.id==="miniPhoneStatusbar" || excluded.has(el.id))continue;
+      if(!visible(el))continue;
+      const cs=getComputedStyle(el);
+      if(cs.position!=="fixed" && cs.position!=="absolute")continue;
+      const rect=el.getBoundingClientRect();
+      const large=rect.width>=vw*.72 && rect.height>=vh*.68;
+      const zi=parseInt(cs.zIndex,10);
+      if(large && (Number.isFinite(zi)?zi>=20:true))return true;
+    }
+    return false;
+  }
+
+  function desktopIsHome(){
+    const desktop=document.getElementById("desktop");
+    return !!desktop && visible(desktop) && !explicitBlockerVisible() && !genericFullscreenBlocker();
+  }
+
+  function clearBlackSquareState(){
+    document.querySelectorAll(
+      "#desktop .apps-page > .app, #desktop .dock > .dock-icon"
+    ).forEach(el=>{
+      el.setAttribute("draggable","false");
+      el.classList.remove("bb-v300-pressing","bb-v302-pressing","pressed","pressing","active-press");
+      el.style.removeProperty("background");
+      el.style.removeProperty("box-shadow");
+      el.style.removeProperty("filter");
+      try{el.blur();}catch(error){}
+      el.querySelectorAll("img,svg,.icon,.dock-symbol,.icon *,.dock-symbol *").forEach(node=>{
+        try{node.setAttribute("draggable","false");}catch(error){}
+      });
+    });
+  }
+
+  function sync(){
+    injectStyle();
+    const show=desktopIsHome();
+    document.body.classList.toggle(HIDE_CLASS,!show);
+    clearBlackSquareState();
+  }
+
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(()=>{
+      scheduled=false;
+      sync();
+    });
+  }
+
+  function blockNativeGhost(event){
+    const target=event.target && event.target.closest
+      ? event.target.closest("#desktop .apps-page > .app, #desktop .dock > .dock-icon")
+      : null;
+    if(!target)return;
+    event.preventDefault();
+  }
+
+  function wrap(name){
+    const old=window[name];
+    if(typeof old!=="function" || old.__bbV353DockWrap)return;
+    const wrapped=function(){
+      const result=old.apply(this,arguments);
+      schedule();
+      setTimeout(schedule,0);
+      setTimeout(schedule,80);
+      return result;
+    };
+    wrapped.__bbV353DockWrap=true;
+    window[name]=wrapped;
+    try{eval(name+"=wrapped")}catch(error){}
+  }
+
+  function install(){
+    injectStyle();
+    [
+      "openPanel","closePanel","openSubjectsPanel","closeSubjectsPanel",
+      "openBaobaoMusicApp","closeBaobaoMusicApp","openSmsApp",
+      "openWechatProfileEditor","closeWechatProfileEditor","goToPage",
+      "showPasscodePad","hidePasscodePad"
+    ].forEach(wrap);
+
+    if(!document.__bbV353GhostBlock){
+      document.__bbV353GhostBlock=true;
+      document.addEventListener("dragstart",blockNativeGhost,true);
+      document.addEventListener("selectstart",blockNativeGhost,true);
+      document.addEventListener("contextmenu",blockNativeGhost,true);
+      document.addEventListener("click",schedule,true);
+      document.addEventListener("pointerup",schedule,true);
+    }
+
+    if(!document.body.__bbV353Observer){
+      document.body.__bbV353Observer=new MutationObserver(schedule);
+      document.body.__bbV353Observer.observe(document.body,{
+        childList:true,
+        subtree:true,
+        attributes:true,
+        attributeFilter:["class","style","hidden"]
+      });
+    }
+    sync();
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",()=>setTimeout(install,0));
+  window.addEventListener("resize",schedule);
+  [0,80,240,600,1200,2500,5000].forEach(ms=>setTimeout(install,ms));
+})();
