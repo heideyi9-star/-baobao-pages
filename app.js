@@ -41429,7 +41429,7 @@ window.updateArchiveChatStyleHintV324=function(){
       column-gap:8px!important;
       row-gap:14px!important;
       align-content:start!important;
-      padding:24px 20px 0!important;
+      padding:44px 20px 0!important;
       margin:0!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page > .app{
@@ -41586,7 +41586,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     desktop.querySelectorAll('.apps-page').forEach(function(page){
       page.style.setProperty('height','292px','important');
-      page.style.setProperty('padding','24px 20px 0','important');
+      page.style.setProperty('padding','44px 20px 0','important');
       page.style.setProperty('row-gap','14px','important');
     });
     desktop.querySelectorAll('.apps-page > .app').forEach(function(item){
@@ -41735,7 +41735,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     if(!desktop.classList.contains('page-two-mode')){
       desktop.querySelectorAll('.apps-page').forEach(function(page){
-        page.style.setProperty('padding','24px 20px 0','important');
+        page.style.setProperty('padding','44px 20px 0','important');
       });
     }
   }

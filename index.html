@@ -159,12 +159,12 @@ html body #desktop:not(.page-two-mode) .desk-scroll>#deskIns{display:none!import
 html body #desktop:not(.page-two-mode) .desk-scroll>#photoWidget.bb-page1-showcase{display:block!important;position:relative!important;width:calc(100% + 14px)!important;max-width:none!important;margin:16px 0 26px -7px!important;padding:0!important;transform:none!important;opacity:1!important;visibility:visible!important;z-index:15!important}
 html body #desktop:not(.page-two-mode) .bb-showcase-shell{width:100%!important;padding:24px 24px 22px!important;border-radius:38px!important}
 html body #desktop:not(.page-two-mode) .bb-showcase-grid>.photo-slot.bb-showcase-photo{height:136px!important;min-height:136px!important}
-html body #desktop:not(.page-two-mode) .pages-viewport{margin-top:40px!important}
-html body #desktop:not(.page-two-mode) .apps-page{padding-top:18px!important;row-gap:30px!important}
+html body #desktop:not(.page-two-mode) .pages-viewport{margin-top:0!important}
+html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row-gap:14px!important}
 html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=371"></script>
+<script defer src="./app.js?v=372"></script>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -1871,7 +1871,7 @@ API Key<br>
         grid-template-rows:repeat(2,96px)!important;
         column-gap:8px!important;
         row-gap:14px!important;
-        padding:24px 16px 0!important;
+        padding:44px 16px 0!important;
       }
       html body #desktop.page-two-mode .apps-page,
       html body #desktop .apps-page.page2-only{
@@ -2006,7 +2006,7 @@ API Key<br>
       page.style.setProperty('padding-left','16px','important');
       page.style.setProperty('padding-right','16px','important');
       if(!desktop.classList.contains('page-two-mode')&&!page.classList.contains('page2-only')){
-        page.style.setProperty('padding-top','24px','important');
+        page.style.setProperty('padding-top','44px','important');
       }
     });
     desktop.querySelectorAll('.apps-page>.app').forEach(tuneAppIcon);
