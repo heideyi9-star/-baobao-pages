@@ -39237,7 +39237,7 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const type=clean(last.type||"text").toLowerCase();
     if(type==="transfer")return "用户刚发了真实转账卡。角色必须按自己的人设、关系和当下情绪决定收款或退回；回复最后另起一行输出 [[TRANSFER:ACCEPT]] 或 [[TRANSFER:RETURN]]，不要解释标记。";
     if(type==="sticker")return "用户刚发的是表情包。把它当作情绪/态度，不要误认成普通照片或链接。";
-    if(type==="image")return "用户刚发的是图片。如果视觉描述可靠：必须像真实对象一样，具体点出画面里让你有反应的细节（东西是什么、什么颜色/材质/细节、跟你们的关系或梗有没有关联），带着符合人设的真实情绪去反应，可以惊讶、羡慕、调侃、心动、嫌弃等，不要含糊带过、不要写成鉴定报告式的客观描述，也可以顺着情绪连续发好几条短消息；只有描述完全不可靠或看不清时，才按人设直接说看不清，不能编造根本没提到的画面内容。";
+    if(type==="image")return "用户刚发的是图片。如果视觉描述可靠：先按画面本身自然回应，具体点出一两个真实细节，再结合人设表达情绪；不要写成鉴定报告。图片里出现宠物、动物、玩偶或其他人物时，默认它们只是用户分享的对象，不是角色本人，也不是关系身份暗示。除非用户明确说‘这是你/你是小狗/叫我主人’且当前关系与人设确实支持，否则禁止自称小狗、把动物当成自己、突然叫用户‘主人’，也不要把普通晒图强行转成角色扮演。只有描述完全不可靠或看不清时，才按人设直接说看不清，不能编造画面。";
     if(type==="voice")return "用户刚发的是语音。以转写内容为准自然回应，不要解释你读取了语音。";
     return "";
   }
@@ -39370,6 +39370,7 @@ ${userProfile()}
 8. 情绪和态度有惯性：如果上一轮在生气、撒娇、冷战或开心，这一轮要延续这种状态自然演变，不能毫无理由瞬间恢复正常语气。
 9. 每一条回复都要像这个人在此刻脑子里冒出来的真实反应，不要输出成"正确答案"或"完整语篇"；允许不完整、跳跃、只回一半意思。
 10. 遇到礼物、夸奖、图片或让角色有情绪的事，要按人设给出具体反应。外放的人可以兴奋连发，克制的人可以短但有态度；不要固定要求讨陪、讨回应或把话题拉回关系。
+10.1 图片里的宠物、动物、玩偶和陌生人默认只是画面内容，不代表角色本人。除非用户明确提出且人设关系支持，禁止因为看见狗就自称“小狗”、叫用户“主人”，也禁止把普通图片强行理解成认领、吃醋或主宠关系。
 11. 私聊不是问答题。用户问“什么意思、哪学的、怎么知道、为什么”这类简单问题时，先把事实答清楚，再按人设自然露出一点态度、习惯、情绪或关系感；不要只停在“就是……的意思”“网上看到的”“随便”“不知道”这种谁都能说的通用答案。
 12. “短”不等于“真人”。一句话可以很短，但必须带着这个角色独有的立场、语气或反应；除非人设和当下情绪明确会敷衍，否则不要把有继续空间的话题压成干巴巴的一句定义。
 13. 把用户的追问当成连续聊天：可以顺手吐槽对方居然认真追问、承认自己乱学梗、补一个来源细节、接回上一句，或按人设反问一句；只能选择角色真的会做的方式，禁止统一套用调侃、撒娇或反问。
@@ -40651,31 +40652,25 @@ window.openPersonaDebugPanel = function(){
     return (Array.isArray(s.chatMessages)?s.chatMessages:[]).filter(m=>m&&!m.hiddenSystem&&!m.recalled&&["user","assistant"].includes(m.role));
   }
   function hasUserMessage(){return visibleMessages().some(m=>m.role==="user")}
-  function lastVisibleMessage(){
-    const list=visibleMessages();
-    return list.length?list[list.length-1]:null;
-  }
-  function messageTextLength(message){
+  function messageWeight(message){
     if(!message)return 0;
     const type=clean(message.type||"text").toLowerCase();
-    if(type==="image"||type==="photo"||type==="picture"){
-      return Math.min(clean(message.visionDesc||message.caption||message.name||"[图片]").length,1200);
-    }
-    if(type==="sticker")return Math.min(clean(message.name||message.stickerName||message.label||"[表情包]").length,160);
-    if(type==="voice")return Math.min(clean(message.transcript||message.text||"[语音]").length,1600);
-    if(type==="transfer")return 120;
-    const content=clean(message.text||message.content||message.visionDesc||message.name);
-    if(/^data:(?:image|audio|video)\//i.test(content))return 80;
-    return Math.min(content.length,5000);
+    if(["image","photo","sticker","voice","audio","video"].includes(type))return 24;
+    const raw=clean(message.content||message.text||message.visionDesc||message.name);
+    if(/^data:(?:image|audio|video)\//i.test(raw))return 24;
+    if(raw.length>4000&&/^[A-Za-z0-9+/=\s]+$/.test(raw.slice(0,4000)))return 24;
+    return Math.min(raw.length,600);
   }
   function tooMuch(){
     const list=visibleMessages();
-    let chars=0;
-    for(const message of list){
-      chars+=messageTextLength(message);
-      if(chars>=240000)break;
+    let lastUser=-1;
+    for(let i=list.length-1;i>=0;i--){
+      if(list[i]&&list[i].role==="user"){lastUser=i;break;}
     }
-    return list.length>=2000||chars>=240000;
+    if(lastUser<0)return false;
+    const after=list.slice(lastUser+1).filter(m=>m&&m.role==="assistant");
+    const chars=after.reduce((sum,m)=>sum+messageWeight(m),0);
+    return after.length>=14||chars>=1800;
   }
   function toast(text){
     if(typeof window.showToast==="function")window.showToast(text,true);
@@ -40691,10 +40686,7 @@ window.openPersonaDebugPanel = function(){
         toast("先和他说一句话吧");
         return;
       }
-      /* 只有角色已经连续说到很长、用户没有补新消息时，才限制继续续聊。
-         用户刚发了文字、图片、语音或表情包时，回复按钮永远允许点击。 */
-      const last=lastVisibleMessage();
-      if(last&&last.role==="assistant"&&tooMuch()){
+      if(tooMuch()){
         event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
         toast("他已经说太多话了，你回复一下吧");
       }
@@ -40703,7 +40695,7 @@ window.openPersonaDebugPanel = function(){
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
   window.addEventListener("pageshow",()=>setTimeout(install,0));
   [100,500,1500,3500,8000].forEach(ms=>setTimeout(install,ms));
-  console.log("豹豹机 392：AI回复按钮媒体计数与续聊拦截已修复");
+  console.log("豹豹机 318：爱心续聊按钮规则已启用");
 })();
 
 
@@ -42449,4 +42441,178 @@ window.updateArchiveChatStyleHintV324=function(){
 })();
 
 
-console.log("豹豹机 391：人设核心已去除姓名硬编码、重复覆盖和过度重写");
+console.log("豹豹机 393：已修复图片过度联想、第二页组件黑字与回复键阻塞");
+
+// ===== v391 第二页 hero 组件：头像+日期+天气+电量+消息推送预览 =====
+(function(){
+  const WEEKDAYS = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  let revertTimer = null;
+  let weatherLoaded = false;
+
+  function el(id){ return document.getElementById(id); }
+
+  function renderAvatar(){
+    const box = el("p2hAvatar");
+    if(!box) return;
+    if(state && state.avatar){
+      box.innerHTML = '<img src="'+String(state.avatar).replace(/"/g,"&quot;")+'" alt="">';
+    }else{
+      box.textContent = "豹";
+    }
+  }
+
+  function renderDateTime(){
+    const now = new Date();
+    const dateEl = el("p2hDate");
+    const weekEl = el("p2hWeek");
+    if(dateEl) dateEl.textContent = (now.getMonth()+1)+"月"+now.getDate()+"日";
+    if(weekEl) weekEl.textContent = WEEKDAYS[now.getDay()];
+  }
+
+  function renderIdlePreview(){
+    const preview = el("p2hPreview");
+    const card = el("p2hCard");
+    if(!preview || !card) return;
+    if(card.__hasMessage) return; // 有未读推送时不覆盖
+    preview.textContent = (state && state.p2hMotto) || "今天也要元气满满 ⋆｡°✩";
+  }
+
+  // ---- 电量：仅在浏览器真正支持 Battery API 时显示，避免展示虚假数据 ----
+  function initBattery(){
+    if(!(navigator && typeof navigator.getBattery === "function")) return;
+    navigator.getBattery().then(function(bat){
+      function update(){
+        const wrap = el("p2hBattery");
+        const label = el("p2hBatteryLabel");
+        const pct = el("p2hBatteryPct");
+        const ring = el("p2hRingFg");
+        if(!wrap) return;
+        wrap.style.display = "flex";
+        const percent = Math.round(bat.level*100);
+        label.textContent = bat.charging ? "充电中" : "电量";
+        pct.textContent = percent+"%";
+        if(ring){
+          const c = 2*Math.PI*16;
+          ring.style.strokeDasharray = c.toFixed(1);
+          ring.style.strokeDashoffset = (c*(1-percent/100)).toFixed(1);
+        }
+      }
+      update();
+      bat.addEventListener("levelchange", update);
+      bat.addEventListener("chargingchange", update);
+    }).catch(function(){});
+  }
+
+  // ---- 天气：Open-Meteo 无需 API Key，仅在用户授权定位后才请求 ----
+  const WCODE = {
+    0:"晴",1:"大部晴朗",2:"多云",3:"阴",45:"雾",48:"雾凇",
+    51:"小毛雨",53:"毛雨",55:"大毛雨",61:"小雨",63:"中雨",65:"大雨",
+    71:"小雪",73:"中雪",75:"大雪",80:"阵雨",81:"阵雨",82:"强阵雨",
+    95:"雷雨",96:"雷雨伴冰雹",99:"雷雨伴冰雹"
+  };
+  function initWeather(){
+    if(weatherLoaded) return;
+    if(!(navigator && navigator.geolocation)) return;
+    const cached = (function(){
+      try{ return JSON.parse(localStorage.getItem("bb_p2h_weather")||"null"); }catch(e){ return null; }
+    })();
+    if(cached && (Date.now()-cached.time) < 30*60*1000){
+      applyWeather(cached.temp, cached.text, cached.city);
+      weatherLoaded = true;
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(function(pos){
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      fetch("https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&current_weather=true")
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          if(!data || !data.current_weather) return;
+          const temp = Math.round(data.current_weather.temperature);
+          const text = WCODE[data.current_weather.weathercode] || "多云";
+          applyWeather(temp, text, "");
+          try{
+            localStorage.setItem("bb_p2h_weather", JSON.stringify({temp:temp,text:text,city:"",time:Date.now()}));
+          }catch(e){}
+          weatherLoaded = true;
+        }).catch(function(){});
+    }, function(){ /* 用户拒绝定位：保持默认隐藏，不展示虚假天气 */ }, {timeout:8000});
+  }
+  function applyWeather(temp, text, city){
+    const wrap = el("p2hWeather"), tempEl = el("p2hTemp"), textEl = el("p2hWtext");
+    if(!wrap) return;
+    wrap.style.display = "block";
+    if(tempEl) tempEl.textContent = temp+"°";
+    if(textEl) textEl.textContent = (city? ("in "+city+" "):"")+"it's "+text;
+  }
+
+  function renderAll(){
+    renderAvatar();
+    renderDateTime();
+    renderIdlePreview();
+    initBattery();
+    initWeather();
+  }
+
+  // ---- 消息推送：复用现有的 baobaoNotifyIncomingReply 通知管线 ----
+  function wrapNotify(){
+    const orig = window.baobaoNotifyIncomingReply;
+    if(typeof orig !== "function" || orig.__p2hWrapped) return;
+    const wrapped = function(message){
+      const r = orig.apply(this, arguments);
+      try{ showPushPreview(message); }catch(e){}
+      return r;
+    };
+    wrapped.__p2hWrapped = true;
+    window.baobaoNotifyIncomingReply = wrapped;
+  }
+
+  function showPushPreview(message){
+    const text = String(message||"").trim();
+    if(!text) return;
+    const card = el("p2hCard");
+    const preview = el("p2hPreview");
+    const avatar = el("p2hAvatar");
+    if(!card || !preview) return;
+    const p = window.currentChatPersona || {};
+    const name = p.name ? (p.name+"：") : "";
+    preview.textContent = name + text;
+    card.classList.add("has-message");
+    card.__hasMessage = true;
+    if(avatar){
+      const src = p.avatar || p.image || p.photo || "";
+      if(src) avatar.innerHTML = '<img src="'+String(src).replace(/"/g,"&quot;")+'" alt="">';
+    }
+    if(revertTimer) clearTimeout(revertTimer);
+    revertTimer = setTimeout(function(){
+      card.classList.remove("has-message");
+      card.__hasMessage = false;
+      renderAvatar();
+      renderIdlePreview();
+    }, 8000);
+  }
+
+  function wrapGoToPage(){
+    const orig = window.goToPage;
+    if(typeof orig !== "function" || orig.__p2hWrapped) return;
+    const wrapped = function(){
+      const r = orig.apply(this, arguments);
+      renderAll();
+      return r;
+    };
+    wrapped.__p2hWrapped = true;
+    window.goToPage = wrapped;
+  }
+
+  function install(){
+    renderAll();
+    wrapNotify();
+    wrapGoToPage();
+    setInterval(renderDateTime, 60000);
+    setTimeout(wrapNotify, 300);
+    setTimeout(wrapGoToPage, 300);
+  }
+
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, {once:true});
+  else install();
+  window.addEventListener("load", function(){ setTimeout(install, 200); });
+})();

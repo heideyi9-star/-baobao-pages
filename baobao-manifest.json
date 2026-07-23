@@ -1,8 +1,8 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 391 · 自适应完整人设核心",
-  "start_url": "./",
+  "description": "豹豹机 393 · 黑字组件与回复键修复",
+  "start_url": "./?v=393",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

@@ -1,5 +1,5 @@
-/* 豹豹机 391：自适应完整人设核心。 */
-const CACHE_NAME = "baobao-shell-v391";
+/* 豹豹机 393：黑字组件、图片语境与回复键修复。 */
+const CACHE_NAME = "baobao-shell-v393";
 const SHELL = [
   "./",
   "./index.html",
