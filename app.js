@@ -42258,9 +42258,13 @@ window.updateArchiveChatStyleHintV324=function(){
 /* baobao-v358: 第一页图标区高度由244px扩到304px，使用下方空白并避免第二排文字被裁切。 */
 
 
-/* baobao-v363: 桌面改成“整页翻”——上方组件 + 图标区一起整页左右翻。 */
+/* baobao-v364: 第二页顶部加入消息推送组件，桌面保持整页左右翻。 */
 (function(){
-  const STYLE_ID = 'bb-whole-page-swipe-v363';
+  const STYLE_ID = 'bb-whole-page-swipe-v364';
+  const HERO_ID = 'bbPage2HeroWidget';
+  let widgetTimer = 0;
+  const batteryState = { ready:false, level:30, charging:true };
+
   function injectStyle(){
     if(document.getElementById(STYLE_ID)) return;
     const style=document.createElement('style');
@@ -42326,13 +42330,6 @@ window.updateArchiveChatStyleHintV324=function(){
         overflow:visible!important;
         z-index:15!important;
       }
-      html body #desktop .bb-whole-page-2 #deskIns{
-        display:block!important;
-        position:relative!important;
-        width:calc(100% - 24px)!important;
-        margin:0 auto 16px!important;
-        min-height:120px!important;
-      }
       html body #desktop .bb-whole-page .bb-showcase-shell{
         width:100%!important;
       }
@@ -42343,12 +42340,15 @@ window.updateArchiveChatStyleHintV324=function(){
         grid-template-columns:repeat(4,minmax(0,1fr))!important;
         grid-template-rows:repeat(2,112px)!important;
         column-gap:10px!important;
-        row-gap:26px!important;
+        row-gap:24px!important;
         align-content:start!important;
         justify-content:stretch!important;
         padding:8px 20px 0!important;
         margin:0!important;
         flex:0 0 auto!important;
+      }
+      html body #desktop .bb-whole-page>.apps-page.page2-only{
+        padding-top:2px!important;
       }
       html body #desktop .bb-whole-page .apps-page>.app{
         position:relative!important;
@@ -42372,7 +42372,7 @@ window.updateArchiveChatStyleHintV324=function(){
         pointer-events:none!important;
       }
       html body #desktop .bb-whole-page-1 .apps-page{ margin-top:6px!important; }
-      html body #desktop .bb-whole-page-2 .apps-page{ margin-top:4px!important; }
+      html body #desktop .bb-whole-page-2 .apps-page{ margin-top:2px!important; }
       html body #desktop .desk-scroll>#photoWidget,
       html body #desktop .desk-scroll>#deskIns{
         display:none!important;
@@ -42383,8 +42383,542 @@ window.updateArchiveChatStyleHintV324=function(){
         margin:10px 0 0!important;
         z-index:21!important;
       }
+
+      html body #desktop .bb-page2-hero-wrap{
+        width:calc(100% - 24px)!important;
+        margin:0 auto 14px!important;
+        padding:0!important;
+      }
+      html body #desktop .bb-page2-hero{
+        position:relative!important;
+        min-height:156px!important;
+        padding:16px 16px 14px!important;
+        border-radius:34px!important;
+        border:1px solid rgba(255,255,255,.52)!important;
+        background:linear-gradient(180deg, rgba(255,255,255,.44), rgba(255,255,255,.22))!important;
+        box-shadow:0 14px 36px rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.38)!important;
+        backdrop-filter:blur(18px)!important;
+        -webkit-backdrop-filter:blur(18px)!important;
+        overflow:hidden!important;
+      }
+      html body #desktop .bb-page2-hero::before{
+        content:"";
+        position:absolute;
+        inset:0;
+        background:radial-gradient(circle at 12% 20%, rgba(255,255,255,.30), transparent 35%), radial-gradient(circle at 88% 18%, rgba(255,255,255,.24), transparent 30%);
+        pointer-events:none;
+      }
+      html body #desktop .bb-page2-hero-head{
+        position:relative;
+        z-index:1;
+        display:flex;
+        align-items:flex-start;
+        justify-content:space-between;
+        gap:14px;
+      }
+      html body #desktop .bb-page2-charge{
+        min-width:130px;
+        max-width:150px;
+        padding:10px 14px;
+        border-radius:24px;
+        background:rgba(255,255,255,.54);
+        display:flex;
+        align-items:center;
+        gap:10px;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.4), 0 8px 18px rgba(0,0,0,.05);
+      }
+      html body #desktop .bb-page2-charge-copy{
+        display:flex;
+        flex-direction:column;
+        gap:3px;
+        min-width:0;
+      }
+      html body #desktop .bb-page2-charge-title{
+        font-size:12px;
+        line-height:1;
+        font-weight:700;
+        color:#7d7d7d;
+        white-space:nowrap;
+      }
+      html body #desktop .bb-page2-charge-num{
+        font-size:21px;
+        line-height:1;
+        font-weight:800;
+        color:#ffffff;
+        text-shadow:0 1px 0 rgba(0,0,0,.06);
+      }
+      html body #desktop .bb-page2-charge-ring{
+        width:34px;
+        height:34px;
+        border-radius:50%;
+        border:4px solid rgba(255,255,255,.72);
+        box-shadow:inset 0 0 0 1px rgba(0,0,0,.05);
+        flex:0 0 auto;
+      }
+      html body #desktop .bb-page2-hero-spark{
+        font-size:28px;
+        line-height:1;
+        opacity:.8;
+        padding:8px 6px 0 0;
+      }
+      html body #desktop .bb-page2-info{
+        position:relative;
+        z-index:1;
+        margin-top:14px;
+        display:flex;
+        align-items:center;
+        gap:12px;
+        min-width:0;
+      }
+      html body #desktop .bb-page2-avatar{
+        width:56px;
+        height:56px;
+        border-radius:50%;
+        overflow:hidden;
+        background:rgba(255,255,255,.6);
+        flex:0 0 auto;
+        box-shadow:0 6px 18px rgba(0,0,0,.05);
+      }
+      html body #desktop .bb-page2-avatar img{
+        width:100%;
+        height:100%;
+        object-fit:cover;
+        display:block;
+      }
+      html body #desktop .bb-page2-avatar-fallback{
+        width:100%;
+        height:100%;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:24px;
+        font-weight:800;
+        color:#666;
+      }
+      html body #desktop .bb-page2-meta{
+        min-width:0;
+        flex:1 1 auto;
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+      }
+      html body #desktop .bb-page2-kicker{
+        display:flex;
+        align-items:center;
+        gap:7px;
+        font-size:12px;
+        line-height:1.2;
+        color:#9b9b9b;
+        letter-spacing:.16em;
+        text-transform:uppercase;
+        white-space:nowrap;
+      }
+      html body #desktop .bb-page2-dot{
+        width:5px;
+        height:5px;
+        border-radius:50%;
+        background:#c7ae9f;
+        flex:0 0 auto;
+      }
+      html body #desktop .bb-page2-titleline{
+        display:flex;
+        align-items:flex-end;
+        justify-content:space-between;
+        gap:8px;
+        min-width:0;
+      }
+      html body #desktop .bb-page2-date-main{
+        font-size:14px;
+        font-weight:700;
+        color:#8c8c8c;
+        white-space:nowrap;
+      }
+      html body #desktop .bb-page2-weather{
+        font-size:30px;
+        line-height:1;
+        font-weight:800;
+        color:#646464;
+        white-space:nowrap;
+      }
+      html body #desktop .bb-page2-message-band{
+        position:relative;
+        z-index:1;
+        margin-top:12px;
+        padding:14px 16px;
+        border-radius:22px;
+        background:rgba(255,255,255,.54);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.42), 0 10px 24px rgba(0,0,0,.05);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+      }
+      html body #desktop .bb-page2-message-copy{
+        min-width:0;
+        flex:1 1 auto;
+      }
+      html body #desktop .bb-page2-message-top{
+        display:flex;
+        align-items:center;
+        gap:8px;
+        min-width:0;
+        margin-bottom:4px;
+      }
+      html body #desktop .bb-page2-message-name{
+        font-size:15px;
+        line-height:1.25;
+        font-weight:800;
+        color:#4b4b4b;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      html body #desktop .bb-page2-message-time{
+        font-size:11px;
+        color:#a4a4a4;
+        white-space:nowrap;
+        margin-left:auto;
+      }
+      html body #desktop .bb-page2-message-text{
+        font-size:13px;
+        line-height:1.45;
+        color:#8b8b8b;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      html body #desktop .bb-page2-badge{
+        min-width:28px;
+        height:28px;
+        padding:0 8px;
+        border-radius:14px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:#8e9a74;
+        color:#fff;
+        font-size:12px;
+        font-weight:800;
+        box-shadow:0 8px 18px rgba(0,0,0,.10);
+      }
+      html body #desktop .bb-page2-badge.hidden{
+        display:none!important;
+      }
+      html body #desktop .bb-page2-hero-tip{
+        position:relative;
+        z-index:1;
+        margin-top:8px;
+        font-size:11px;
+        line-height:1.35;
+        color:#a4a4a4;
+        text-align:right;
+      }
+      html body #desktop .bb-page2-hero.has-unread{
+        box-shadow:0 16px 40px rgba(115,133,84,.18), inset 0 1px 0 rgba(255,255,255,.38)!important;
+      }
+      html body #desktop .bb-page2-hero.pulse{
+        animation:bbPage2HeroPulseV364 .85s ease;
+      }
+      @keyframes bbPage2HeroPulseV364{
+        0%{transform:scale(1);}
+        30%{transform:scale(1.015);}
+        100%{transform:scale(1);}
+      }
     `;
     document.head.appendChild(style);
+  }
+
+  function initBattery(){
+    if(window.__bbPage2BatteryInitV364) return;
+    window.__bbPage2BatteryInitV364 = true;
+    try{
+      if(!navigator.getBattery) return;
+      navigator.getBattery().then(function(battery){
+        function sync(){
+          batteryState.ready = true;
+          batteryState.level = Math.max(1, Math.min(100, Math.round(Number(battery.level||0.3) * 100)));
+          batteryState.charging = !!battery.charging;
+          updatePage2Hero();
+        }
+        sync();
+        battery.addEventListener('levelchange', sync);
+        battery.addEventListener('chargingchange', sync);
+      }).catch(function(){});
+    }catch(error){}
+  }
+
+  function esc(value){
+    return String(value == null ? '' : value)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;');
+  }
+
+  function clip(value, max){
+    const text=String(value||'').replace(/\s+/g,' ').trim();
+    if(!text) return '';
+    return text.length>max ? text.slice(0, Math.max(1,max-1)) + '…' : text;
+  }
+
+  function fmtDate(){
+    const now = new Date();
+    const week = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
+    return {
+      full: now.getFullYear() + '年' + (now.getMonth()+1) + '月' + now.getDate() + '日',
+      week: week,
+      day: String(now.getDate()).padStart(2,'0'),
+      month: String(now.getMonth()+1).padStart(2,'0')
+    };
+  }
+
+  function fmtTime(ts){
+    if(!ts) return '刚刚';
+    const d = new Date(Number(ts));
+    if(!Number.isFinite(d.getTime())) return '刚刚';
+    const now = Date.now();
+    const diff = Math.max(0, now - d.getTime());
+    if(diff < 60*1000) return '刚刚';
+    if(diff < 60*60*1000) return Math.max(1, Math.round(diff/60000)) + '分前';
+    return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  }
+
+  function previewText(msg){
+    if(!msg) return '轻点进入最近聊天';
+    const type = String(msg.type||'text').toLowerCase();
+    if(type==='image') return '[图片]';
+    if(type==='sticker') return '[表情包]';
+    if(type==='voice') return '[语音消息]';
+    if(type==='location') return '[位置]';
+    if(type==='transfer') return '[转账]';
+    if(type==='textphoto') return '[文字图片]';
+    if(type==='autocard') return clip((msg.cardTitle||msg.content||'[卡片]'), 18);
+    return clip(msg.content||'', 24) || '轻点进入最近聊天';
+  }
+
+  function personas(){
+    return window.state && Array.isArray(state.personas) ? state.personas : [];
+  }
+
+  function personaById(id){
+    const key = String(id||'');
+    return personas().find(function(person){ return person && String(person.id||'')===key; }) || null;
+  }
+
+  function unreadStore(){
+    if(!window.state || !state.chatUnreadCounts || typeof state.chatUnreadCounts!=='object') return {};
+    return state.chatUnreadCounts;
+  }
+
+  function pickBestChatId(){
+    if(!window.state) return '';
+    const unread = unreadStore();
+    let best = '';
+    let bestCount = 0;
+    Object.keys(unread).forEach(function(id){
+      const count = Math.max(0, Number(unread[id]||0));
+      if(count > bestCount){ best = id; bestCount = count; }
+    });
+    const hinted = String(window.__bbLastIncomingChatIdV305||'');
+    if(hinted && (personaById(hinted) || (state.chatRecords && state.chatRecords[hinted]))) return hinted;
+    if(best) return best;
+    const order = Array.isArray(state.chatOrder) ? state.chatOrder : [];
+    for(const id of order){
+      if((state.chatRecords && Array.isArray(state.chatRecords[id]) && state.chatRecords[id].length) || personaById(id)) return String(id);
+    }
+    if(state.activeChatId) return String(state.activeChatId);
+    if(state.chatRecords && typeof state.chatRecords==='object'){
+      const key = Object.keys(state.chatRecords).find(function(id){ return Array.isArray(state.chatRecords[id]) && state.chatRecords[id].length; });
+      if(key) return String(key);
+    }
+    const first = personas()[0];
+    return first ? String(first.id||'') : '';
+  }
+
+  function heroData(){
+    const chatId = pickBestChatId();
+    const person = personaById(chatId) || {};
+    const records = window.state && state.chatRecords && Array.isArray(state.chatRecords[chatId]) ? state.chatRecords[chatId] : [];
+    let latest = null;
+    for(let i=records.length-1;i>=0;i--){
+      const item = records[i];
+      if(item && !item.hiddenSystem){ latest = item; break; }
+    }
+    let latestAssistant = null;
+    for(let i=records.length-1;i>=0;i--){
+      const item = records[i];
+      if(item && item.role==='assistant' && !item.hiddenSystem){ latestAssistant = item; break; }
+    }
+    const unread = Math.max(0, Number(unreadStore()[chatId]||0));
+    const date = fmtDate();
+    const batteryNum = (batteryState.ready ? batteryState.level : 30) + '%';
+    const chargingText = batteryState.ready ? (batteryState.charging ? '充电中' : '电量') : '充电中';
+    const weatherValue = (window.state && (state.desktopWeatherTemp || state.weatherTemp)) ? String(state.desktopWeatherTemp || state.weatherTemp) : '11°';
+    const avatar = String(person.photo || person.avatar || state.charAvatar || state.avatar || '');
+    const sender = String(person.name || state.name || '消息推送');
+    const message = unread > 0 ? (latestAssistant || latest || null) : (latest || latestAssistant || null);
+    return {
+      chatId: chatId,
+      avatar: avatar,
+      sender: sender,
+      preview: previewText(message),
+      time: message && message.time ? fmtTime(message.time) : '待机',
+      unread: unread,
+      batteryText: chargingText,
+      batteryNum: batteryNum,
+      fullDate: date.full,
+      week: date.week,
+      weather: weatherValue,
+      tip: unread > 0 ? ('点开查看 ' + sender + ' 的新消息') : '轻点组件可进入最近聊天',
+      mode: unread > 0 ? 'MESSAGE PUSH' : 'DAILY SCHEDULE'
+    };
+  }
+
+  function createHeroWidget(){
+    const wrap=document.createElement('div');
+    wrap.className='bb-page2-hero-wrap';
+    wrap.innerHTML = `
+      <div class="bb-page2-hero" id="${HERO_ID}">
+        <div class="bb-page2-hero-head">
+          <div class="bb-page2-charge">
+            <div class="bb-page2-charge-copy">
+              <div class="bb-page2-charge-title">充电中</div>
+              <div class="bb-page2-charge-num">30%</div>
+            </div>
+            <div class="bb-page2-charge-ring"></div>
+          </div>
+          <div class="bb-page2-hero-spark">🦋</div>
+        </div>
+        <div class="bb-page2-info">
+          <div class="bb-page2-avatar"><div class="bb-page2-avatar-fallback">豹</div></div>
+          <div class="bb-page2-meta">
+            <div class="bb-page2-kicker"><span class="bb-page2-mode">DAILY SCHEDULE</span><span class="bb-page2-dot"></span><span class="bb-page2-week">Thursday</span></div>
+            <div class="bb-page2-titleline"><div class="bb-page2-date-main">2026年07月23日</div><div class="bb-page2-weather">11°</div></div>
+          </div>
+        </div>
+        <div class="bb-page2-message-band">
+          <div class="bb-page2-message-copy">
+            <div class="bb-page2-message-top">
+              <div class="bb-page2-message-name">消息推送</div>
+              <div class="bb-page2-message-time">待机</div>
+            </div>
+            <div class="bb-page2-message-text">轻点进入最近聊天</div>
+          </div>
+          <div class="bb-page2-badge hidden">0</div>
+        </div>
+        <div class="bb-page2-hero-tip">轻点组件可进入最近聊天</div>
+      </div>`;
+    const hero = wrap.querySelector('#'+HERO_ID);
+    if(hero){
+      hero.addEventListener('click', function(event){
+        const id = String(hero.dataset.chatId||'');
+        if(id && typeof window.bbRouteToChatV305 === 'function'){
+          event.preventDefault();
+          event.stopPropagation();
+          window.bbRouteToChatV305(id);
+          return;
+        }
+        if(typeof handleAppAction==='function') handleAppAction(getAppById('chat'));
+      });
+    }
+    renderHeroWidget(hero);
+    return wrap;
+  }
+
+  function renderHeroWidget(hero){
+    if(!hero) return;
+    const data = heroData();
+    hero.dataset.chatId = data.chatId || '';
+    hero.classList.toggle('has-unread', !!data.unread);
+
+    const chargeTitle = hero.querySelector('.bb-page2-charge-title');
+    const chargeNum = hero.querySelector('.bb-page2-charge-num');
+    const mode = hero.querySelector('.bb-page2-mode');
+    const week = hero.querySelector('.bb-page2-week');
+    const dateMain = hero.querySelector('.bb-page2-date-main');
+    const weather = hero.querySelector('.bb-page2-weather');
+    const avatar = hero.querySelector('.bb-page2-avatar');
+    const name = hero.querySelector('.bb-page2-message-name');
+    const time = hero.querySelector('.bb-page2-message-time');
+    const text = hero.querySelector('.bb-page2-message-text');
+    const badge = hero.querySelector('.bb-page2-badge');
+    const tip = hero.querySelector('.bb-page2-hero-tip');
+
+    if(chargeTitle) chargeTitle.textContent = data.batteryText;
+    if(chargeNum) chargeNum.textContent = data.batteryNum;
+    if(mode) mode.textContent = data.mode;
+    if(week) week.textContent = data.week;
+    if(dateMain) dateMain.textContent = data.fullDate;
+    if(weather) weather.textContent = data.weather;
+    if(name) name.textContent = data.sender;
+    if(time) time.textContent = data.time;
+    if(text) text.textContent = data.preview;
+    if(tip) tip.textContent = data.tip;
+    if(badge){
+      if(data.unread > 0){
+        badge.textContent = data.unread > 99 ? '99+' : String(data.unread);
+        badge.classList.remove('hidden');
+      }else{
+        badge.classList.add('hidden');
+      }
+    }
+    if(avatar){
+      if(data.avatar){
+        avatar.innerHTML = '<img src="' + esc(data.avatar) + '" alt="">';
+      }else{
+        avatar.innerHTML = '<div class="bb-page2-avatar-fallback">' + esc(String(data.sender||'豹').slice(0,1)) + '</div>';
+      }
+    }
+  }
+
+  function pulseHero(){
+    const hero=document.getElementById(HERO_ID);
+    if(!hero) return;
+    hero.classList.remove('pulse');
+    void hero.offsetWidth;
+    hero.classList.add('pulse');
+    clearTimeout(hero.__bbPulseTimerV364);
+    hero.__bbPulseTimerV364=setTimeout(function(){ hero.classList.remove('pulse'); }, 900);
+  }
+
+  function updatePage2Hero(){
+    renderHeroWidget(document.getElementById(HERO_ID));
+  }
+
+  function installHeroRefresh(){
+    initBattery();
+    if(!widgetTimer){
+      widgetTimer = window.setInterval(updatePage2Hero, 1200);
+    }
+    if(!window.__bbPage2HeroSaveWrapV364 && typeof window.saveLocal === 'function'){
+      const original=window.saveLocal;
+      const wrapped=function(){
+        const result = original.apply(this, arguments);
+        setTimeout(updatePage2Hero, 0);
+        return result;
+      };
+      wrapped.__bbPage2HeroSaveWrapV364 = true;
+      wrapped.__bbPrevious = original;
+      window.saveLocal = wrapped;
+      try{ saveLocal = wrapped; }catch(error){}
+      window.__bbPage2HeroSaveWrapV364 = true;
+    }
+    ['baobaoNotifyIncomingReply','showIncomingBanner'].forEach(function(name){
+      const original = window[name];
+      if(typeof original === 'function' && !original.__bbPage2HeroWrapV364){
+        const wrapped = function(){
+          const result = original.apply(this, arguments);
+          setTimeout(function(){ updatePage2Hero(); pulseHero(); }, 80);
+          return result;
+        };
+        wrapped.__bbPage2HeroWrapV364 = true;
+        wrapped.__bbPrevious = original;
+        window[name] = wrapped;
+      }
+    });
+    window.addEventListener('focus', updatePage2Hero);
+    window.addEventListener('pageshow', function(){ setTimeout(updatePage2Hero, 0); });
   }
 
   function buildWholeDesktopPageOne(){
@@ -42404,8 +42938,7 @@ window.updateArchiveChatStyleHintV324=function(){
     page.className='bb-whole-page bb-whole-page-2';
     const top=document.createElement('div');
     top.className='bb-whole-top';
-    const ins=document.getElementById('deskIns');
-    if(ins) top.appendChild(ins);
+    top.appendChild(createHeroWidget());
     page.appendChild(top);
     page.appendChild(buildPage2());
     return page;
@@ -42420,6 +42953,7 @@ window.updateArchiveChatStyleHintV324=function(){
     container.appendChild(buildWholeDesktopPageTwo());
     if(typeof renderDots==='function') renderDots();
     wholeGoToPage((window.state&&Number.isFinite(state.page)?state.page:0), false);
+    setTimeout(updatePage2Hero, 0);
   }
 
   function wholeGoToPage(idx, animate){
@@ -42438,6 +42972,7 @@ window.updateArchiveChatStyleHintV324=function(){
       else desktop.classList.remove('page-two-mode');
     }
     if(typeof renderDots==='function') renderDots();
+    if(idx===1) setTimeout(updatePage2Hero, 40);
   }
 
   let startX=0, startY=0, moving=false, swiping=false, dragDX=0, startTime=0, viewWidth=0;
@@ -42445,8 +42980,8 @@ window.updateArchiveChatStyleHintV324=function(){
     const desktop=document.getElementById('desktop');
     const viewport=document.querySelector('#desktop .pages-viewport');
     const container=document.getElementById('pagesContainer');
-    if(!desktop || !viewport || !container || desktop.__bbWholeSwipeV363) return;
-    desktop.__bbWholeSwipeV363=true;
+    if(!desktop || !viewport || !container || desktop.__bbWholeSwipeV364) return;
+    desktop.__bbWholeSwipeV364=true;
 
     function usableTarget(target){
       if(!target) return true;
@@ -42509,6 +43044,7 @@ window.updateArchiveChatStyleHintV324=function(){
   function install(){
     if(typeof buildPage1!=='function' || typeof buildPage2!=='function') return;
     injectStyle();
+    installHeroRefresh();
     window.renderPages=wholeRenderPages;
     window.goToPage=wholeGoToPage;
     window.initSwipe=wholeInitSwipe;
@@ -42519,10 +43055,11 @@ window.updateArchiveChatStyleHintV324=function(){
     wholeInitSwipe();
     setTimeout(function(){ wholeGoToPage((window.state&&state.page)||0, false); }, 0);
     setTimeout(function(){ wholeGoToPage((window.state&&state.page)||0, false); }, 120);
+    setTimeout(updatePage2Hero, 180);
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', install, {once:true});
   else install();
   window.addEventListener('load', install);
   window.addEventListener('pageshow', install);
-})();
+})();;
