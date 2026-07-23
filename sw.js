@@ -1,5 +1,5 @@
-/* 豹豹机 382：真全屏模式。 */
-const CACHE_NAME = "baobao-shell-v382";
+/* 豹豹机 383：真全屏模式。 */
+const CACHE_NAME = "baobao-shell-v383";
 const SHELL = [
   "./",
   "./index.html",

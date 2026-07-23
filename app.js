@@ -1867,7 +1867,7 @@ function phoneMode(){
 }
 function fullMode(){
   try{ localStorage.setItem("screenMode","full"); }catch(error){}
-  document.body.classList.add("fullscreen-mode","bb-true-fullscreen-v382");
+  document.body.classList.add("fullscreen-mode","bb-true-fullscreen-v383");
   const phone = document.querySelector(".phone");
   if(phone){
     phone.style.setProperty("position","fixed","important");
@@ -41302,7 +41302,7 @@ window.updateArchiveChatStyleHintV324=function(){
       max-width:none!important;
       margin:0 0 -24px 10px!important;
       padding:0!important;
-      transform:translateY(10px)!important;
+      transform:none!important;
       z-index:15!important;
       overflow:visible!important;
     }
@@ -41430,25 +41430,25 @@ window.updateArchiveChatStyleHintV324=function(){
       display:block!important;
       position:relative!important;
       width:100%!important;
-      height:292px!important;
+      height:258px!important;
       margin:0!important;
       padding:0!important;
       overflow:hidden!important;
       z-index:18!important;
     }
     html body #desktop:not(.page-two-mode) .pages-container{
-      height:292px!important;
+      height:258px!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page{
       width:100%!important;
-      height:292px!important;
+      height:258px!important;
       display:grid!important;
       grid-template-columns:repeat(4,minmax(0,1fr))!important;
       grid-template-rows:repeat(2,96px)!important;
       column-gap:8px!important;
       row-gap:14px!important;
       align-content:start!important;
-      padding:44px 20px 0!important;
+      padding:8px 16px 0!important;
       margin:0!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page > .app{
@@ -41495,7 +41495,7 @@ window.updateArchiveChatStyleHintV324=function(){
       left:12px!important;
       right:12px!important;
       top:auto!important;
-      bottom:4px!important;
+      bottom:calc(8px + env(safe-area-inset-bottom, 0px))!important;
       width:auto!important;
       height:92px!important;
       margin:0!important;
@@ -41587,25 +41587,32 @@ window.updateArchiveChatStyleHintV324=function(){
     if(scroll){
       scroll.style.setProperty('position','absolute','important');
       scroll.style.setProperty('inset','0','important');
-      scroll.style.setProperty('padding','58px 0 0','important');
+      scroll.style.setProperty('padding','calc(env(safe-area-inset-top, 0px) + 6px) 0 calc(108px + env(safe-area-inset-bottom, 0px))','important');
       scroll.style.setProperty('overflow','hidden','important');
+      scroll.style.setProperty('display','flex','important');
+      scroll.style.setProperty('flex-direction','column','important');
+      scroll.style.setProperty('align-items','stretch','important');
     }
     if(scroll&&widget&&viewport&&widget.nextElementSibling!==viewport){
       scroll.insertBefore(widget,viewport);
     }
     if(widget){
       widget.style.setProperty('width','calc(100% - 20px)','important');
-      widget.style.setProperty('margin','0 0 -18px 10px','important');
-      widget.style.setProperty('transform','translateY(10px)','important');
+      widget.style.setProperty('margin','0 0 6px 10px','important');
+      widget.style.setProperty('transform','none','important');
+      widget.style.setProperty('order','1','important');
+      widget.style.setProperty('flex','0 0 auto','important');
     }
     if(viewport){
-      viewport.style.setProperty('height','292px','important');
+      viewport.style.setProperty('height','258px','important');
       viewport.style.setProperty('margin','0','important');
       viewport.style.setProperty('overflow','hidden','important');
+      viewport.style.setProperty('order','2','important');
+      viewport.style.setProperty('flex','0 0 258px','important');
     }
     desktop.querySelectorAll('.apps-page').forEach(function(page){
-      page.style.setProperty('height','292px','important');
-      page.style.setProperty('padding','44px 20px 0','important');
+      page.style.setProperty('height','258px','important');
+      page.style.setProperty('padding','8px 16px 0','important');
       page.style.setProperty('row-gap','14px','important');
     });
     desktop.querySelectorAll('.apps-page > .app').forEach(function(item){
@@ -41619,7 +41626,7 @@ window.updateArchiveChatStyleHintV324=function(){
       dock.style.setProperty('left','12px','important');
       dock.style.setProperty('right','12px','important');
       dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','4px','important');
+      dock.style.setProperty('bottom','calc(8px + env(safe-area-inset-bottom, 0px))','important');
       dock.style.setProperty('height','92px','important');
       dock.style.setProperty('transform','none','important');
       dock.style.setProperty('z-index','80','important');
@@ -41709,7 +41716,7 @@ window.updateArchiveChatStyleHintV324=function(){
         left:12px!important;
         right:12px!important;
         top:auto!important;
-        bottom:4px!important;
+        bottom:calc(8px + env(safe-area-inset-bottom, 0px))!important;
         width:auto!important;
         height:92px!important;
         min-height:92px!important;
@@ -41729,7 +41736,7 @@ window.updateArchiveChatStyleHintV324=function(){
         transform:none!important;
       }
       html body #desktop:not(.page-two-mode) .apps-page{
-        padding-top:24px!important;
+        padding-top:8px!important;
       }
     `;
     document.head.appendChild(st);
@@ -41745,7 +41752,7 @@ window.updateArchiveChatStyleHintV324=function(){
       dock.style.setProperty('left','12px','important');
       dock.style.setProperty('right','12px','important');
       dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','4px','important');
+      dock.style.setProperty('bottom','calc(8px + env(safe-area-inset-bottom, 0px))','important');
       dock.style.setProperty('height','92px','important');
       dock.style.setProperty('min-height','92px','important');
       dock.style.setProperty('max-height','92px','important');
@@ -41754,7 +41761,7 @@ window.updateArchiveChatStyleHintV324=function(){
     }
     if(!desktop.classList.contains('page-two-mode')){
       desktop.querySelectorAll('.apps-page').forEach(function(page){
-        page.style.setProperty('padding','44px 20px 0','important');
+        page.style.setProperty('padding','8px 16px 0','important');
       });
     }
   }
