@@ -560,6 +560,7 @@ function renderWallpaper(){
 
 // ===== 渲染 App 页面（第一页与第二页各自独立渲染，互不继承） =====
 const TOTAL_PAGES = 2;
+window.__bbUseWholePageSwipeV365 = true;
 
 function renderPages(){
   const container = $("pagesContainer");
@@ -1905,6 +1906,7 @@ let deskStartTime = 0;
 let deskViewportWidth = 0;
 
 function initSwipe(){
+  if(window.__bbUseWholePageSwipeV365) return;
   const container = $("desktop");
   const pagesContainer = $("pagesContainer");
   const viewport = pagesContainer.parentElement; // .pages-viewport
@@ -42258,9 +42260,9 @@ window.updateArchiveChatStyleHintV324=function(){
 /* baobao-v358: 第一页图标区高度由244px扩到304px，使用下方空白并避免第二排文字被裁切。 */
 
 
-/* baobao-v364: 第二页顶部加入消息推送组件，桌面保持整页左右翻。 */
+/* baobao-v365: 修复整页翻页、恢复第一页组件，并保留第二页消息推送组件。 */
 (function(){
-  const STYLE_ID = 'bb-whole-page-swipe-v364';
+  const STYLE_ID = 'bb-whole-page-swipe-v365';
   const HERO_ID = 'bbPage2HeroWidget';
   let widgetTimer = 0;
   const batteryState = { ready:false, level:30, charging:true };
@@ -42617,9 +42619,9 @@ window.updateArchiveChatStyleHintV324=function(){
         box-shadow:0 16px 40px rgba(115,133,84,.18), inset 0 1px 0 rgba(255,255,255,.38)!important;
       }
       html body #desktop .bb-page2-hero.pulse{
-        animation:bbPage2HeroPulseV364 .85s ease;
+        animation:bbPage2HeroPulseV365 .85s ease;
       }
-      @keyframes bbPage2HeroPulseV364{
+      @keyframes bbPage2HeroPulseV365{
         0%{transform:scale(1);}
         30%{transform:scale(1.015);}
         100%{transform:scale(1);}
@@ -42629,8 +42631,8 @@ window.updateArchiveChatStyleHintV324=function(){
   }
 
   function initBattery(){
-    if(window.__bbPage2BatteryInitV364) return;
-    window.__bbPage2BatteryInitV364 = true;
+    if(window.__bbPage2BatteryInitV365) return;
+    window.__bbPage2BatteryInitV365 = true;
     try{
       if(!navigator.getBattery) return;
       navigator.getBattery().then(function(battery){
@@ -42878,8 +42880,8 @@ window.updateArchiveChatStyleHintV324=function(){
     hero.classList.remove('pulse');
     void hero.offsetWidth;
     hero.classList.add('pulse');
-    clearTimeout(hero.__bbPulseTimerV364);
-    hero.__bbPulseTimerV364=setTimeout(function(){ hero.classList.remove('pulse'); }, 900);
+    clearTimeout(hero.__bbPulseTimerV365);
+    hero.__bbPulseTimerV365=setTimeout(function(){ hero.classList.remove('pulse'); }, 900);
   }
 
   function updatePage2Hero(){
@@ -42891,28 +42893,28 @@ window.updateArchiveChatStyleHintV324=function(){
     if(!widgetTimer){
       widgetTimer = window.setInterval(updatePage2Hero, 1200);
     }
-    if(!window.__bbPage2HeroSaveWrapV364 && typeof window.saveLocal === 'function'){
+    if(!window.__bbPage2HeroSaveWrapV365 && typeof window.saveLocal === 'function'){
       const original=window.saveLocal;
       const wrapped=function(){
         const result = original.apply(this, arguments);
         setTimeout(updatePage2Hero, 0);
         return result;
       };
-      wrapped.__bbPage2HeroSaveWrapV364 = true;
+      wrapped.__bbPage2HeroSaveWrapV365 = true;
       wrapped.__bbPrevious = original;
       window.saveLocal = wrapped;
       try{ saveLocal = wrapped; }catch(error){}
-      window.__bbPage2HeroSaveWrapV364 = true;
+      window.__bbPage2HeroSaveWrapV365 = true;
     }
     ['baobaoNotifyIncomingReply','showIncomingBanner'].forEach(function(name){
       const original = window[name];
-      if(typeof original === 'function' && !original.__bbPage2HeroWrapV364){
+      if(typeof original === 'function' && !original.__bbPage2HeroWrapV365){
         const wrapped = function(){
           const result = original.apply(this, arguments);
           setTimeout(function(){ updatePage2Hero(); pulseHero(); }, 80);
           return result;
         };
-        wrapped.__bbPage2HeroWrapV364 = true;
+        wrapped.__bbPage2HeroWrapV365 = true;
         wrapped.__bbPrevious = original;
         window[name] = wrapped;
       }
@@ -42921,12 +42923,30 @@ window.updateArchiveChatStyleHintV324=function(){
     window.addEventListener('pageshow', function(){ setTimeout(updatePage2Hero, 0); });
   }
 
-  function buildWholeDesktopPageOne(){
+  function ensurePage1Widget(existing){
+    let widget=existing||document.getElementById('photoWidget');
+    if(!widget){
+      widget=document.createElement('div');
+      widget.id='photoWidget';
+      widget.className='photo-widget bb-page1-showcase';
+      try{
+        if(typeof buildPage1Showcase==='function'){
+          widget.innerHTML='';
+          widget.appendChild(buildPage1Showcase());
+        }
+      }catch(error){}
+    }
+    widget.classList.add('bb-page1-showcase');
+    widget.style.display='block';
+    return widget;
+  }
+
+  function buildWholeDesktopPageOne(widgetNode){
     const page=document.createElement('div');
     page.className='bb-whole-page bb-whole-page-1';
     const top=document.createElement('div');
     top.className='bb-whole-top';
-    const widget=document.getElementById('photoWidget');
+    const widget=ensurePage1Widget(widgetNode);
     if(widget) top.appendChild(widget);
     page.appendChild(top);
     page.appendChild(buildPage1());
@@ -42948,8 +42968,13 @@ window.updateArchiveChatStyleHintV324=function(){
     const container=document.getElementById('pagesContainer');
     if(!container) return;
     injectStyle();
-    container.innerHTML='';
-    container.appendChild(buildWholeDesktopPageOne());
+    // photoWidget may already live inside pagesContainer from a previous render.
+    // Detach it before clearing, otherwise it gets deleted and page one becomes blank.
+    let widget=document.getElementById('photoWidget');
+    if(widget && widget.parentNode) widget.parentNode.removeChild(widget);
+    widget=ensurePage1Widget(widget);
+    container.replaceChildren();
+    container.appendChild(buildWholeDesktopPageOne(widget));
     container.appendChild(buildWholeDesktopPageTwo());
     if(typeof renderDots==='function') renderDots();
     wholeGoToPage((window.state&&Number.isFinite(state.page)?state.page:0), false);
@@ -42980,8 +43005,8 @@ window.updateArchiveChatStyleHintV324=function(){
     const desktop=document.getElementById('desktop');
     const viewport=document.querySelector('#desktop .pages-viewport');
     const container=document.getElementById('pagesContainer');
-    if(!desktop || !viewport || !container || desktop.__bbWholeSwipeV364) return;
-    desktop.__bbWholeSwipeV364=true;
+    if(!desktop || !viewport || !container || desktop.__bbWholeSwipeV365) return;
+    desktop.__bbWholeSwipeV365=true;
 
     function usableTarget(target){
       if(!target) return true;
@@ -42998,7 +43023,7 @@ window.updateArchiveChatStyleHintV324=function(){
       moving=true; swiping=false; dragDX=0; startTime=Date.now();
       viewWidth=viewport.clientWidth || 1;
       container.style.transition='none';
-    }, {passive:true});
+    }, {passive:true,capture:true});
 
     viewport.addEventListener('touchmove', function(e){
       if(!moving) return;
@@ -43016,7 +43041,7 @@ window.updateArchiveChatStyleHintV324=function(){
         dragDX=drag;
         container.style.transform='translate3d(' + ((-state.page * viewWidth) + drag) + 'px,0,0)';
       }
-    }, {passive:false});
+    }, {passive:false,capture:true});
 
     function finish(){
       if(!moving) return;
@@ -43033,11 +43058,11 @@ window.updateArchiveChatStyleHintV324=function(){
       swiping=false; dragDX=0;
     }
 
-    viewport.addEventListener('touchend', finish, {passive:true});
+    viewport.addEventListener('touchend', finish, {passive:true,capture:true});
     viewport.addEventListener('touchcancel', function(){
       if(swiping) wholeGoToPage(state.page);
       moving=false; swiping=false; dragDX=0;
-    }, {passive:true});
+    }, {passive:true,capture:true});
     window.addEventListener('resize', function(){ wholeGoToPage(state.page, false); });
   }
 
@@ -43051,8 +43076,16 @@ window.updateArchiveChatStyleHintV324=function(){
     try{renderPages=wholeRenderPages;}catch(_){ }
     try{goToPage=wholeGoToPage;}catch(_){ }
     try{initSwipe=wholeInitSwipe;}catch(_){ }
-    wholeRenderPages();
-    wholeInitSwipe();
+
+    if(!window.__bbWholePageInstalledV365){
+      window.__bbWholePageInstalledV365=true;
+      wholeRenderPages();
+      wholeInitSwipe();
+    }else{
+      // load/pageshow may fire again. Do not rebuild and delete the moved widget.
+      wholeInitSwipe();
+      updatePage2Hero();
+    }
     setTimeout(function(){ wholeGoToPage((window.state&&state.page)||0, false); }, 0);
     setTimeout(function(){ wholeGoToPage((window.state&&state.page)||0, false); }, 120);
     setTimeout(updatePage2Hero, 180);
