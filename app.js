@@ -42260,9 +42260,9 @@ window.updateArchiveChatStyleHintV324=function(){
 /* baobao-v358: 第一页图标区高度由244px扩到304px，使用下方空白并避免第二排文字被裁切。 */
 
 
-/* baobao-v365: 修复整页翻页、恢复第一页组件，并保留第二页消息推送组件。 */
+/* baobao-v366: 使用 iPhone 原生横向滚动吸附，修复组件存在但无法翻页。 */
 (function(){
-  const STYLE_ID = 'bb-whole-page-swipe-v365';
+  const STYLE_ID = 'bb-whole-page-swipe-v366';
   const HERO_ID = 'bbPage2HeroWidget';
   let widgetTimer = 0;
   const batteryState = { ready:false, level:30, charging:true };
@@ -42295,27 +42295,43 @@ window.updateArchiveChatStyleHintV324=function(){
         min-height:0!important;
         margin:0!important;
         padding:0!important;
-        overflow:hidden!important;
+        overflow-x:auto!important;
+        overflow-y:hidden!important;
+        scroll-snap-type:x mandatory!important;
+        scroll-behavior:smooth!important;
+        overscroll-behavior-x:contain!important;
+        -webkit-overflow-scrolling:touch!important;
+        touch-action:pan-x!important;
+        scrollbar-width:none!important;
+      }
+      html body #desktop .desk-scroll>.pages-viewport::-webkit-scrollbar{
+        display:none!important;
+        width:0!important;
+        height:0!important;
       }
       html body #desktop .pages-container{
         display:flex!important;
         align-items:flex-start!important;
+        width:200%!important;
+        min-width:200%!important;
         height:100%!important;
         min-height:100%!important;
-        will-change:transform!important;
-        transform:translate3d(0,0,0);
-        transition:transform .32s cubic-bezier(.22,1,.36,1)!important;
+        transform:none!important;
+        transition:none!important;
+        will-change:auto!important;
       }
       html body #desktop .bb-whole-page{
-        flex:0 0 100%!important;
-        width:100%!important;
-        min-width:100%!important;
+        flex:0 0 50%!important;
+        width:50%!important;
+        min-width:50%!important;
         height:100%!important;
         padding:10px 0 0!important;
         display:flex!important;
         flex-direction:column!important;
         align-items:stretch!important;
         overflow:hidden!important;
+        scroll-snap-align:start!important;
+        scroll-snap-stop:always!important;
       }
       html body #desktop .bb-whole-top{
         flex:0 0 auto!important;
@@ -42880,8 +42896,8 @@ window.updateArchiveChatStyleHintV324=function(){
     hero.classList.remove('pulse');
     void hero.offsetWidth;
     hero.classList.add('pulse');
-    clearTimeout(hero.__bbPulseTimerV365);
-    hero.__bbPulseTimerV365=setTimeout(function(){ hero.classList.remove('pulse'); }, 900);
+    clearTimeout(hero.__bbPulseTimerV366);
+    hero.__bbPulseTimerV366=setTimeout(function(){ hero.classList.remove('pulse'); }, 900);
   }
 
   function updatePage2Hero(){
@@ -42893,28 +42909,28 @@ window.updateArchiveChatStyleHintV324=function(){
     if(!widgetTimer){
       widgetTimer = window.setInterval(updatePage2Hero, 1200);
     }
-    if(!window.__bbPage2HeroSaveWrapV365 && typeof window.saveLocal === 'function'){
+    if(!window.__bbPage2HeroSaveWrapV366 && typeof window.saveLocal === 'function'){
       const original=window.saveLocal;
       const wrapped=function(){
         const result = original.apply(this, arguments);
         setTimeout(updatePage2Hero, 0);
         return result;
       };
-      wrapped.__bbPage2HeroSaveWrapV365 = true;
+      wrapped.__bbPage2HeroSaveWrapV366 = true;
       wrapped.__bbPrevious = original;
       window.saveLocal = wrapped;
       try{ saveLocal = wrapped; }catch(error){}
-      window.__bbPage2HeroSaveWrapV365 = true;
+      window.__bbPage2HeroSaveWrapV366 = true;
     }
     ['baobaoNotifyIncomingReply','showIncomingBanner'].forEach(function(name){
       const original = window[name];
-      if(typeof original === 'function' && !original.__bbPage2HeroWrapV365){
+      if(typeof original === 'function' && !original.__bbPage2HeroWrapV366){
         const wrapped = function(){
           const result = original.apply(this, arguments);
           setTimeout(function(){ updatePage2Hero(); pulseHero(); }, 80);
           return result;
         };
-        wrapped.__bbPage2HeroWrapV365 = true;
+        wrapped.__bbPage2HeroWrapV366 = true;
         wrapped.__bbPrevious = original;
         window[name] = wrapped;
       }
@@ -42981,89 +42997,108 @@ window.updateArchiveChatStyleHintV324=function(){
     setTimeout(updatePage2Hero, 0);
   }
 
-  function wholeGoToPage(idx, animate){
-    const container=document.getElementById('pagesContainer');
-    const viewport=container && container.parentElement;
+  function setWholePageState(idx, save){
     const desktop=document.getElementById('desktop');
-    if(!container || !viewport || !window.state) return;
-    idx=Math.max(0, Math.min((window.TOTAL_PAGES||2)-1, idx));
+    if(!window.state) return;
+    idx=Math.max(0, Math.min((window.TOTAL_PAGES||2)-1, Number(idx)||0));
+    const changed=Number(state.page||0)!==idx;
     state.page=idx;
-    if(typeof saveLocal==='function') saveLocal();
-    const width=viewport.clientWidth || 1;
-    container.style.transition = animate===false ? 'none' : 'transform .32s cubic-bezier(.22,1,.36,1)';
-    container.style.transform = 'translate3d(' + (-idx * width) + 'px,0,0)';
     if(desktop){
       if(idx===1) desktop.classList.add('page-two-mode');
       else desktop.classList.remove('page-two-mode');
     }
     if(typeof renderDots==='function') renderDots();
     if(idx===1) setTimeout(updatePage2Hero, 40);
+    if(save && changed && typeof saveLocal==='function') saveLocal();
   }
 
-  let startX=0, startY=0, moving=false, swiping=false, dragDX=0, startTime=0, viewWidth=0;
+  function wholeGoToPage(idx, animate){
+    const container=document.getElementById('pagesContainer');
+    const viewport=container && container.parentElement;
+    if(!container || !viewport || !window.state) return;
+    idx=Math.max(0, Math.min((window.TOTAL_PAGES||2)-1, Number(idx)||0));
+
+    // 366 不再使用 transform 拖页，改用 iPhone 原生横向滚动。
+    container.style.setProperty('transform','none','important');
+    container.style.setProperty('transition','none','important');
+    const left=idx*(viewport.clientWidth||1);
+    setWholePageState(idx, true);
+
+    if(animate===false){
+      viewport.style.scrollBehavior='auto';
+      viewport.scrollLeft=left;
+      requestAnimationFrame(function(){
+        viewport.scrollLeft=idx*(viewport.clientWidth||1);
+        viewport.style.scrollBehavior='smooth';
+      });
+    }else if(typeof viewport.scrollTo==='function'){
+      viewport.scrollTo({left:left,top:0,behavior:'smooth'});
+    }else{
+      viewport.scrollLeft=left;
+    }
+  }
+
+  let nativeScrollTimer=0;
+  let nativeSettleTimer=0;
   function wholeInitSwipe(){
     const desktop=document.getElementById('desktop');
     const viewport=document.querySelector('#desktop .pages-viewport');
     const container=document.getElementById('pagesContainer');
-    if(!desktop || !viewport || !container || desktop.__bbWholeSwipeV365) return;
-    desktop.__bbWholeSwipeV365=true;
+    if(!desktop || !viewport || !container || desktop.__bbWholeSwipeV366) return;
+    desktop.__bbWholeSwipeV366=true;
 
-    function usableTarget(target){
-      if(!target) return true;
-      if(target.closest && target.closest('.dock')) return false;
-      if(target.closest && target.closest('[contenteditable="true"],input,textarea,select,button')) return false;
-      return true;
+    // 移除上一版遗留的内联 transform，确保原生滚动有完整的 2 页宽度。
+    container.style.setProperty('transform','none','important');
+    container.style.setProperty('transition','none','important');
+
+    function currentIndex(){
+      const width=viewport.clientWidth||1;
+      return Math.max(0,Math.min((window.TOTAL_PAGES||2)-1,Math.round(viewport.scrollLeft/width)));
     }
 
-    viewport.addEventListener('touchstart', function(e){
-      if(!usableTarget(e.target)) return;
-      const t=e.touches && e.touches[0];
-      if(!t) return;
-      startX=t.clientX; startY=t.clientY;
-      moving=true; swiping=false; dragDX=0; startTime=Date.now();
-      viewWidth=viewport.clientWidth || 1;
-      container.style.transition='none';
-    }, {passive:true,capture:true});
-
-    viewport.addEventListener('touchmove', function(e){
-      if(!moving) return;
-      const t=e.touches && e.touches[0];
-      if(!t) return;
-      const dx=t.clientX-startX; const dy=t.clientY-startY;
-      if(!swiping){
-        if(Math.abs(dx)>10 && Math.abs(dx)>Math.abs(dy)) swiping=true;
-        else if(Math.abs(dy)>10){ moving=false; return; }
+    function settle(animate){
+      const idx=currentIndex();
+      const target=idx*(viewport.clientWidth||1);
+      setWholePageState(idx,true);
+      if(Math.abs(viewport.scrollLeft-target)>1){
+        if(animate!==false && typeof viewport.scrollTo==='function') viewport.scrollTo({left:target,top:0,behavior:'smooth'});
+        else viewport.scrollLeft=target;
       }
-      if(swiping){
-        e.preventDefault();
-        let drag=dx;
-        if((state.page===0 && dx>0) || (state.page===((window.TOTAL_PAGES||2)-1) && dx<0)) drag=dx*0.35;
-        dragDX=drag;
-        container.style.transform='translate3d(' + ((-state.page * viewWidth) + drag) + 'px,0,0)';
-      }
-    }, {passive:false,capture:true});
-
-    function finish(){
-      if(!moving) return;
-      moving=false;
-      if(swiping){
-        const elapsed=Date.now()-startTime;
-        const velocity=dragDX/Math.max(elapsed,1);
-        const threshold=viewWidth*0.16;
-        let target=state.page;
-        if(dragDX<=-threshold || velocity<-0.35) target=state.page+1;
-        else if(dragDX>=threshold || velocity>0.35) target=state.page-1;
-        wholeGoToPage(target);
-      }
-      swiping=false; dragDX=0;
     }
 
-    viewport.addEventListener('touchend', finish, {passive:true,capture:true});
-    viewport.addEventListener('touchcancel', function(){
-      if(swiping) wholeGoToPage(state.page);
-      moving=false; swiping=false; dragDX=0;
-    }, {passive:true,capture:true});
-    window.addEventListener('resize', function(){ wholeGoToPage(state.page, false); });
+    viewport.addEventListener('scroll',function(){
+      clearTimeout(nativeScrollTimer);
+      nativeScrollTimer=setTimeout(function(){ settle(false); },72);
+    },{passive:true});
+
+    viewport.addEventListener('touchend',function(){
+      clearTimeout(nativeSettleTimer);
+      nativeSettleTimer=setTimeout(function(){ settle(true); },55);
+    },{passive:true});
+    viewport.addEventListener('touchcancel',function(){
+      clearTimeout(nativeSettleTimer);
+      nativeSettleTimer=setTimeout(function(){ settle(true); },20);
+    },{passive:true});
+
+    // 电脑预览时也可以按住左右拖动，手机上仍然走原生触摸滚动。
+    let mouseDown=false,mouseStart=0,scrollStart=0;
+    viewport.addEventListener('mousedown',function(event){
+      if(event.button!==0) return;
+      if(event.target.closest && event.target.closest('button,input,textarea,select,[contenteditable="true"]')) return;
+      mouseDown=true;mouseStart=event.clientX;scrollStart=viewport.scrollLeft;
+      viewport.style.scrollBehavior='auto';
+    });
+    window.addEventListener('mousemove',function(event){
+      if(!mouseDown) return;
+      viewport.scrollLeft=scrollStart-(event.clientX-mouseStart);
+    });
+    window.addEventListener('mouseup',function(){
+      if(!mouseDown) return;
+      mouseDown=false;viewport.style.scrollBehavior='smooth';settle(true);
+    });
+
+    window.addEventListener('resize',function(){ wholeGoToPage((window.state&&state.page)||0,false); });
+    requestAnimationFrame(function(){ wholeGoToPage((window.state&&state.page)||0,false); });
   }
 
   function install(){
@@ -43077,8 +43112,8 @@ window.updateArchiveChatStyleHintV324=function(){
     try{goToPage=wholeGoToPage;}catch(_){ }
     try{initSwipe=wholeInitSwipe;}catch(_){ }
 
-    if(!window.__bbWholePageInstalledV365){
-      window.__bbWholePageInstalledV365=true;
+    if(!window.__bbWholePageInstalledV366){
+      window.__bbWholePageInstalledV366=true;
       wholeRenderPages();
       wholeInitSwipe();
     }else{
