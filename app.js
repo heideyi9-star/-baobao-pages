@@ -41471,7 +41471,7 @@ window.updateArchiveChatStyleHintV324=function(){
       transform:none!important;
       background:transparent!important;
       box-shadow:none!important;
-      pointer-events:none!important;
+      pointer-events:auto!important;
       z-index:20!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page > .app .icon{
@@ -41503,7 +41503,7 @@ window.updateArchiveChatStyleHintV324=function(){
       top:auto!important;
       bottom:4px!important;
       width:auto!important;
-      height:92px!important;
+      height:87px!important;
       margin:0!important;
       transform:none!important;
       z-index:80!important;
@@ -41618,7 +41618,7 @@ window.updateArchiveChatStyleHintV324=function(){
       item.style.setProperty('height','96px','important');
       item.style.setProperty('min-height','96px','important');
       item.style.setProperty('transform','none','important');
-      item.style.setProperty('pointer-events','none','important');
+      item.style.setProperty('pointer-events','auto','important');
     });
     if(dock){
       dock.style.setProperty('position','absolute','important');
@@ -41626,7 +41626,7 @@ window.updateArchiveChatStyleHintV324=function(){
       dock.style.setProperty('right','12px','important');
       dock.style.setProperty('top','auto','important');
       dock.style.setProperty('bottom','4px','important');
-      dock.style.setProperty('height','92px','important');
+      dock.style.setProperty('height','87px','important');
       dock.style.setProperty('transform','none','important');
       dock.style.setProperty('z-index','80','important');
     }
@@ -41676,365 +41676,11 @@ window.updateArchiveChatStyleHintV324=function(){
     putLast();
     wrapPanelFns();
     enforce();
-    PANEL_IDS.forEach(function(id){
-      var panel=document.getElementById(id);
-      if(!panel||panel.__bbV344Observed)return;
-      panel.__bbV344Observed=true;
-      new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
-    });
-    var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV344Observer){
-      desktop.__bbV344Observer=new MutationObserver(schedule);
-      desktop.__bbV344Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
-  window.addEventListener('load',install);
   window.addEventListener('pageshow',function(){setTimeout(install,0)});
-  [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms);});
-})();
-
-
-/* baobao-v352-page2-dock-consistency */
-(function(){
-  "use strict";
-  if(window.__bbV352DockConsistency)return;
-  window.__bbV352DockConsistency=true;
-  var STYLE_ID='bbV352DockConsistencyStyle';
-  var busy=false;
-
-  function putStyle(){
-    var st=document.getElementById(STYLE_ID);
-    if(!st){st=document.createElement('style');st.id=STYLE_ID;}
-    st.textContent=`
-      html body #desktop > .dock,
-      html body #desktop .dock{
-        position:absolute!important;
-        left:12px!important;
-        right:12px!important;
-        top:auto!important;
-        bottom:4px!important;
-        width:auto!important;
-        height:92px!important;
-        min-height:92px!important;
-        max-height:92px!important;
-        margin:0!important;
-        transform:none!important;
-        z-index:80!important;
-        display:flex!important;
-        align-items:center!important;
-        justify-content:space-around!important;
-        overflow:visible!important;
-      }
-      html body #desktop .dock > .dock-icon{
-        position:relative!important;
-        z-index:82!important;
-        pointer-events:auto!important;
-        transform:none!important;
-      }
-      html body #desktop:not(.page-two-mode) .apps-page{
-        padding-top:24px!important;
-      }
-    `;
-    document.head.appendChild(st);
-  }
-
-  function enforce(){
-    putStyle();
-    var desktop=document.getElementById('desktop');
-    if(!desktop)return;
-    var dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
-    if(dock){
-      dock.style.setProperty('position','absolute','important');
-      dock.style.setProperty('left','12px','important');
-      dock.style.setProperty('right','12px','important');
-      dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','4px','important');
-      dock.style.setProperty('height','92px','important');
-      dock.style.setProperty('min-height','92px','important');
-      dock.style.setProperty('max-height','92px','important');
-      dock.style.setProperty('transform','none','important');
-      dock.style.setProperty('z-index','80','important');
-    }
-    if(!desktop.classList.contains('page-two-mode')){
-      desktop.querySelectorAll('.apps-page').forEach(function(page){
-        page.style.setProperty('padding','44px 20px 0','important');
-      });
-    }
-  }
-
-  function schedule(){
-    if(busy)return;
-    busy=true;
-    requestAnimationFrame(function(){busy=false;enforce();});
-  }
-
-  function install(){
-    enforce();
-    var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV352DockObserver){
-      desktop.__bbV352DockObserver=new MutationObserver(schedule);
-      desktop.__bbV352DockObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
-  else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',install);
-  [0,80,250,700,1500,3200,6000].forEach(function(ms){setTimeout(install,ms);});
-})();
-
-/* =========================================================
-   baobao-v353-global-dock-visibility-and-touch-fix
-   底栏只在桌面显示；锁屏、聊天、查手机、音乐、设置/美化等全屏页隐藏。
-   隐藏时彻底关闭 pointer-events，避免挡住设置/音乐点击。
-   同时继续清除 iOS 长按/点击残留黑色方块。
-   ========================================================= */
-(function(){
-  "use strict";
-  if(window.__bbV354GlobalDockFix)return;
-  window.__bbV354GlobalDockFix=true;
-
-  const STYLE_ID="bbV354GlobalDockFixStyle";
-  const HIDE_CLASS="bb-hide-home-dock-v354";
-  let scheduled=false;
-
-  function injectStyle(){
-    let style=document.getElementById(STYLE_ID);
-    if(!style){
-      style=document.createElement("style");
-      style.id=STYLE_ID;
-    }
-    style.textContent=`
-      /* 非桌面页面：底栏既不可见，也绝不拦截点击。 */
-      html body.${HIDE_CLASS} #desktop > .dock,
-      html body.${HIDE_CLASS} #desktop .dock{
-        display:none!important;
-        opacity:0!important;
-        visibility:hidden!important;
-        pointer-events:none!important;
-        transform:translateY(120%)!important;
-      }
-
-      /* 全屏功能页拥有自己的点击层，不能被桌面盖住。 */
-      html body .panel.ios-settings,
-      html body #subjectsPanel,
-      html body #chatDemo,
-      html body #bbMusicApp,
-      html body #bbMusicComplete239,
-      html body #wechatProfileEditor{
-        pointer-events:auto!important;
-      }
-      html body .panel.ios-settings{z-index:1200!important;background-color:#f4f4f7!important;}
-      html body #subjectsPanel{z-index:1200!important;}
-      html body #chatDemo{z-index:1200!important;}
-      html body #bbMusicApp.show,
-      html body #bbMusicComplete239.show{z-index:1200!important;}
-      html body #lock:not(.hidden){z-index:1500!important;}
-      html body #passcodeOverlay.show{z-index:1700!important;pointer-events:auto!important;}
-
-      /* iOS：去掉图标按压黑块、系统高亮和图片拖拽预览。 */
-      html body #desktop .apps-page > .app,
-      html body #desktop .apps-page > .app:active,
-      html body #desktop .apps-page > .app:focus,
-      html body #desktop .apps-page > .app:focus-visible,
-      html body #desktop .dock > .dock-icon,
-      html body #desktop .dock > .dock-icon:active,
-      html body #desktop .dock > .dock-icon:focus{
-        background:transparent!important;
-        box-shadow:none!important;
-        filter:none!important;
-        outline:none!important;
-        -webkit-tap-highlight-color:transparent!important;
-        -webkit-touch-callout:none!important;
-        -webkit-user-select:none!important;
-        user-select:none!important;
-        -webkit-user-drag:none!important;
-        touch-action:manipulation!important;
-      }
-      html body #desktop .apps-page > .app::before,
-      html body #desktop .apps-page > .app::after,
-      html body #desktop .dock > .dock-icon::before,
-      html body #desktop .dock > .dock-icon::after{
-        content:none!important;
-        display:none!important;
-        background:transparent!important;
-        box-shadow:none!important;
-      }
-      html body #desktop .apps-page > .app img,
-      html body #desktop .apps-page > .app svg,
-      html body #desktop .apps-page > .app .icon,
-      html body #desktop .apps-page > .app .icon *,
-      html body #desktop .dock img,
-      html body #desktop .dock svg,
-      html body #desktop .dock .dock-symbol,
-      html body #desktop .dock .dock-symbol *{
-        -webkit-touch-callout:none!important;
-        -webkit-user-select:none!important;
-        user-select:none!important;
-        -webkit-user-drag:none!important;
-        -webkit-tap-highlight-color:transparent!important;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function visible(el){
-    if(!el || !el.isConnected)return false;
-    if(el.hidden)return false;
-    if(el.classList && el.classList.contains("hidden"))return false;
-    const cs=getComputedStyle(el);
-    if(cs.display==="none" || cs.visibility==="hidden" || Number(cs.opacity||1)===0)return false;
-    const rect=el.getBoundingClientRect();
-    return rect.width>2 && rect.height>2;
-  }
-
-  function explicitBlockerVisible(){
-    const lock=document.getElementById("lock");
-    if(visible(lock))return true;
-    const passcode=document.getElementById("passcodeOverlay");
-    if(passcode && passcode.classList.contains("show") && visible(passcode))return true;
-
-    const selectors=[
-      ".panel",
-      "#subjectsPanel",
-      "#chatDemo",
-      "#bbMusicApp.show",
-      "#bbMusicComplete239.show",
-      "#wechatProfileEditor.show",
-      ".subjects-panel",
-      ".chat-demo",
-      ".wechat-profile-editor.show",
-      ".sms-app.show",
-      ".bb-offline-mode.show",
-      "[data-bb-fullscreen].show"
-    ];
-    for(const selector of selectors){
-      for(const el of document.querySelectorAll(selector)){
-        if(visible(el))return true;
-      }
-    }
-    return false;
-  }
-
-  function genericFullscreenBlocker(){
-    const vw=Math.max(1,window.innerWidth||document.documentElement.clientWidth||1);
-    const vh=Math.max(1,window.innerHeight||document.documentElement.clientHeight||1);
-    const desktop=document.getElementById("desktop");
-    const excluded=new Set([
-      "miniPhoneStatusbar","baobaoMessageBanner","baobaoMessageBannerCount"
-    ]);
-    for(const el of document.body.children){
-      if(el===desktop || el.id==="miniPhoneStatusbar" || excluded.has(el.id))continue;
-      if(!visible(el))continue;
-      const cs=getComputedStyle(el);
-      if(cs.position!=="fixed" && cs.position!=="absolute")continue;
-      const rect=el.getBoundingClientRect();
-      const large=rect.width>=vw*.72 && rect.height>=vh*.68;
-      const zi=parseInt(cs.zIndex,10);
-      if(large && (Number.isFinite(zi)?zi>=20:true))return true;
-    }
-    return false;
-  }
-
-  function desktopIsHome(){
-    const desktop=document.getElementById("desktop");
-    return !!desktop && visible(desktop) && !explicitBlockerVisible() && !genericFullscreenBlocker();
-  }
-
-  function clearBlackSquareState(){
-    document.querySelectorAll(
-      "#desktop .apps-page > .app, #desktop .dock > .dock-icon"
-    ).forEach(el=>{
-      el.setAttribute("draggable","false");
-      el.classList.remove("bb-v300-pressing","bb-v302-pressing","pressed","pressing","active-press");
-      el.style.removeProperty("background");
-      el.style.removeProperty("box-shadow");
-      el.style.removeProperty("filter");
-      try{el.blur();}catch(error){}
-      el.querySelectorAll("img,svg,.icon,.dock-symbol,.icon *,.dock-symbol *").forEach(node=>{
-        try{node.setAttribute("draggable","false");}catch(error){}
-      });
-    });
-  }
-
-  function sync(){
-    injectStyle();
-    const show=desktopIsHome();
-    document.body.classList.toggle(HIDE_CLASS,!show);
-    clearBlackSquareState();
-  }
-
-  function schedule(){
-    if(scheduled)return;
-    scheduled=true;
-    requestAnimationFrame(()=>{
-      scheduled=false;
-      sync();
-    });
-  }
-
-  function blockNativeGhost(event){
-    const target=event.target && event.target.closest
-      ? event.target.closest("#desktop .apps-page > .app, #desktop .dock > .dock-icon")
-      : null;
-    if(!target)return;
-    event.preventDefault();
-  }
-
-  function wrap(name){
-    const old=window[name];
-    if(typeof old!=="function" || old.__bbV355DockWrap)return;
-    const wrapped=function(){
-      const result=old.apply(this,arguments);
-      schedule();
-      setTimeout(schedule,0);
-      setTimeout(schedule,80);
-      return result;
-    };
-    wrapped.__bbV355DockWrap=true;
-    window[name]=wrapped;
-    try{eval(name+"=wrapped")}catch(error){}
-  }
-
-  function install(){
-    injectStyle();
-    [
-      "openPanel","closePanel","openSubjectsPanel","closeSubjectsPanel",
-      "openBaobaoMusicApp","closeBaobaoMusicApp","openSmsApp",
-      "openWechatProfileEditor","closeWechatProfileEditor","goToPage",
-      "showPasscodePad","hidePasscodePad"
-    ].forEach(wrap);
-
-    if(!document.__bbV354GhostBlock){
-      document.__bbV354GhostBlock=true;
-      document.addEventListener("dragstart",blockNativeGhost,true);
-      document.addEventListener("selectstart",blockNativeGhost,true);
-      document.addEventListener("contextmenu",blockNativeGhost,true);
-      document.addEventListener("click",schedule,true);
-      document.addEventListener("pointerup",schedule,true);
-    }
-
-    if(!document.body.__bbV354Observer){
-      document.body.__bbV354Observer=new MutationObserver(schedule);
-      document.body.__bbV354Observer.observe(document.body,{
-        childList:true,
-        subtree:true,
-        attributes:true,
-        attributeFilter:["class","style","hidden"]
-      });
-    }
-    sync();
-  }
-
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
-  else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",()=>setTimeout(install,0));
-  window.addEventListener("resize",schedule);
-  [0,80,240,600,1200,2500,5000].forEach(ms=>setTimeout(install,ms));
 })();
 
 
@@ -42122,11 +41768,8 @@ window.updateArchiveChatStyleHintV324=function(){
       html body #desktop .apps-page>.app,
       html body #desktop .apps-page>.app:active,
       html body #desktop .apps-page>.app:focus,
-      html body #desktop .apps-page>.app:focus-visible,
-      html body #desktop .apps-page>.app .icon,
-      html body #desktop .apps-page>.app .icon:active,
-      html body #desktop .apps-page>.app .icon:focus{
-        pointer-events:none!important;
+      html body #desktop .apps-page>.app:focus-visible{
+        pointer-events:auto!important;
         background:transparent!important;
         background-color:transparent!important;
         background-image:none!important;
@@ -42140,6 +41783,13 @@ window.updateArchiveChatStyleHintV324=function(){
         -webkit-user-select:none!important;
         user-select:none!important;
         -webkit-user-drag:none!important;
+      }
+      html body #desktop .apps-page>.app .icon,
+      html body #desktop .apps-page>.app .icon:active,
+      html body #desktop .apps-page>.app .icon:focus,
+      html body #desktop .apps-page>.app img,
+      html body #desktop .apps-page>.app svg{
+        pointer-events:none!important;
       }
       html body #desktop .apps-page>.app::before,
       html body #desktop .apps-page>.app::after,
@@ -42188,7 +41838,7 @@ window.updateArchiveChatStyleHintV324=function(){
       el.removeAttribute("role");
       el.removeAttribute("tabindex");
       el.setAttribute("draggable","false");
-      el.style.setProperty("pointer-events","none","important");
+      el.style.setProperty("pointer-events","auto","important");
       el.style.setProperty("background","transparent","important");
       el.style.setProperty("box-shadow","none","important");
       el.classList.remove("bb-v300-pressing","bb-v302-pressing","pressed","pressing","active-press");
@@ -42201,7 +41851,6 @@ window.updateArchiveChatStyleHintV324=function(){
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",clean,{once:true});
   else clean();
   window.addEventListener("pageshow",clean);
-  [0,60,180,500,1200,2600,5000].forEach(ms=>setTimeout(clean,ms));
 })();
 
 /* baobao-v356-hide-home-dock-in-chat-room */
@@ -42229,19 +41878,28 @@ window.updateArchiveChatStyleHintV324=function(){
   function apply(){
     const room=document.getElementById("chatRoom");
     const desktop=document.getElementById("desktop");
+    const dock=desktop && (desktop.querySelector(":scope > .dock") || desktop.querySelector(".dock"));
+    const open=chatOpen();
+
     if(room){
       room.style.setProperty("z-index","1300","important");
       room.style.setProperty("pointer-events","auto","important");
     }
-    if(chatOpen()){
-      document.body.classList.add(HIDE_CLASS);
-      const dock=desktop && (desktop.querySelector(":scope > .dock") || desktop.querySelector(".dock"));
-      if(dock){
-        dock.style.setProperty("display","none","important");
-        dock.style.setProperty("opacity","0","important");
-        dock.style.setProperty("visibility","hidden","important");
-        dock.style.setProperty("pointer-events","none","important");
-      }
+
+    document.body.classList.toggle(HIDE_CLASS,open);
+    if(!dock)return;
+
+    if(open){
+      dock.style.setProperty("display","none","important");
+      dock.style.setProperty("opacity","0","important");
+      dock.style.setProperty("visibility","hidden","important");
+      dock.style.setProperty("pointer-events","none","important");
+    }else{
+      dock.style.setProperty("display","flex","important");
+      dock.style.setProperty("opacity","1","important");
+      dock.style.setProperty("visibility","visible","important");
+      dock.style.setProperty("pointer-events","auto","important");
+      dock.style.removeProperty("transform");
     }
   }
 
@@ -42282,10 +41940,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
   else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",install);
-  document.addEventListener("click",schedule,true);
-  [0,80,220,600,1400,3000].forEach(function(ms){setTimeout(install,ms)});
+  window.addEventListener("pageshow",function(){setTimeout(install,0)});
 })();
 
 /* =========================================================
