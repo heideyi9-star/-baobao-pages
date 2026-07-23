@@ -1,8 +1,8 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 393 · 黑字组件与回复键修复",
-  "start_url": "./?v=393",
+  "description": "豹豹机 394 · 第二页双对话组件",
+  "start_url": "./?v=394",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

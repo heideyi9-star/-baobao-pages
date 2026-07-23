@@ -1,5 +1,5 @@
-/* 豹豹机 393：黑字组件、图片语境与回复键修复。 */
-const CACHE_NAME = "baobao-shell-v393";
+/* 豹豹机 394：第二页双对话组件。 */
+const CACHE_NAME = "baobao-shell-v394";
 const SHELL = [
   "./",
   "./index.html",

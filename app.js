@@ -188,6 +188,7 @@ const state = {
     { id:"anniv", icon:"", label:"小红书", action:"placeholder" },
     { id:"couple", icon:"", label:"情侣空间", action:"placeholder" }
   ],
+  page2DialogueLines: ["今天有好好吃饭吗", "等你回来再慢慢说"],
   timeAware: true,       // 时间感知：把真实时间/时间差告诉AI
   lastMsgTime: null,     // 上一条消息发送的时间戳
   lockPassword: "0601",  // 锁屏密码，默认 0601
@@ -230,6 +231,12 @@ if(state.activeChatId&&state.chatRecords&&Array.isArray(state.chatRecords[state.
 }
 if(!Array.isArray(state.chatMessages)) state.chatMessages=[];
 
+if(!Array.isArray(state.page2DialogueLines)) state.page2DialogueLines = ["今天有好好吃饭吗", "等你回来再慢慢说"];
+state.page2DialogueLines = [0,1].map(function(i){
+  const fallback = i===0 ? "今天有好好吃饭吗" : "等你回来再慢慢说";
+  const value = String(state.page2DialogueLines[i] == null ? fallback : state.page2DialogueLines[i]).trim();
+  return value || fallback;
+});
 if(!Array.isArray(state.stickers)) state.stickers = [];
 if(!state.wallet || typeof state.wallet !== "object") state.wallet = { balance: 0, history: [] };
 if(typeof state.wallet.balance !== "number" || isNaN(state.wallet.balance)) state.wallet.balance = 0;
@@ -722,6 +729,51 @@ function buildPage1(){
 }
 
 // ---- 第二页：完全独立的构建函数，自己的数据源、事件与交互 ----
+function buildPage2DialogueWidget(){
+  const widget = document.createElement("section");
+  widget.className = "p2-dialogue-widget";
+  widget.setAttribute("aria-label", "可编辑双对话组件");
+
+  const now = new Date();
+  const stamp = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
+  const lines = state.page2DialogueLines;
+
+  widget.innerHTML = `
+    <div class="p2-dialogue-head">
+      <span>DIALOGUE ARCHIVE</span>
+      <span class="p2-dialogue-count">02 / ${stamp}</span>
+    </div>
+    <div class="p2-dialogue-row left">
+      <span class="p2-dialogue-mark">Y</span>
+      <button type="button" class="p2-dialogue-bubble" data-p2-dialogue="0">${escapeHtml(lines[0])}</button>
+    </div>
+    <div class="p2-dialogue-row right">
+      <button type="button" class="p2-dialogue-bubble" data-p2-dialogue="1">${escapeHtml(lines[1])}</button>
+      <span class="p2-dialogue-mark">M</span>
+    </div>
+    <div class="p2-dialogue-foot">
+      <span>TAP TO EDIT</span><span class="p2-dialogue-line"></span><span>PRIVATE NOTE</span>
+    </div>`;
+
+  widget.addEventListener("click", function(event){
+    const bubble = event.target && event.target.closest ? event.target.closest("[data-p2-dialogue]") : null;
+    if(!bubble) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const index = Number(bubble.getAttribute("data-p2-dialogue"));
+    const current = String(state.page2DialogueLines[index] || "");
+    const next = window.prompt(index === 0 ? "修改第一句对话" : "修改第二句对话", current);
+    if(next === null) return;
+    const cleaned = String(next).trim();
+    if(!cleaned) return;
+    state.page2DialogueLines[index] = cleaned;
+    bubble.textContent = cleaned;
+    saveLocal();
+  });
+
+  return widget;
+}
+
 function buildPage2(){
   const pageDiv = document.createElement("div");
   pageDiv.className = "apps-page page2-only";
@@ -744,6 +796,7 @@ function buildPage2(){
     pageDiv.appendChild(appDiv);
   });
 
+  pageDiv.appendChild(buildPage2DialogueWidget());
   return pageDiv;
 }
 
@@ -42441,7 +42494,7 @@ window.updateArchiveChatStyleHintV324=function(){
 })();
 
 
-console.log("豹豹机 393：已修复图片过度联想、第二页组件黑字与回复键阻塞");
+console.log("豹豹机 394：第二页双对话组件已启用，可点击两句文字分别修改");
 
 // ===== v391 第二页 hero 组件：头像+日期+天气+电量+消息推送预览 =====
 (function(){
