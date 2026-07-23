@@ -572,98 +572,128 @@ function renderPages(){
 
 // ---- 桌面图标安全点击：阻止 iOS 原生长按预览/灰黑方块，同时保留长按编辑 ----
 function bindSafeDesktopAppPress(el, onTap, onLongPress){
-  let timer=null;
-  let longTriggered=false;
-  let moved=false;
-  let startX=0;
-  let startY=0;
-  let lastTouchEnd=0;
-
+  el.__bbDesktopTapAction = onTap;
+  el.__bbDesktopLongAction = onLongPress;
   el.setAttribute("draggable","false");
-  el.setAttribute("role","button");
+  el.removeAttribute("role");
   el.removeAttribute("tabindex");
-  el.style.webkitTapHighlightColor="transparent";
+  el.style.setProperty("pointer-events","none","important");
+  el.style.webkitTapHighlightColor="rgba(0,0,0,0)";
   el.style.webkitTouchCallout="none";
   el.style.webkitUserSelect="none";
   el.style.userSelect="none";
   el.style.webkitUserDrag="none";
-  el.style.touchAction="manipulation";
-
-  const clearVisual=()=>{
-    clearTimeout(timer);
-    timer=null;
-    el.classList.remove("bb-v300-pressing","bb-v302-pressing","pressed","pressing","active-press");
-    el.style.removeProperty("background");
-    el.style.removeProperty("box-shadow");
-    el.style.removeProperty("filter");
-    try{ el.blur(); }catch(_){ }
-    try{ window.getSelection && window.getSelection().removeAllRanges(); }catch(_){ }
-  };
-
-  const arm=(x,y)=>{
-    clearVisual();
-    startX=x||0;
-    startY=y||0;
-    moved=false;
-    longTriggered=false;
-    timer=setTimeout(()=>{
-      if(moved)return;
-      longTriggered=true;
-      clearVisual();
-      if(typeof onLongPress==="function")onLongPress();
-    },550);
-  };
-
-  el.addEventListener("dragstart",e=>e.preventDefault(),true);
-  el.addEventListener("contextmenu",e=>{e.preventDefault();clearVisual();},true);
-  el.addEventListener("selectstart",e=>e.preventDefault(),true);
-
-  el.addEventListener("touchstart",e=>{
-    const t=e.touches&&e.touches[0];
-    if(!t)return;
-    e.preventDefault();
-    e.stopPropagation();
-    arm(t.clientX,t.clientY);
-  },{passive:false});
-
-  el.addEventListener("touchmove",e=>{
-    const t=e.touches&&e.touches[0];
-    if(!t)return;
-    if(Math.hypot(t.clientX-startX,t.clientY-startY)>10){
-      moved=true;
-      clearVisual();
-    }
-  },{passive:true});
-
-  el.addEventListener("touchend",e=>{
-    e.preventDefault();
-    e.stopPropagation();
-    lastTouchEnd=Date.now();
-    clearTimeout(timer);
-    timer=null;
-    const shouldTap=!longTriggered&&!moved;
-    clearVisual();
-    if(shouldTap&&typeof onTap==="function")onTap();
-  },{passive:false});
-
-  el.addEventListener("touchcancel",()=>{moved=true;clearVisual();},{passive:true});
-
-  // 鼠标/触控板保留正常点击；触屏产生的合成 click 会被时间门禁拦掉。
-  el.addEventListener("click",e=>{
-    e.preventDefault();
-    e.stopPropagation();
-    if(Date.now()-lastTouchEnd<700)return;
-    clearVisual();
-    if(typeof onTap==="function")onTap();
-  });
-
+  el.style.touchAction="none";
   el.querySelectorAll("img,svg,.icon,.icon *").forEach(node=>{
     try{node.setAttribute("draggable","false");}catch(_){ }
     try{node.style.pointerEvents="none";}catch(_){ }
     try{node.style.webkitUserDrag="none";}catch(_){ }
     try{node.style.webkitTouchCallout="none";}catch(_){ }
     try{node.style.webkitUserSelect="none";}catch(_){ }
+    try{node.style.webkitTapHighlightColor="rgba(0,0,0,0)";}catch(_){ }
   });
+  installSafeDesktopCoordinateDispatcher();
+}
+
+function installSafeDesktopCoordinateDispatcher(){
+  if(window.__bbSafeDesktopCoordinateDispatcherV355)return;
+  window.__bbSafeDesktopCoordinateDispatcherV355=true;
+
+  let activeApp=null;
+  let pressTimer=null;
+  let longTriggered=false;
+  let moved=false;
+  let startX=0;
+  let startY=0;
+  let lastTouchAt=0;
+
+  function desktopUsable(){
+    const desktop=document.getElementById("desktop");
+    if(!desktop||!desktop.isConnected)return false;
+    const cs=getComputedStyle(desktop);
+    if(cs.display==="none"||cs.visibility==="hidden"||Number(cs.opacity||1)===0||cs.pointerEvents==="none")return false;
+    if(document.getElementById("lock")&&!document.getElementById("lock").classList.contains("hidden"))return false;
+    return true;
+  }
+
+  function appAt(x,y){
+    if(!desktopUsable())return null;
+    const vw=window.innerWidth||document.documentElement.clientWidth||0;
+    const vh=window.innerHeight||document.documentElement.clientHeight||0;
+    for(const app of document.querySelectorAll("#desktop .apps-page > .app")){
+      const r=app.getBoundingClientRect();
+      if(r.width<10||r.height<10||r.right<=0||r.bottom<=0||r.left>=vw||r.top>=vh)continue;
+      if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return app;
+    }
+    return null;
+  }
+
+  function reset(){
+    if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}
+    activeApp=null;
+    longTriggered=false;
+    moved=false;
+  }
+
+  document.addEventListener("touchstart",event=>{
+    const t=event.touches&&event.touches[0];
+    if(!t)return;
+    const app=appAt(t.clientX,t.clientY);
+    if(!app)return;
+    reset();
+    activeApp=app;
+    startX=t.clientX;
+    startY=t.clientY;
+    pressTimer=setTimeout(()=>{
+      if(!activeApp||moved)return;
+      const target=activeApp;
+      longTriggered=true;
+      pressTimer=null;
+      if(typeof target.__bbDesktopLongAction==="function")target.__bbDesktopLongAction();
+    },560);
+  },{capture:true,passive:true});
+
+  document.addEventListener("touchmove",event=>{
+    if(!activeApp)return;
+    const t=event.touches&&event.touches[0];
+    if(!t)return;
+    if(Math.hypot(t.clientX-startX,t.clientY-startY)>11){
+      moved=true;
+      if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}
+    }
+  },{capture:true,passive:true});
+
+  document.addEventListener("touchend",event=>{
+    if(!activeApp)return;
+    const target=activeApp;
+    const t=event.changedTouches&&event.changedTouches[0];
+    const same=t?appAt(t.clientX,t.clientY)===target:true;
+    const shouldTap=!longTriggered&&!moved&&same;
+    lastTouchAt=Date.now();
+    reset();
+    if(shouldTap){
+      event.preventDefault();
+      if(typeof target.__bbDesktopTapAction==="function")target.__bbDesktopTapAction();
+    }
+  },{capture:true,passive:false});
+
+  document.addEventListener("touchcancel",reset,{capture:true,passive:true});
+
+  document.addEventListener("click",event=>{
+    if(Date.now()-lastTouchAt<800)return;
+    const x=Number(event.clientX||0),y=Number(event.clientY||0);
+    const app=appAt(x,y);
+    if(!app)return;
+    event.preventDefault();
+    event.stopPropagation();
+    if(typeof event.stopImmediatePropagation==="function")event.stopImmediatePropagation();
+    if(typeof app.__bbDesktopTapAction==="function")app.__bbDesktopTapAction();
+  },true);
+
+  document.addEventListener("contextmenu",event=>{
+    const x=Number(event.clientX||0),y=Number(event.clientY||0);
+    if(appAt(x,y))event.preventDefault();
+  },true);
 }
 
 // ---- 第一页：独立构建函数（原有逻辑，未改动） ----
@@ -7095,10 +7125,34 @@ ${conversationText()}
     const d=JSON.parse(raw);localStorage.clear();Object.entries(d.storage).forEach(([k,v])=>localStorage.setItem(k,String(v)));location.reload();
   }
   function addSettingsEntry(){
-    const settings=$("settings");if(!settings||$("bbDataEntry"))return;
-    const row=document.createElement("div");row.id="bbDataEntry";row.className="ios-row";
-    row.innerHTML='<div class="ios-row-label">数据与备份<div class="ios-row-desc">导入 API、人设、聊天和全部设置</div></div><div class="ios-row-chevron">›</div>';
-    row.onclick=openBackup;(settings.querySelector(".ios-group:last-of-type")||settings).appendChild(row);
+    const settings=$("settings");
+    if(!settings)return;
+
+    let group=$("bbDataEntryGroup");
+    if(!group){
+      group=document.createElement("div");
+      group.id="bbDataEntryGroup";
+      group.className="ios-group bb-data-entry-group-v355";
+      settings.appendChild(group);
+    }
+
+    let row=$("bbDataEntry");
+    if(!row){
+      row=document.createElement("div");
+      row.id="bbDataEntry";
+      row.className="ios-row";
+      row.setAttribute("data-label","数据与备份 导入 API 人设 聊天 设置");
+      row.innerHTML='<div class="ios-row-icon"></div><div class="ios-row-label">数据与备份<div class="ios-row-desc">导入 API、人设、聊天和全部设置</div></div><div class="ios-row-chevron">›</div>';
+    }
+
+    row.style.setProperty("pointer-events","auto","important");
+    row.style.setProperty("cursor","pointer","important");
+    row.style.webkitTapHighlightColor="rgba(0,0,0,0)";
+    row.onclick=function(event){
+      if(event){event.preventDefault();event.stopPropagation();}
+      openBackup();
+    };
+    group.appendChild(row);
   }
 
   window.BaobaoDataBackup={open:openBackup,exportAll,snapshot};
@@ -41392,7 +41446,7 @@ window.updateArchiveChatStyleHintV324=function(){
       transform:none!important;
       background:transparent!important;
       box-shadow:none!important;
-      pointer-events:auto!important;
+      pointer-events:none!important;
       z-index:20!important;
     }
     html body #desktop:not(.page-two-mode) .apps-page > .app .icon{
@@ -41531,7 +41585,7 @@ window.updateArchiveChatStyleHintV324=function(){
       item.style.setProperty('height','104px','important');
       item.style.setProperty('min-height','104px','important');
       item.style.setProperty('transform','none','important');
-      item.style.setProperty('pointer-events','auto','important');
+      item.style.setProperty('pointer-events','none','important');
     });
     if(dock){
       dock.style.setProperty('position','absolute','important');
@@ -41899,7 +41953,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function wrap(name){
     const old=window[name];
-    if(typeof old!=="function" || old.__bbV354DockWrap)return;
+    if(typeof old!=="function" || old.__bbV355DockWrap)return;
     const wrapped=function(){
       const result=old.apply(this,arguments);
       schedule();
@@ -41907,7 +41961,7 @@ window.updateArchiveChatStyleHintV324=function(){
       setTimeout(schedule,80);
       return result;
     };
-    wrapped.__bbV354DockWrap=true;
+    wrapped.__bbV355DockWrap=true;
     window[name]=wrapped;
     try{eval(name+"=wrapped")}catch(error){}
   }
@@ -42014,4 +42068,105 @@ window.updateArchiveChatStyleHintV324=function(){
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
   window.addEventListener('pageshow',install);
   [0,80,300,900,2000].forEach(ms=>setTimeout(install,ms));
+})();
+
+
+/* baobao-v355-zero-black-square-and-data-entry */
+(function(){
+  "use strict";
+  if(window.__bbV355ZeroSquare)return;
+  window.__bbV355ZeroSquare=true;
+  const STYLE_ID="bbV355ZeroSquareStyle";
+
+  function inject(){
+    let style=document.getElementById(STYLE_ID);
+    if(!style){style=document.createElement("style");style.id=STYLE_ID;}
+    style.textContent=`
+      html body .phone,
+      html body .phone *{
+        -webkit-tap-highlight-color:rgba(0,0,0,0)!important;
+      }
+      html body #desktop .apps-page>.app,
+      html body #desktop .apps-page>.app:active,
+      html body #desktop .apps-page>.app:focus,
+      html body #desktop .apps-page>.app:focus-visible,
+      html body #desktop .apps-page>.app .icon,
+      html body #desktop .apps-page>.app .icon:active,
+      html body #desktop .apps-page>.app .icon:focus{
+        pointer-events:none!important;
+        background:transparent!important;
+        background-color:transparent!important;
+        background-image:none!important;
+        box-shadow:none!important;
+        outline:none!important;
+        filter:none!important;
+        opacity:1!important;
+        -webkit-appearance:none!important;
+        appearance:none!important;
+        -webkit-touch-callout:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        -webkit-user-drag:none!important;
+      }
+      html body #desktop .apps-page>.app::before,
+      html body #desktop .apps-page>.app::after,
+      html body #desktop .apps-page>.app .icon::before,
+      html body #desktop .apps-page>.app .icon::after{
+        content:none!important;
+        display:none!important;
+        visibility:hidden!important;
+        opacity:0!important;
+        background:none!important;
+        box-shadow:none!important;
+      }
+      html body #bbDataEntryGroup{
+        display:block!important;
+        margin-top:18px!important;
+        overflow:hidden!important;
+        border-radius:22px!important;
+        background:#fff!important;
+        pointer-events:auto!important;
+      }
+      html body #bbDataEntry{
+        min-height:88px!important;
+        width:100%!important;
+        margin:0!important;
+        background:#fff!important;
+        pointer-events:auto!important;
+        touch-action:manipulation!important;
+      }
+      html body #bbDataEntry:active,
+      html body #bbDataEntry:focus{
+        background:#fff!important;
+        outline:none!important;
+        box-shadow:none!important;
+      }
+      html body #bbDataCenter{
+        z-index:2300!important;
+        pointer-events:auto!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function clean(){
+    inject();
+    document.querySelectorAll("#desktop .apps-page>.app").forEach(el=>{
+      el.removeAttribute("role");
+      el.removeAttribute("tabindex");
+      el.setAttribute("draggable","false");
+      el.style.setProperty("pointer-events","none","important");
+      el.style.setProperty("background","transparent","important");
+      el.style.setProperty("box-shadow","none","important");
+      el.classList.remove("bb-v300-pressing","bb-v302-pressing","pressed","pressing","active-press");
+      try{el.blur();}catch(_){ }
+    });
+    try{window.getSelection&&window.getSelection().removeAllRanges();}catch(_){ }
+    if(typeof addSettingsEntry==="function")addSettingsEntry();
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",clean,{once:true});
+  else clean();
+  window.addEventListener("pageshow",clean);
+  [0,60,180,500,1200,2600,5000].forEach(ms=>setTimeout(clean,ms));
 })();
