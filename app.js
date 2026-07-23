@@ -496,7 +496,7 @@ function normalizeDesktopAppSets(){
 normalizeDesktopAppSets();
 
 function ensurePage1PolaroidWidgetStyle(){
-  const STYLE_ID = "bb-page1-polaroid-widget-v400-style";
+  const STYLE_ID = "bb-page1-polaroid-widget-v401-style";
   let style = document.getElementById(STYLE_ID);
   if(!style){
     style = document.createElement("style");
@@ -530,7 +530,7 @@ function ensurePage1PolaroidWidgetStyle(){
       width:calc(100% + 32px)!important;
       height:270px!important;
       min-height:270px!important;
-      margin:-14px -8px 0 -18px!important;
+      margin:-33px -8px 0 -18px!important;
       border:0!important;
       padding:0!important;
       background:transparent!important;
@@ -683,7 +683,7 @@ function ensurePage1PolaroidWidgetStyle(){
     html body #desktop>.dock,
     html body #desktop .dock{
       top:auto!important;
-      bottom:-18px!important;
+      bottom:-21px!important;
     }
   `;
 }
@@ -37143,7 +37143,7 @@ ${offline}
       /* 桌面底栏向手机底部靠近；覆盖用户旧 app.css 里抬高 Dock 的规则。 */
       html body #desktop .dock{
         top:auto !important;
-        bottom:-18px !important;
+        bottom:-21px !important;
       }
       /* 进入查手机后直接显示 App，不再挡一张“手机还是空白”的大卡片。 */
       html body #bbPhoneEmptyV301,
@@ -41990,7 +41990,7 @@ window.updateArchiveChatStyleHintV324=function(){
       left:12px!important;
       right:12px!important;
       top:auto!important;
-      bottom:-18px!important;
+      bottom:-21px!important;
       width:auto!important;
       height:87px!important;
       margin:0!important;
@@ -42082,7 +42082,7 @@ window.updateArchiveChatStyleHintV324=function(){
       dock.style.setProperty('left','12px','important');
       dock.style.setProperty('right','12px','important');
       dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','-18px','important');
+      dock.style.setProperty('bottom','-21px','important');
       dock.style.setProperty('width','auto','important');
       dock.style.setProperty('height','87px','important');
       dock.style.setProperty('margin','0','important');
@@ -43177,7 +43177,7 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
 })();
 
 
-/* baobao-v400-final-layout-lock */
+/* baobao-v401-final-layout-lock */
 (function(){
   function applyV400Layout(){
     const desktop=document.getElementById('desktop');
@@ -43185,7 +43185,7 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
     const dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
     if(dock){
       dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','-18px','important');
+      dock.style.setProperty('bottom','-21px','important');
     }
     const hero=document.getElementById('p2hWrap');
     if(hero){
