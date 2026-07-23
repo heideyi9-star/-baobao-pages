@@ -1,9 +1,8 @@
-/* 豹豹机 383：真全屏模式。 */
-const CACHE_NAME = "baobao-shell-v383";
+/* 豹豹机 384：状态栏沉浸全屏、桌面稳定与底栏修复。 */
+const CACHE_NAME = "baobao-shell-v384";
 const SHELL = [
   "./",
   "./index.html",
-  "./app.css",
   "./app.js",
   "./apple-touch-icon.png",
   "./baobao-manifest.json",

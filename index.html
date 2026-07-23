@@ -3,6 +3,8 @@
 <head>
 <!-- index(307)：拆除多层聊天引擎叠加，普通私聊改为单一自然聊天核心。 -->
 <meta name="apple-mobile-web-app-title" content="斑斑豹">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script id="bb-early-start-v274">
 (function(){
   "use strict";
@@ -24,13 +26,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=383">
+<link rel="manifest" href="./baobao-manifest.json?v=384">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=383",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=384",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -39,10 +41,8 @@
 <meta name="theme-color" content="#f7f7f7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<title>豹豹机4.9 · 383 真正全屏重排版 - 豹豹机4.9 · 382 真全屏版</title>
+<title>豹豹机4.9 · 384 状态栏沉浸全屏稳定版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -153,20 +153,20 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
 </style>
 <style id="bb-page1-stable-first-paint-v331">
-html body #desktop:not(.page-two-mode) .desk-scroll{padding-top:calc(env(safe-area-inset-top, 0px) + 6px)!important;padding-bottom:calc(108px + env(safe-area-inset-bottom, 0px))!important}
+html body #desktop:not(.page-two-mode) .desk-scroll{padding-top:96px!important;padding-bottom:88px!important}
 html body #desktop:not(.page-two-mode) .desk-scroll>#clock,
 html body #desktop:not(.page-two-mode) .desk-scroll>#desktopNote,
 html body #desktop:not(.page-two-mode) .desk-scroll>.avatar-box,
 html body #desktop:not(.page-two-mode) .desk-scroll>#deskIns{display:none!important;height:0!important;margin:0!important;padding:0!important;overflow:hidden!important}
-html body #desktop:not(.page-two-mode) .desk-scroll>#photoWidget.bb-page1-showcase{display:block!important;position:relative!important;width:calc(100% - 20px)!important;max-width:none!important;margin:0 0 6px 10px!important;padding:0!important;transform:none!important;opacity:1!important;visibility:visible!important;z-index:15!important}
+html body #desktop:not(.page-two-mode) .desk-scroll>#photoWidget.bb-page1-showcase{display:block!important;position:relative!important;width:calc(100% + 14px)!important;max-width:none!important;margin:16px 0 26px -7px!important;padding:0!important;transform:none!important;opacity:1!important;visibility:visible!important;z-index:15!important}
 html body #desktop:not(.page-two-mode) .bb-showcase-shell{width:100%!important;padding:24px 24px 22px!important;border-radius:38px!important}
 html body #desktop:not(.page-two-mode) .bb-showcase-grid>.photo-slot.bb-showcase-photo{height:136px!important;min-height:136px!important}
-html body #desktop:not(.page-two-mode) .pages-viewport{margin-top:0!important;height:258px!important}
-html body #desktop:not(.page-two-mode) .apps-page{padding-top:8px!important;row-gap:14px!important}
-html body #desktop:not(.page-two-mode) .dock{bottom:calc(8px + env(safe-area-inset-bottom, 0px))!important}
+html body #desktop:not(.page-two-mode) .pages-viewport{margin-top:0!important}
+html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row-gap:14px!important}
+html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=383"></script>
+<script defer src="./app.js?v=384"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -408,18 +408,18 @@ html body #desktop .dock>.dock-icon::after{
 #innerVoiceOverlay,#msgEditOverlay{z-index:6270!important;pointer-events:auto!important;}
 </style>
 
-<style id="bb-true-fullscreen-v383">
-/* 豹豹机 382：彻底移除“小手机机身”，页面直接铺满真实视口。 */
-html,
-body{
+<style id="bb-statusbar-fullbleed-stable-v384">
+/* 384：不是移动组件，而是让桌面壁纸真正铺到系统状态栏后面。 */
+html,body{
   width:100%!important;
   height:100%!important;
-  min-width:100%!important;
   min-height:100%!important;
   margin:0!important;
   padding:0!important;
   overflow:hidden!important;
-  background:#f7f7f7!important;
+  background-position:center top!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
 }
 body{
   position:fixed!important;
@@ -427,86 +427,11 @@ body{
   display:block!important;
   align-items:initial!important;
   justify-content:initial!important;
-  touch-action:none!important;
 }
 html body .phone{
   position:fixed!important;
   inset:0!important;
-  left:0!important;
-  top:0!important;
-  right:0!important;
-  bottom:0!important;
   width:100vw!important;
-  width:100dvw!important;
-  height:100vh!important;
-  height:100dvh!important;
-  min-width:100vw!important;
-  min-height:100vh!important;
-  max-width:none!important;
-  max-height:none!important;
-  margin:0!important;
-  padding:0!important;
-  border:0!important;
-  outline:0!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-  overflow:hidden!important;
-  background:#f7f7f7!important;
-  transform:none!important;
-}
-html body .phone > .screen,
-html body .phone .screen{
-  inset:0!important;
-  width:100%!important;
-  height:100%!important;
-  border-radius:0!important;
-}
-/* 不再模拟第二套状态栏和灵动岛，直接使用手机真实状态栏。 */
-html body .phone > .mini-phone-statusbar,
-html body .phone #miniPhoneStatusbar,
-html body .phone .dynamic{
-  display:none!important;
-  visibility:hidden!important;
-  opacity:0!important;
-  pointer-events:none!important;
-}
-/* 所有全屏应用层也贴紧真实屏幕，不能再出现内层圆角小手机。 */
-html body .phone > [data-bb-fullscreen],
-html body .phone > .chat-demo,
-html body .phone > #chatDemo,
-html body .phone > #chatRoom,
-html body .phone > #settings,
-html body .phone > #beauty,
-html body .phone > #musicApp{
-  max-width:none!important;
-  max-height:none!important;
-  border-radius:0!important;
-  box-shadow:none!important;
-}
-/* 设置页中的整屏开关保持开启状态。 */
-#fullScreenToggle{pointer-events:none!important;}
-</style>
-
-
-<style id="bb-real-fullscreen-desktop-v383">
-/* 383：桌面按真实视口重新排布，不再沿用小手机画布的顶部留白。 */
-html,body{
-  width:100%!important;
-  height:100%!important;
-  min-height:100dvh!important;
-  margin:0!important;
-  padding:0!important;
-  background:#f7f7f7!important;
-  overflow:hidden!important;
-}
-html body .phone,
-html body .phone>.screen,
-html body #desktop{
-  position:fixed!important;
-  inset:0!important;
-  width:100vw!important;
-  width:100dvw!important;
-  height:100vh!important;
   height:100dvh!important;
   min-width:0!important;
   min-height:0!important;
@@ -517,92 +442,100 @@ html body #desktop{
   border:0!important;
   border-radius:0!important;
   box-shadow:none!important;
-  transform:none!important;
   overflow:hidden!important;
+  background-position:center top!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
 }
-html body #desktop .dynamic,
-html body #miniPhoneStatusbar{display:none!important;}
-html body #desktop .desk-scroll{
+html body .phone>.screen,
+html body #desktop,
+html body #lock{
   position:absolute!important;
   inset:0!important;
   width:100%!important;
   height:100%!important;
-  padding:calc(env(safe-area-inset-top, 0px) + 6px) 0 calc(108px + env(safe-area-inset-bottom, 0px))!important;
-  margin:0!important;
-  overflow:hidden!important;
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:stretch!important;
-}
-html body #desktop:not(.page-two-mode) .desk-scroll>#photoWidget.bb-page1-showcase{
-  position:relative!important;
-  display:block!important;
-  width:calc(100% - 20px)!important;
+  min-width:0!important;
+  min-height:0!important;
   max-width:none!important;
-  margin:0 0 6px 10px!important;
-  padding:0!important;
-  transform:none!important;
-  order:1!important;
-  flex:0 0 auto!important;
+  max-height:none!important;
+  border-radius:0!important;
+  background-position:center top!important;
+  background-size:cover!important;
+  background-repeat:no-repeat!important;
 }
-html body #desktop:not(.page-two-mode) .pages-viewport,
-html body #desktop:not(.page-two-mode) .pages-container,
-html body #desktop:not(.page-two-mode) .apps-page{
-  height:258px!important;
-  min-height:258px!important;
-  max-height:258px!important;
+/* 使用真实状态栏，不再显示豹豹机内部那一套状态栏和灵动岛。 */
+html body #miniPhoneStatusbar,
+html body .mini-phone-statusbar,
+html body #desktop>.dynamic{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
 }
-html body #desktop:not(.page-two-mode) .desk-scroll>.pages-viewport{
+/* 内容仍从安全区下面开始，背景本身则一直延伸到屏幕最上面。 */
+html body #desktop:not(.page-two-mode) .desk-scroll,
+html body #desktop.page-two-mode .desk-scroll{
+  inset:0!important;
   width:100%!important;
-  order:2!important;
-  flex:0 0 258px!important;
-  margin:0!important;
-  padding:0!important;
+  height:100%!important;
+  padding-top:calc(env(safe-area-inset-top, 0px) + 8px)!important;
+  padding-bottom:calc(112px + env(safe-area-inset-bottom, 0px))!important;
   overflow:hidden!important;
+  background:transparent!important;
 }
-html body #desktop:not(.page-two-mode) .apps-page{
-  grid-template-columns:repeat(4,minmax(0,1fr))!important;
-  grid-template-rows:repeat(2,96px)!important;
-  column-gap:8px!important;
-  row-gap:14px!important;
-  align-content:start!important;
-  padding:8px 16px 0!important;
-}
-html body #desktop:not(.page-two-mode) .desk-scroll>.dots{
-  order:3!important;
-  flex:0 0 auto!important;
-  margin:0!important;
-  transform:translateY(-2px)!important;
-}
+/* 底栏必须始终留在真实屏幕内，不能被画布高度挤出去。 */
 html body #desktop>.dock,
 html body #desktop .dock{
   position:absolute!important;
   left:12px!important;
   right:12px!important;
   top:auto!important;
-  bottom:calc(8px + env(safe-area-inset-bottom, 0px))!important;
+  bottom:calc(6px + env(safe-area-inset-bottom, 0px))!important;
   width:auto!important;
   height:92px!important;
-  min-height:92px!important;
-  max-height:92px!important;
   margin:0!important;
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:space-around!important;
   transform:none!important;
-  z-index:80!important;
+  animation:none!important;
+  transition:none!important;
+  z-index:480!important;
+  overflow:visible!important;
 }
-/* 子应用也直接占满真实视口，取消内层小手机圆角。 */
-html body .phone>.panel,
-html body .phone>.chat-demo,
-html body .phone>#chatRoom,
-html body .phone>#settings,
-html body .phone>#beautify,
-html body .phone>#musicApp{
-  inset:0!important;
-  width:100%!important;
-  height:100%!important;
-  max-width:none!important;
-  max-height:none!important;
+html body #desktop .dock>.dock-icon{
+  visibility:visible!important;
+  opacity:1!important;
+  transform:none!important;
+  animation:none!important;
+  transition:none!important;
+}
+/* 桌面 App 不再因监听器反复写样式而一弹一弹。 */
+html body #desktop .apps-page>.app,
+html body #desktop .apps-page>.app .icon,
+html body #desktop .apps-page>.app .icon>img,
+html body #desktop .apps-page>.app .icon>svg,
+html body #desktop .dock>.dock-icon,
+html body #desktop .dock .dock-symbol,
+html body #desktop .dock .dock-symbol>img,
+html body #desktop .dock .dock-symbol>svg{
+  animation:none!important;
+  transition:none!important;
+  translate:none!important;
+  rotate:none!important;
+}
+html body #desktop .apps-page>.app,
+html body #desktop .apps-page>.app .icon,
+html body #desktop .dock>.dock-icon,
+html body #desktop .dock .dock-symbol{
+  transform:none!important;
+}
+/* 保证桌面层本身完整铺满，避免顶部单独出现白色条。 */
+html body #desktop::before,
+html body #desktop::after{
   border-radius:0!important;
-  box-shadow:none!important;
 }
 </style>
 
@@ -2655,44 +2588,98 @@ API Key<br>
 </script>
 
 
-<script id="bb-true-fullscreen-v383-script">
+<script id="bb-statusbar-fullbleed-stable-v384-script">
 (function(){
   "use strict";
-  function enforceTrueFullscreenV382(){
-    try{ localStorage.setItem("screenMode","full"); }catch(error){}
-    var body=document.body;
-    if(body) body.classList.add("fullscreen-mode","bb-true-fullscreen-v383");
-    var phone=document.querySelector(".phone");
-    if(phone){
-      phone.style.setProperty("position","fixed","important");
-      phone.style.setProperty("inset","0","important");
-      phone.style.setProperty("width","100dvw","important");
-      phone.style.setProperty("height","100dvh","important");
-      phone.style.setProperty("max-width","none","important");
-      phone.style.setProperty("max-height","none","important");
-      phone.style.setProperty("border","0","important");
-      phone.style.setProperty("border-radius","0","important");
-      phone.style.setProperty("box-shadow","none","important");
-      phone.style.setProperty("margin","0","important");
-      phone.style.setProperty("transform","none","important");
+  if(window.__bbStatusbarFullbleedStableV384)return;
+  window.__bbStatusbarFullbleedStableV384=true;
+
+  function copyWallpaperToOuterShell(){
+    var desktop=document.getElementById('desktop');
+    var phone=document.querySelector('.phone');
+    if(!desktop)return;
+    var inline=desktop.style.background||'';
+    var computed='';
+    try{computed=getComputedStyle(desktop).background||'';}catch(_){ }
+    var bg=inline||computed;
+    if(bg){
+      document.documentElement.style.background=bg;
+      document.body.style.background=bg;
+      if(phone)phone.style.background=bg;
     }
-    var fakeStatus=document.getElementById("miniPhoneStatusbar");
-    if(fakeStatus) fakeStatus.style.setProperty("display","none","important");
-    var island=document.querySelector(".dynamic");
-    if(island) island.style.setProperty("display","none","important");
-    var toggle=document.getElementById("fullScreenToggle");
-    if(toggle){ toggle.checked=true; toggle.disabled=true; }
+    [document.documentElement,document.body,phone,desktop].filter(Boolean).forEach(function(el){
+      el.style.setProperty('background-position','center top','important');
+      el.style.setProperty('background-size','cover','important');
+      el.style.setProperty('background-repeat','no-repeat','important');
+    });
   }
-  window.bbEnforceTrueFullscreenV382=enforceTrueFullscreenV382;
-  document.addEventListener("DOMContentLoaded",function(){
-    enforceTrueFullscreenV382();
-    setTimeout(enforceTrueFullscreenV382,120);
-    setTimeout(enforceTrueFullscreenV382,700);
-  },{once:true});
-  window.addEventListener("load",enforceTrueFullscreenV382,{once:true});
-  window.addEventListener("pageshow",enforceTrueFullscreenV382);
-  window.addEventListener("orientationchange",function(){setTimeout(enforceTrueFullscreenV382,180);});
-  window.addEventListener("resize",function(){requestAnimationFrame(enforceTrueFullscreenV382);});
+
+  function stopDesktopStyleLoops(){
+    var desktop=document.getElementById('desktop');
+    var pages=document.getElementById('pagesContainer');
+    var body=document.body;
+    var targets=[
+      [pages,'__bbV357Observer'],
+      [desktop,'__bbV357DesktopObserver'],
+      [desktop,'__bbV344Observer'],
+      [desktop,'__bbV352DockObserver'],
+      [body,'__bbV354Observer']
+    ];
+    targets.forEach(function(pair){
+      var owner=pair[0],key=pair[1];
+      if(!owner)return;
+      var observer=owner[key];
+      if(observer&&typeof observer.disconnect==='function'){
+        try{observer.disconnect();}catch(_){ }
+      }
+      try{owner[key]=null;}catch(_){ }
+    });
+  }
+
+  function stabilizeDesktop(){
+    var desktop=document.getElementById('desktop');
+    if(!desktop)return;
+    desktop.querySelectorAll('.apps-page>.app,.apps-page>.app .icon,.dock>.dock-icon,.dock .dock-symbol').forEach(function(el){
+      el.style.setProperty('animation','none','important');
+      el.style.setProperty('transition','none','important');
+      el.style.setProperty('transform','none','important');
+    });
+    var dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
+    if(dock){
+      dock.style.setProperty('display','flex','important');
+      dock.style.setProperty('visibility','visible','important');
+      dock.style.setProperty('opacity','1','important');
+      dock.style.setProperty('bottom','calc(6px + env(safe-area-inset-bottom, 0px))','important');
+      dock.style.setProperty('transform','none','important');
+    }
+    copyWallpaperToOuterShell();
+  }
+
+  function wrapWallpaperRenderer(){
+    var fn=window.renderWallpaper;
+    if(typeof fn!=='function'||fn.__bbV384Wrapped)return;
+    function wrapped(){
+      var result=fn.apply(this,arguments);
+      requestAnimationFrame(copyWallpaperToOuterShell);
+      return result;
+    }
+    wrapped.__bbV384Wrapped=true;
+    wrapped.raw=fn;
+    window.renderWallpaper=wrapped;
+    try{renderWallpaper=wrapped;}catch(_){ }
+  }
+
+  function install(){
+    wrapWallpaperRenderer();
+    stopDesktopStyleLoops();
+    stabilizeDesktop();
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
+  else install();
+  window.addEventListener('load',install,{once:true});
+  window.addEventListener('pageshow',install);
+  [80,350,900,1800].forEach(function(ms){setTimeout(install,ms);});
 })();
 </script>
 
