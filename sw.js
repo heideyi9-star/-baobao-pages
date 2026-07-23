@@ -1,5 +1,5 @@
-/* 豹豹机 367：彻底关闭桌面图标 iOS 原生黑色按压方块。 */
-const CACHE_NAME = "baobao-shell-v367";
+/* 豹豹机 368：稳定回滚，保留黑色按压方块修复与聊天底栏修复。 */
+const CACHE_NAME = "baobao-shell-v368";
 const SHELL = [
   "./",
   "./index.html",
@@ -61,11 +61,6 @@ self.addEventListener("fetch", event => {
 
   if (["script","style","image","manifest","font"].includes(request.destination)) {
     event.respondWith((async () => {
-      const versioned = url.searchParams.has("v") || url.searchParams.has("fresh");
-      if (versioned) {
-        try { return await networkAndCache(request, request); }
-        catch (_) { return (await caches.match(request,{ignoreSearch:true})) || Response.error(); }
-      }
       const cached = await caches.match(request,{ignoreSearch:true});
       if (cached) return cached;
       try { return await networkAndCache(request,request); }
