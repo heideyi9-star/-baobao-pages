@@ -1,5 +1,5 @@
-/* 豹豹机 377：点击隔离、聊天设置/工具箱归位、朋友圈发布器恢复。 */
-const CACHE_NAME = "baobao-shell-v377";
+/* 豹豹机 375：Chat 顶部磨砂、移除换图文字、新建聊天室仅装饰。 */
+const CACHE_NAME = "baobao-shell-v375";
 const SHELL = [
   "./",
   "./index.html",
