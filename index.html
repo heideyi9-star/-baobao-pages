@@ -166,6 +166,52 @@ html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 <link rel="stylesheet" href="./app.css?v=331">
 <script defer src="./app.js?v=372"></script>
 
+
+<style id="bb-chat-message-home-v373">
+#tabChat.bb-message-layout{height:100%;overflow-y:auto;padding:22px 18px 112px;background:#f7f7f7;-webkit-overflow-scrolling:touch}
+#tabChat.bb-message-layout .bb-message-header{display:flex;align-items:center;justify-content:space-between;margin:2px 0 18px}
+#tabChat.bb-message-layout .bb-message-title{font-size:34px;line-height:1;font-weight:900;letter-spacing:-1.2px;color:#101954}
+#tabChat.bb-message-layout .bb-message-icon-btn{width:42px;height:42px;border-radius:14px;border:1px solid #e7e7eb;background:#fff;display:flex;align-items:center;justify-content:center;color:#1a1a1a;box-shadow:0 6px 18px rgba(20,20,20,.04)}
+#tabChat.bb-message-layout .bb-message-icon-btn svg{width:22px;height:22px}
+#tabChat.bb-message-layout .bb-message-tabs{display:flex;gap:22px;padding:0 2px 10px;margin:0 0 16px;color:#9b9ba3;font-size:15px;border-bottom:1px solid #ececf1;overflow-x:auto;white-space:nowrap}
+#tabChat.bb-message-layout .bb-message-tabs .active{color:#1f1f24;font-weight:700;position:relative}
+#tabChat.bb-message-layout .bb-message-tabs .active::after{content:"";position:absolute;left:0;right:0;bottom:-11px;height:2px;border-radius:999px;background:#1f1f24}
+#tabChat.bb-message-layout .bb-private-works-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #ececf1;border-radius:12px;padding:12px 14px;margin-bottom:14px;color:#7e7e88;font-size:14px}
+#tabChat.bb-message-layout .bb-private-works-left{display:flex;align-items:center;gap:8px;font-weight:600}
+#tabChat.bb-message-layout .bb-private-lock{font-size:12px;opacity:.85}
+#tabChat.bb-message-layout .bb-private-works-right{font-size:13px;color:#9e9ea8}
+#tabChat.bb-message-layout .bb-message-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+#tabChat.bb-message-layout .bb-message-gallery-left{display:grid;grid-template-rows:1fr 1fr;gap:10px}
+#tabChat.bb-message-layout .bb-msg-photo{position:relative;min-height:128px;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#e9e9ee,#dcdce4);box-shadow:inset 0 0 0 1px rgba(255,255,255,.75);cursor:pointer;background-size:cover;background-position:center}
+#tabChat.bb-message-layout .bb-msg-photo.bb-msg-photo-large{min-height:266px}
+#tabChat.bb-message-layout .bb-msg-photo::before{content:"点击换图";position:absolute;inset:auto 10px 10px auto;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.88);color:#7f7f89;font-size:11px;font-weight:700;letter-spacing:.2px;z-index:2}
+#tabChat.bb-message-layout .bb-msg-photo.has-image::before{content:"换图"}
+#tabChat.bb-message-layout .bb-msg-photo.empty::after{content:"＋";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:300;color:#ffffffd8;text-shadow:0 1px 2px rgba(0,0,0,.08)}
+#tabChat.bb-message-layout .bb-msg-photo-meta{position:absolute;left:0;right:0;bottom:0;padding:12px 12px 10px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.36));color:#fff}
+#tabChat.bb-message-layout .bb-msg-photo-title{font-size:13px;font-weight:700;line-height:1.2;word-break:break-all}
+#tabChat.bb-message-layout .bb-msg-photo-sub{font-size:11px;opacity:.88;margin-top:5px}
+#tabChat.bb-message-layout .bb-open-question{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px;margin-bottom:8px;font-size:17px;color:#19191c;font-weight:600}
+#tabChat.bb-message-layout .bb-open-question strong{font-size:18px;letter-spacing:.5px}
+#tabChat.bb-message-layout .bb-chat-self-row{display:flex;align-items:center;gap:12px;padding:10px 0 14px;border-bottom:1px solid #f0f0f3;margin-bottom:10px}
+#tabChat.bb-message-layout .bb-chat-self-avatar{width:56px;height:56px;border-radius:50%;overflow:hidden;background:#ededf0;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+#tabChat.bb-message-layout .bb-chat-self-avatar img{width:100%;height:100%;object-fit:cover}
+#tabChat.bb-message-layout .bb-chat-self-info{flex:1;min-width:0}
+#tabChat.bb-message-layout .bb-chat-self-top{font-size:17px;font-weight:800;color:#15151a;display:flex;align-items:center;gap:8px}
+#tabChat.bb-message-layout .bb-chat-self-count{font-size:13px;color:#a5a5ae;font-weight:700}
+#tabChat.bb-message-layout .bb-chat-self-handle{font-size:13px;color:#b2b2bb;margin-top:4px}
+#tabChat.bb-message-layout .bb-chat-self-bio{font-size:12px;color:#d0d0d7;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tabChat.bb-message-layout .bb-chat-self-time{font-size:12px;color:#b9b9c1;align-self:flex-start;padding-top:3px}
+#tabChat.bb-message-layout .bb-message-section-title{display:flex;align-items:center;gap:3px;font-size:17px;font-weight:800;color:#232327;margin:2px 0 8px}
+#tabChat.bb-message-layout #chatRecentList.bb-chat-home-list{display:flex;flex-direction:column;gap:12px;padding-bottom:10px}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-empty{background:#fff;border-radius:16px;padding:18px;text-align:center;color:#aaaab3;font-size:14px}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-item{display:flex;align-items:flex-start;gap:12px;padding:8px 0;background:transparent!important;border:none!important;box-shadow:none!important}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-avatar{width:52px;height:52px;border-radius:12px;background:#ececf0;overflow:hidden;flex-shrink:0}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-avatar img{width:100%;height:100%;object-fit:cover}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-info{min-width:0;flex:1}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-name{font-size:17px;font-weight:700;color:#1d1d23;line-height:1.25}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-last{font-size:13px;color:#b6b6bf;line-height:1.45;margin-top:4px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+</style>
+
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
@@ -843,26 +889,68 @@ API Key<br>
 </div>
 
 <!-- Tab: 聊天 -->
-<div class="app-tab-content" id="tabChat">
-<div class="chat-top"><span onclick="closeWeChatApp()" style="cursor:pointer">‹</span><span>Chat</span><span style="font-size:32px;cursor:pointer" onclick="openChatPlusMenu()">＋</span></div>
+<div class="app-tab-content bb-message-layout" id="tabChat">
+<div class="bb-message-header">
+  <div class="bb-message-title">Message</div>
+  <button class="bb-message-icon-btn" type="button" onclick="openChatPlusMenu()" aria-label="聊天菜单">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25H10.2l-4.62 3.33a.75.75 0 0 1-1.18-.61v-2.72A2.24 2.24 0 0 1 2.5 14.25v-7.5A2.25 2.25 0 0 1 4.5 6.75Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9.25h8M8 12.25h5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+</div>
 
-<div class="ig-profile-top">
-<div class="ig-avatar" id="wechatAvatar" onclick="triggerWechatAvatarUpload(event)" style="cursor:pointer"></div>
-<input class="hidden-input" type="file" accept="image/*" id="wechatAvatarInput" onchange="wechatAvatarChosen(this)">
-<div class="ig-stats">
-<div><b>0</b><span>Posts</span></div>
-<div><b>1314</b><span>Followers</span></div>
-<div><b>520</b><span>Following</span></div>
+<div class="bb-message-tabs">
+  <span class="active">Works ▾</span>
+  <span>Daily</span>
+  <span>Collections</span>
+  <span>Likes</span>
 </div>
+
+<div class="bb-private-works-bar">
+  <div class="bb-private-works-left"><span class="bb-private-lock">🔒</span><span>Private works</span></div>
+  <div class="bb-private-works-right">22 ›</div>
 </div>
-<div class="ig-handle" id="wechatHandle">@cline_123</div>
-<div class="ig-btn-row">
-<div class="ig-btn">Following ⌄</div>
-<div class="ig-btn" style="pointer-events:none">Message</div>
-<div class="ig-btn-add">+</div>
+
+<div class="bb-message-gallery">
+  <div class="bb-message-gallery-left">
+    <div class="bb-msg-photo" id="chatLandingPhoto0" onclick="bbOpenChatLandingPhoto(0)">
+      <div class="bb-msg-photo-meta">
+        <div class="bb-msg-photo-title">#inmyfeeling</div>
+        <div class="bb-msg-photo-sub">04-20</div>
+      </div>
+    </div>
+    <div class="bb-msg-photo" id="chatLandingPhoto1" onclick="bbOpenChatLandingPhoto(1)">
+      <div class="bb-msg-photo-meta">
+        <div class="bb-msg-photo-title">soft memory</div>
+        <div class="bb-msg-photo-sub">04-19</div>
+      </div>
+    </div>
+  </div>
+  <div class="bb-msg-photo bb-msg-photo-large" id="chatLandingPhoto2" onclick="bbOpenChatLandingPhoto(2)">
+    <div class="bb-msg-photo-meta">
+      <div class="bb-msg-photo-title">Dont_leave_me_alone</div>
+      <div class="bb-msg-photo-sub">33w</div>
+    </div>
+  </div>
 </div>
-<div class="ig-search"> <span id="friendBio">请继续成为我生命中不可替代的存在</span></div>
-<div class="chat-recent-list" id="chatRecentList"></div>
+<input class="hidden-input" type="file" accept="image/*" id="chatLandingPhotoInput" onchange="bbHandleChatLandingPhoto(this)">
+
+<div class="bb-open-question">
+  <span>“新对话 · 是否展开”</span>
+  <strong>YES/NO</strong>
+</div>
+
+<div class="bb-chat-self-row">
+  <div class="bb-chat-self-avatar" id="wechatAvatar" onclick="triggerWechatAvatarUpload(event)" style="cursor:pointer"></div>
+  <input class="hidden-input" type="file" accept="image/*" id="wechatAvatarInput" onchange="wechatAvatarChosen(this)">
+  <div class="bb-chat-self-info">
+    <div class="bb-chat-self-top">新建聊天室 <span class="bb-chat-self-count">👥2</span></div>
+    <div class="bb-chat-self-handle" id="wechatHandle">@cline_123</div>
+    <div class="bb-chat-self-bio" id="friendBio">それは私の夢の住所への道だから</div>
+  </div>
+  <div class="bb-chat-self-time">夜8:04</div>
+</div>
+
+<div class="bb-message-section-title">Mates<span>⌄</span></div>
+<div class="chat-recent-list bb-chat-home-list" id="chatRecentList"></div>
 </div>
 
 <!-- Tab: 创建人设 / Contacts -->
@@ -2040,6 +2128,55 @@ API Key<br>
   [0,80,260,700,1600,3000,5200].forEach(ms=>setTimeout(install,ms));
 })();
 </script>
+
+<script id="bb-chat-message-home-v373-script">
+(function(){
+  function ensureState(){
+    if(!window.state) window.state={};
+    if(!Array.isArray(window.state.chatLandingPhotos)) window.state.chatLandingPhotos=["","",""];
+  }
+  function getEl(id){ return document.getElementById(id); }
+  function render(){
+    ensureState();
+    var photos=window.state.chatLandingPhotos;
+    for(var i=0;i<3;i++){
+      var el=getEl('chatLandingPhoto'+i);
+      if(!el) continue;
+      var url=photos[i]||'';
+      el.style.backgroundImage=url?('url('+url+')'):'linear-gradient(180deg,#ececf1,#dbdbe2)';
+      el.classList.toggle('has-image',!!url);
+      el.classList.toggle('empty',!url);
+    }
+  }
+  window.bbOpenChatLandingPhoto=function(index){
+    ensureState();
+    window.__bbChatLandingPhotoIndex=index;
+    var input=getEl('chatLandingPhotoInput');
+    if(input) input.click();
+  };
+  window.bbHandleChatLandingPhoto=function(input){
+    if(!input || !input.files || !input.files[0]) return;
+    ensureState();
+    var idx=Number(window.__bbChatLandingPhotoIndex||0);
+    var file=input.files[0];
+    var reader=new FileReader();
+    reader.onload=function(e){
+      window.state.chatLandingPhotos[idx]=String(e.target.result||'');
+      try{ if(typeof saveLocal==='function') saveLocal(); }catch(error){}
+      render();
+    };
+    reader.readAsDataURL(file);
+    input.value='';
+  };
+  window.bbRenderChatLandingPhotos=render;
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(render, 50);
+    setTimeout(render, 500);
+  });
+  window.addEventListener('load', function(){ setTimeout(render, 200); });
+})();
+</script>
+
 </body>
 </html>
 
