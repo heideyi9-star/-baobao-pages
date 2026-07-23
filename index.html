@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=375">
+<link rel="manifest" href="./baobao-manifest.json?v=376">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=375",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=376",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 375 Chat磨砂装饰版</title>
+<title>豹豹机4.9 · 376 Chat返回键微磨砂版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -270,36 +270,74 @@ html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 
 
-<style id="bb-chat-polish-v375">
-/* 顶部留白做成轻柔的磨砂雾面，不再像空白断层。 */
+<style id="bb-chat-polish-v376">
+/* Chat 首页：稳定一点，顶部仍保留很轻的磨砂感。 */
 #chatDemo #tabChat.bb-message-layout{
   position:absolute!important;
   isolation:isolate;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:contain;
   background:
-    linear-gradient(180deg,rgba(247,247,247,.82) 0,rgba(247,247,247,.96) 155px,#f7f7f7 225px)!important;
+    linear-gradient(180deg,rgba(247,247,247,.88) 0,rgba(247,247,247,.97) 138px,#f7f7f7 212px)!important;
 }
 #chatDemo #tabChat.bb-message-layout::before{
   content:"";
   position:absolute;
   z-index:-1;
   pointer-events:none;
-  left:-12%;
-  right:-12%;
-  top:-54px;
-  height:236px;
+  left:-10%;
+  right:-10%;
+  top:-36px;
+  height:190px;
   background:
-    radial-gradient(circle at 18% 36%,rgba(175,181,199,.30),rgba(175,181,199,0) 44%),
-    radial-gradient(circle at 73% 18%,rgba(207,202,216,.32),rgba(207,202,216,0) 47%),
-    radial-gradient(circle at 50% 72%,rgba(229,230,235,.68),rgba(229,230,235,0) 58%);
-  filter:blur(28px);
-  -webkit-filter:blur(28px);
-  opacity:.78;
+    radial-gradient(circle at 20% 36%,rgba(184,188,203,.20),rgba(184,188,203,0) 42%),
+    radial-gradient(circle at 74% 18%,rgba(213,210,220,.18),rgba(213,210,220,0) 46%),
+    radial-gradient(circle at 50% 70%,rgba(232,233,238,.50),rgba(232,233,238,0) 58%);
+  filter:blur(22px);
+  -webkit-filter:blur(22px);
+  opacity:.62;
+}
+#chatDemo #tabChat.bb-message-layout .bb-message-header{
+  position:relative;
+  z-index:2;
+}
+#chatDemo #tabChat.bb-message-layout .bb-message-back{
+  border:none!important;
+  background:transparent!important;
+  padding:0!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:4px!important;
+  cursor:pointer!important;
+  -webkit-tap-highlight-color:transparent!important;
+}
+#chatDemo #tabChat.bb-message-layout .bb-message-back:active{
+  opacity:.72;
+  transform:translateY(1px);
 }
 /* 图片仍然整块可点换图，但不再显示“换图”胶囊文字。 */
 #chatDemo #tabChat.bb-message-layout .bb-msg-photo::before,
 #chatDemo #tabChat.bb-message-layout .bb-msg-photo.has-image::before{
   content:none!important;
   display:none!important;
+}
+/* “新对话·是否展开” 上方做一点点边界磨砂，别太重。 */
+#chatDemo #tabChat.bb-message-layout .bb-open-question{
+  position:relative;
+  padding-top:16px;
+  margin-top:2px;
+}
+#chatDemo #tabChat.bb-message-layout .bb-open-question::before{
+  content:"";
+  position:absolute;
+  left:-8px;
+  right:-8px;
+  top:-18px;
+  height:28px;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(247,247,247,.16),rgba(247,247,247,.58) 48%,rgba(247,247,247,.96) 100%);
+  -webkit-backdrop-filter:blur(5px);
+  backdrop-filter:blur(5px);
 }
 /* “新建聊天室”仅作版面装饰：吃掉点击，避免穿透到桌面世界书。 */
 #chatDemo #tabChat.bb-message-layout .bb-chat-self-row{
@@ -999,7 +1037,7 @@ API Key<br>
 <!-- Tab: 聊天 -->
 <div class="app-tab-content bb-message-layout" id="tabChat">
 <div class="bb-message-header">
-  <div class="bb-message-title">Message</div>
+  <button class="bb-message-title bb-message-back" type="button" onclick="closeWeChatApp()" aria-label="返回桌面">‹ Message</button>
   <button class="bb-message-icon-btn" type="button" onclick="openChatPlusMenu()" aria-label="聊天菜单">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25H10.2l-4.62 3.33a.75.75 0 0 1-1.18-.61v-2.72A2.24 2.24 0 0 1 2.5 14.25v-7.5A2.25 2.25 0 0 1 4.5 6.75Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9.25h8M8 12.25h5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
   </button>
