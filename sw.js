@@ -1,5 +1,5 @@
-/* 豹豹机 353：上方组件不动，中间八个图标再下移4px。 */
-const CACHE_NAME = "baobao-shell-v353";
+/* 豹豹机 354：彻底关闭桌面图标 iOS 原生黑色按压方块。 */
+const CACHE_NAME = "baobao-shell-v354";
 const SHELL = [
   "./",
   "./index.html",

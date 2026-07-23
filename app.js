@@ -570,6 +570,102 @@ function renderPages(){
   goToPage(state.page, false);
 }
 
+// ---- 桌面图标安全点击：阻止 iOS 原生长按预览/灰黑方块，同时保留长按编辑 ----
+function bindSafeDesktopAppPress(el, onTap, onLongPress){
+  let timer=null;
+  let longTriggered=false;
+  let moved=false;
+  let startX=0;
+  let startY=0;
+  let lastTouchEnd=0;
+
+  el.setAttribute("draggable","false");
+  el.setAttribute("role","button");
+  el.removeAttribute("tabindex");
+  el.style.webkitTapHighlightColor="transparent";
+  el.style.webkitTouchCallout="none";
+  el.style.webkitUserSelect="none";
+  el.style.userSelect="none";
+  el.style.webkitUserDrag="none";
+  el.style.touchAction="manipulation";
+
+  const clearVisual=()=>{
+    clearTimeout(timer);
+    timer=null;
+    el.classList.remove("bb-v300-pressing","bb-v302-pressing","pressed","pressing","active-press");
+    el.style.removeProperty("background");
+    el.style.removeProperty("box-shadow");
+    el.style.removeProperty("filter");
+    try{ el.blur(); }catch(_){ }
+    try{ window.getSelection && window.getSelection().removeAllRanges(); }catch(_){ }
+  };
+
+  const arm=(x,y)=>{
+    clearVisual();
+    startX=x||0;
+    startY=y||0;
+    moved=false;
+    longTriggered=false;
+    timer=setTimeout(()=>{
+      if(moved)return;
+      longTriggered=true;
+      clearVisual();
+      if(typeof onLongPress==="function")onLongPress();
+    },550);
+  };
+
+  el.addEventListener("dragstart",e=>e.preventDefault(),true);
+  el.addEventListener("contextmenu",e=>{e.preventDefault();clearVisual();},true);
+  el.addEventListener("selectstart",e=>e.preventDefault(),true);
+
+  el.addEventListener("touchstart",e=>{
+    const t=e.touches&&e.touches[0];
+    if(!t)return;
+    e.preventDefault();
+    e.stopPropagation();
+    arm(t.clientX,t.clientY);
+  },{passive:false});
+
+  el.addEventListener("touchmove",e=>{
+    const t=e.touches&&e.touches[0];
+    if(!t)return;
+    if(Math.hypot(t.clientX-startX,t.clientY-startY)>10){
+      moved=true;
+      clearVisual();
+    }
+  },{passive:true});
+
+  el.addEventListener("touchend",e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    lastTouchEnd=Date.now();
+    clearTimeout(timer);
+    timer=null;
+    const shouldTap=!longTriggered&&!moved;
+    clearVisual();
+    if(shouldTap&&typeof onTap==="function")onTap();
+  },{passive:false});
+
+  el.addEventListener("touchcancel",()=>{moved=true;clearVisual();},{passive:true});
+
+  // 鼠标/触控板保留正常点击；触屏产生的合成 click 会被时间门禁拦掉。
+  el.addEventListener("click",e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(Date.now()-lastTouchEnd<700)return;
+    clearVisual();
+    if(typeof onTap==="function")onTap();
+  });
+
+  el.querySelectorAll("img,svg,.icon,.icon *").forEach(node=>{
+    try{node.setAttribute("draggable","false");}catch(_){ }
+    try{node.style.pointerEvents="none";}catch(_){ }
+    try{node.style.webkitUserDrag="none";}catch(_){ }
+    try{node.style.webkitTouchCallout="none";}catch(_){ }
+    try{node.style.webkitUserSelect="none";}catch(_){ }
+  });
+}
+
 // ---- 第一页：独立构建函数（原有逻辑，未改动） ----
 function buildPage1(){
   const pageDiv = document.createElement("div");
@@ -581,9 +677,11 @@ function buildPage1(){
       ? `<img src="${app.icon}" style="width:100%;height:100%;border-radius:16px;object-fit:cover">`
       : app.icon;
     appDiv.innerHTML = `<div class="icon">${iconInner}</div>${app.label}`;
-    appDiv.addEventListener("pointerdown", () => startPress(aIdx));
-    appDiv.addEventListener("pointerup", () => endPress(aIdx));
-    appDiv.addEventListener("pointerleave", cancelPress);
+    bindSafeDesktopAppPress(
+      appDiv,
+      () => handleAppAction(state.page1Apps[aIdx]),
+      () => openIconEdit(aIdx)
+    );
     pageDiv.appendChild(appDiv);
   });
   return pageDiv;
@@ -603,9 +701,11 @@ function buildPage2(){
 
     appDiv.innerHTML = `<div class="icon">${iconInner}</div>${app.label}`;
 
-    appDiv.addEventListener("pointerdown", () => startPressP2(aIdx));
-    appDiv.addEventListener("pointerup", () => endPressP2(aIdx));
-    appDiv.addEventListener("pointerleave", cancelPressP2);
+    bindSafeDesktopAppPress(
+      appDiv,
+      () => handleAppActionP2(state.page2Apps[aIdx]),
+      () => openIconEditP2(aIdx)
+    );
 
     pageDiv.appendChild(appDiv);
   });
@@ -41607,11 +41707,11 @@ window.updateArchiveChatStyleHintV324=function(){
    ========================================================= */
 (function(){
   "use strict";
-  if(window.__bbV353GlobalDockFix)return;
-  window.__bbV353GlobalDockFix=true;
+  if(window.__bbV354GlobalDockFix)return;
+  window.__bbV354GlobalDockFix=true;
 
-  const STYLE_ID="bbV353GlobalDockFixStyle";
-  const HIDE_CLASS="bb-hide-home-dock-v353";
+  const STYLE_ID="bbV354GlobalDockFixStyle";
+  const HIDE_CLASS="bb-hide-home-dock-v354";
   let scheduled=false;
 
   function injectStyle(){
@@ -41799,7 +41899,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function wrap(name){
     const old=window[name];
-    if(typeof old!=="function" || old.__bbV353DockWrap)return;
+    if(typeof old!=="function" || old.__bbV354DockWrap)return;
     const wrapped=function(){
       const result=old.apply(this,arguments);
       schedule();
@@ -41807,7 +41907,7 @@ window.updateArchiveChatStyleHintV324=function(){
       setTimeout(schedule,80);
       return result;
     };
-    wrapped.__bbV353DockWrap=true;
+    wrapped.__bbV354DockWrap=true;
     window[name]=wrapped;
     try{eval(name+"=wrapped")}catch(error){}
   }
@@ -41821,8 +41921,8 @@ window.updateArchiveChatStyleHintV324=function(){
       "showPasscodePad","hidePasscodePad"
     ].forEach(wrap);
 
-    if(!document.__bbV353GhostBlock){
-      document.__bbV353GhostBlock=true;
+    if(!document.__bbV354GhostBlock){
+      document.__bbV354GhostBlock=true;
       document.addEventListener("dragstart",blockNativeGhost,true);
       document.addEventListener("selectstart",blockNativeGhost,true);
       document.addEventListener("contextmenu",blockNativeGhost,true);
@@ -41830,9 +41930,9 @@ window.updateArchiveChatStyleHintV324=function(){
       document.addEventListener("pointerup",schedule,true);
     }
 
-    if(!document.body.__bbV353Observer){
-      document.body.__bbV353Observer=new MutationObserver(schedule);
-      document.body.__bbV353Observer.observe(document.body,{
+    if(!document.body.__bbV354Observer){
+      document.body.__bbV354Observer=new MutationObserver(schedule);
+      document.body.__bbV354Observer.observe(document.body,{
         childList:true,
         subtree:true,
         attributes:true,
@@ -41848,4 +41948,70 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("pageshow",()=>setTimeout(install,0));
   window.addEventListener("resize",schedule);
   [0,80,240,600,1200,2500,5000].forEach(ms=>setTimeout(install,ms));
+})();
+
+
+/* baobao-v354-desktop-icon-native-highlight-hard-off */
+(function(){
+  "use strict";
+  if(window.__bbV354IconHardOff)return;
+  window.__bbV354IconHardOff=true;
+  const id="bbV354IconHardOffStyle";
+  function install(){
+    let st=document.getElementById(id);
+    if(!st){st=document.createElement("style");st.id=id;}
+    st.textContent=`
+      #desktop .apps-page>.app,
+      #desktop .apps-page>.app:active,
+      #desktop .apps-page>.app:focus,
+      #desktop .apps-page>.app:focus-visible,
+      #desktop .apps-page>.app .icon,
+      #desktop .apps-page>.app .icon:active{
+        background-color:transparent!important;
+        background-image:none!important;
+        box-shadow:none!important;
+        outline:0!important;
+        filter:none!important;
+        opacity:1!important;
+        transform:none!important;
+        -webkit-appearance:none!important;
+        appearance:none!important;
+        -webkit-tap-highlight-color:rgba(0,0,0,0)!important;
+        -webkit-touch-callout:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        -webkit-user-drag:none!important;
+      }
+      #desktop .apps-page>.app::before,
+      #desktop .apps-page>.app::after,
+      #desktop .apps-page>.app .icon::before,
+      #desktop .apps-page>.app .icon::after{
+        content:none!important;
+        display:none!important;
+        width:0!important;
+        height:0!important;
+        background:none!important;
+        box-shadow:none!important;
+      }
+      #desktop .apps-page>.app img,
+      #desktop .apps-page>.app svg,
+      #desktop .apps-page>.app .icon *{
+        pointer-events:none!important;
+        -webkit-touch-callout:none!important;
+        -webkit-user-select:none!important;
+        user-select:none!important;
+        -webkit-user-drag:none!important;
+      }
+    `;
+    document.head.appendChild(st);
+    document.querySelectorAll('#desktop .apps-page>.app').forEach(el=>{
+      el.removeAttribute('tabindex');
+      el.setAttribute('draggable','false');
+      el.classList.remove('bb-v300-pressing','bb-v302-pressing','pressed','pressing','active-press');
+      try{el.blur();}catch(_){ }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+  window.addEventListener('pageshow',install);
+  [0,80,300,900,2000].forEach(ms=>setTimeout(install,ms));
 })();
