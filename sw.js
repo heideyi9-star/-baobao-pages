@@ -1,5 +1,5 @@
-/* 豹豹机 371：桌面图标区域继续下移10px，保留黑色按压方块修复与聊天底栏修复。 */
-const CACHE_NAME = "baobao-shell-v372";
+/* 豹豹机 375：Chat 顶部磨砂、移除换图文字、新建聊天室仅装饰。 */
+const CACHE_NAME = "baobao-shell-v375";
 const SHELL = [
   "./",
   "./index.html",

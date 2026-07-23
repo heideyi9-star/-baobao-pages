@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=371">
+<link rel="manifest" href="./baobao-manifest.json?v=375">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=371",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=375",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 368 稳定回滚版</title>
+<title>豹豹机4.9 · 375 Chat磨砂装饰版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -164,7 +164,7 @@ html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row
 html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=372"></script>
+<script defer src="./app.js?v=375"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -210,6 +210,114 @@ html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 #tabChat.bb-message-layout #chatRecentList .chat-recent-info{min-width:0;flex:1}
 #tabChat.bb-message-layout #chatRecentList .chat-recent-name{font-size:17px;font-weight:700;color:#1d1d23;line-height:1.25}
 #tabChat.bb-message-layout #chatRecentList .chat-recent-last{font-size:13px;color:#b6b6bf;line-height:1.45;margin-top:4px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+</style>
+
+
+<style id="bb-chat-overlay-fix-v374">
+/* 修复 Chat 首页像套了一层小手机：强制作为贴边全屏应用层显示 */
+#chatDemo.chat-demo{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  background:#f7f7f7!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+  z-index:1200!important;
+}
+#chatDemo .chat-plus-menu{z-index:20}
+#chatDemo .app-tab-content{
+  position:absolute!important;
+  inset:0 0 86px 0!important;
+  display:none;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  background:#f7f7f7!important;
+}
+#chatDemo .app-tab-content.active,
+#chatDemo .app-tab-content.bb-active,
+#chatDemo .app-tab-content[data-active="true"]{
+  display:block;
+}
+#chatDemo #tabChat{display:block;}
+#chatDemo .app-tabbar{
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  height:86px!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,1fr)!important;
+  align-items:center!important;
+  background:rgba(255,255,255,.96)!important;
+  border-top:1px solid #ececf1!important;
+  box-shadow:0 -8px 20px rgba(0,0,0,.03)!important;
+  z-index:5!important;
+}
+#chatDemo .app-tabbar-item{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  height:100%!important;
+  font-size:14px!important;
+  font-weight:600!important;
+  color:#a0a0a8!important;
+}
+#chatDemo .app-tabbar-item.active{color:#1f1f24!important;font-weight:800!important;}
+#chatDemo.bb-chat-room-open{display:none!important;}
+</style>
+
+
+<style id="bb-chat-polish-v375">
+/* 顶部留白做成轻柔的磨砂雾面，不再像空白断层。 */
+#chatDemo #tabChat.bb-message-layout{
+  position:absolute!important;
+  isolation:isolate;
+  background:
+    linear-gradient(180deg,rgba(247,247,247,.82) 0,rgba(247,247,247,.96) 155px,#f7f7f7 225px)!important;
+}
+#chatDemo #tabChat.bb-message-layout::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  pointer-events:none;
+  left:-12%;
+  right:-12%;
+  top:-54px;
+  height:236px;
+  background:
+    radial-gradient(circle at 18% 36%,rgba(175,181,199,.30),rgba(175,181,199,0) 44%),
+    radial-gradient(circle at 73% 18%,rgba(207,202,216,.32),rgba(207,202,216,0) 47%),
+    radial-gradient(circle at 50% 72%,rgba(229,230,235,.68),rgba(229,230,235,0) 58%);
+  filter:blur(28px);
+  -webkit-filter:blur(28px);
+  opacity:.78;
+}
+/* 图片仍然整块可点换图，但不再显示“换图”胶囊文字。 */
+#chatDemo #tabChat.bb-message-layout .bb-msg-photo::before,
+#chatDemo #tabChat.bb-message-layout .bb-msg-photo.has-image::before{
+  content:none!important;
+  display:none!important;
+}
+/* “新建聊天室”仅作版面装饰：吃掉点击，避免穿透到桌面世界书。 */
+#chatDemo #tabChat.bb-message-layout .bb-chat-self-row{
+  position:relative!important;
+  z-index:8!important;
+  pointer-events:auto!important;
+  cursor:default!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  -webkit-tap-highlight-color:transparent!important;
+  touch-action:pan-y!important;
+}
+#chatDemo #tabChat.bb-message-layout .bb-chat-self-row *{
+  pointer-events:none!important;
+}
+#chatDemo #tabChat.bb-message-layout .bb-chat-self-avatar{
+  cursor:default!important;
+}
 </style>
 
 </head>
@@ -938,9 +1046,8 @@ API Key<br>
   <strong>YES/NO</strong>
 </div>
 
-<div class="bb-chat-self-row">
-  <div class="bb-chat-self-avatar" id="wechatAvatar" onclick="triggerWechatAvatarUpload(event)" style="cursor:pointer"></div>
-  <input class="hidden-input" type="file" accept="image/*" id="wechatAvatarInput" onchange="wechatAvatarChosen(this)">
+<div class="bb-chat-self-row" role="presentation" aria-hidden="true">
+  <div class="bb-chat-self-avatar" id="wechatAvatar"></div>
   <div class="bb-chat-self-info">
     <div class="bb-chat-self-top">新建聊天室 <span class="bb-chat-self-count">👥2</span></div>
     <div class="bb-chat-self-handle" id="wechatHandle">@cline_123</div>
@@ -2174,6 +2281,90 @@ API Key<br>
     setTimeout(render, 500);
   });
   window.addEventListener('load', function(){ setTimeout(render, 200); });
+})();
+</script>
+
+
+<script id="bb-chat-overlay-fix-v374-script">
+(function(){
+  function syncChatTabState(){
+    var root=document.getElementById('chatDemo');
+    if(!root) return;
+    var items=root.querySelectorAll('.app-tabbar-item');
+    var tabs=root.querySelectorAll('.app-tab-content');
+    var activeId='tabChat';
+    items.forEach(function(it){ if(it.classList.contains('active')) activeId=it.getAttribute('data-tab')||activeId; });
+    tabs.forEach(function(tab){
+      var on=tab.id===activeId;
+      tab.style.display=on?'block':'none';
+      tab.classList.toggle('bb-active',on);
+      tab.setAttribute('data-active', on ? 'true':'false');
+    });
+  }
+  var oldSwitch=window.switchAppTab;
+  window.switchAppTab=function(tabId){
+    if(typeof oldSwitch==='function'){
+      try{ oldSwitch(tabId); }catch(e){}
+    }
+    var root=document.getElementById('chatDemo');
+    if(root){
+      root.querySelectorAll('.app-tabbar-item').forEach(function(el){
+        el.classList.toggle('active', el.getAttribute('data-tab')===tabId);
+      });
+      root.querySelectorAll('.app-tab-content').forEach(function(el){
+        var on=el.id===tabId;
+        el.style.display=on?'block':'none';
+        el.classList.toggle('bb-active',on);
+        el.setAttribute('data-active', on ? 'true':'false');
+      });
+    }
+  };
+  var oldOpen=window.openChatRoom;
+  if(typeof oldOpen==='function'){
+    window.openChatRoom=function(){
+      var root=document.getElementById('chatDemo');
+      if(root) root.classList.add('bb-chat-room-open');
+      return oldOpen.apply(this, arguments);
+    };
+  }
+  var oldClose=window.closeChatRoom;
+  if(typeof oldClose==='function'){
+    window.closeChatRoom=function(){
+      var res=oldClose.apply(this, arguments);
+      var root=document.getElementById('chatDemo');
+      if(root) root.classList.remove('bb-chat-room-open');
+      syncChatTabState();
+      return res;
+    };
+  }
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(syncChatTabState, 60); });
+  window.addEventListener('load', function(){ setTimeout(syncChatTabState, 180); });
+})();
+</script>
+
+
+<script id="bb-chat-polish-v375-script">
+(function(){
+  function blockDecorativeChatRow(){
+    var root=document.getElementById('chatDemo');
+    if(!root || root.__bbDecorativeChatRow375)return;
+    root.__bbDecorativeChatRow375=true;
+    root.addEventListener('click',function(event){
+      var row=event.target && event.target.closest ? event.target.closest('.bb-chat-self-row') : null;
+      if(!row)return;
+      event.preventDefault();
+      event.stopPropagation();
+      if(event.stopImmediatePropagation)event.stopImmediatePropagation();
+    },true);
+    root.addEventListener('contextmenu',function(event){
+      var row=event.target && event.target.closest ? event.target.closest('.bb-chat-self-row') : null;
+      if(!row)return;
+      event.preventDefault();
+      event.stopPropagation();
+    },true);
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(blockDecorativeChatRow,60);});
+  window.addEventListener('load',function(){setTimeout(blockDecorativeChatRow,180);});
 })();
 </script>
 

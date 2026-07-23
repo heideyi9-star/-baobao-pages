@@ -24,13 +24,23 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=334">
-
+<link rel="manifest" href="./baobao-manifest.json?v=375">
+<script id="bb-pwa-cache-v293">
+(function(){
+  "use strict";
+  if(!("serviceWorker" in navigator))return;
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("./sw.js?v=375",{scope:"./"}).then(function(reg){
+      try{reg.update();}catch(e){}
+    }).catch(function(){});
+  },{once:true});
+})();
+</script>
 <meta name="theme-color" content="#f7f7f7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 304 API 真实生成版</title>
+<title>豹豹机4.9 · 375 Chat磨砂装饰版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -149,12 +159,166 @@ html body #desktop:not(.page-two-mode) .desk-scroll>#deskIns{display:none!import
 html body #desktop:not(.page-two-mode) .desk-scroll>#photoWidget.bb-page1-showcase{display:block!important;position:relative!important;width:calc(100% + 14px)!important;max-width:none!important;margin:16px 0 26px -7px!important;padding:0!important;transform:none!important;opacity:1!important;visibility:visible!important;z-index:15!important}
 html body #desktop:not(.page-two-mode) .bb-showcase-shell{width:100%!important;padding:24px 24px 22px!important;border-radius:38px!important}
 html body #desktop:not(.page-two-mode) .bb-showcase-grid>.photo-slot.bb-showcase-photo{height:136px!important;min-height:136px!important}
-html body #desktop:not(.page-two-mode) .pages-viewport{margin-top:20px!important}
-html body #desktop:not(.page-two-mode) .apps-page{padding-top:18px!important;row-gap:30px!important}
+html body #desktop:not(.page-two-mode) .pages-viewport{margin-top:0!important}
+html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row-gap:14px!important}
 html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=334"></script>
+<script defer src="./app.js?v=375"></script>
+
+
+<style id="bb-chat-message-home-v373">
+#tabChat.bb-message-layout{height:100%;overflow-y:auto;padding:22px 18px 112px;background:#f7f7f7;-webkit-overflow-scrolling:touch}
+#tabChat.bb-message-layout .bb-message-header{display:flex;align-items:center;justify-content:space-between;margin:2px 0 18px}
+#tabChat.bb-message-layout .bb-message-title{font-size:34px;line-height:1;font-weight:900;letter-spacing:-1.2px;color:#101954}
+#tabChat.bb-message-layout .bb-message-icon-btn{width:42px;height:42px;border-radius:14px;border:1px solid #e7e7eb;background:#fff;display:flex;align-items:center;justify-content:center;color:#1a1a1a;box-shadow:0 6px 18px rgba(20,20,20,.04)}
+#tabChat.bb-message-layout .bb-message-icon-btn svg{width:22px;height:22px}
+#tabChat.bb-message-layout .bb-message-tabs{display:flex;gap:22px;padding:0 2px 10px;margin:0 0 16px;color:#9b9ba3;font-size:15px;border-bottom:1px solid #ececf1;overflow-x:auto;white-space:nowrap}
+#tabChat.bb-message-layout .bb-message-tabs .active{color:#1f1f24;font-weight:700;position:relative}
+#tabChat.bb-message-layout .bb-message-tabs .active::after{content:"";position:absolute;left:0;right:0;bottom:-11px;height:2px;border-radius:999px;background:#1f1f24}
+#tabChat.bb-message-layout .bb-private-works-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid #ececf1;border-radius:12px;padding:12px 14px;margin-bottom:14px;color:#7e7e88;font-size:14px}
+#tabChat.bb-message-layout .bb-private-works-left{display:flex;align-items:center;gap:8px;font-weight:600}
+#tabChat.bb-message-layout .bb-private-lock{font-size:12px;opacity:.85}
+#tabChat.bb-message-layout .bb-private-works-right{font-size:13px;color:#9e9ea8}
+#tabChat.bb-message-layout .bb-message-gallery{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+#tabChat.bb-message-layout .bb-message-gallery-left{display:grid;grid-template-rows:1fr 1fr;gap:10px}
+#tabChat.bb-message-layout .bb-msg-photo{position:relative;min-height:128px;border-radius:18px;overflow:hidden;background:linear-gradient(180deg,#e9e9ee,#dcdce4);box-shadow:inset 0 0 0 1px rgba(255,255,255,.75);cursor:pointer;background-size:cover;background-position:center}
+#tabChat.bb-message-layout .bb-msg-photo.bb-msg-photo-large{min-height:266px}
+#tabChat.bb-message-layout .bb-msg-photo::before{content:"点击换图";position:absolute;inset:auto 10px 10px auto;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.88);color:#7f7f89;font-size:11px;font-weight:700;letter-spacing:.2px;z-index:2}
+#tabChat.bb-message-layout .bb-msg-photo.has-image::before{content:"换图"}
+#tabChat.bb-message-layout .bb-msg-photo.empty::after{content:"＋";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:300;color:#ffffffd8;text-shadow:0 1px 2px rgba(0,0,0,.08)}
+#tabChat.bb-message-layout .bb-msg-photo-meta{position:absolute;left:0;right:0;bottom:0;padding:12px 12px 10px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.36));color:#fff}
+#tabChat.bb-message-layout .bb-msg-photo-title{font-size:13px;font-weight:700;line-height:1.2;word-break:break-all}
+#tabChat.bb-message-layout .bb-msg-photo-sub{font-size:11px;opacity:.88;margin-top:5px}
+#tabChat.bb-message-layout .bb-open-question{display:flex;align-items:center;justify-content:space-between;padding:2px 2px 12px;margin-bottom:8px;font-size:17px;color:#19191c;font-weight:600}
+#tabChat.bb-message-layout .bb-open-question strong{font-size:18px;letter-spacing:.5px}
+#tabChat.bb-message-layout .bb-chat-self-row{display:flex;align-items:center;gap:12px;padding:10px 0 14px;border-bottom:1px solid #f0f0f3;margin-bottom:10px}
+#tabChat.bb-message-layout .bb-chat-self-avatar{width:56px;height:56px;border-radius:50%;overflow:hidden;background:#ededf0;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+#tabChat.bb-message-layout .bb-chat-self-avatar img{width:100%;height:100%;object-fit:cover}
+#tabChat.bb-message-layout .bb-chat-self-info{flex:1;min-width:0}
+#tabChat.bb-message-layout .bb-chat-self-top{font-size:17px;font-weight:800;color:#15151a;display:flex;align-items:center;gap:8px}
+#tabChat.bb-message-layout .bb-chat-self-count{font-size:13px;color:#a5a5ae;font-weight:700}
+#tabChat.bb-message-layout .bb-chat-self-handle{font-size:13px;color:#b2b2bb;margin-top:4px}
+#tabChat.bb-message-layout .bb-chat-self-bio{font-size:12px;color:#d0d0d7;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#tabChat.bb-message-layout .bb-chat-self-time{font-size:12px;color:#b9b9c1;align-self:flex-start;padding-top:3px}
+#tabChat.bb-message-layout .bb-message-section-title{display:flex;align-items:center;gap:3px;font-size:17px;font-weight:800;color:#232327;margin:2px 0 8px}
+#tabChat.bb-message-layout #chatRecentList.bb-chat-home-list{display:flex;flex-direction:column;gap:12px;padding-bottom:10px}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-empty{background:#fff;border-radius:16px;padding:18px;text-align:center;color:#aaaab3;font-size:14px}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-item{display:flex;align-items:flex-start;gap:12px;padding:8px 0;background:transparent!important;border:none!important;box-shadow:none!important}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-avatar{width:52px;height:52px;border-radius:12px;background:#ececf0;overflow:hidden;flex-shrink:0}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-avatar img{width:100%;height:100%;object-fit:cover}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-info{min-width:0;flex:1}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-name{font-size:17px;font-weight:700;color:#1d1d23;line-height:1.25}
+#tabChat.bb-message-layout #chatRecentList .chat-recent-last{font-size:13px;color:#b6b6bf;line-height:1.45;margin-top:4px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+</style>
+
+
+<style id="bb-chat-overlay-fix-v374">
+/* 修复 Chat 首页像套了一层小手机：强制作为贴边全屏应用层显示 */
+#chatDemo.chat-demo{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  background:#f7f7f7!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+  z-index:1200!important;
+}
+#chatDemo .chat-plus-menu{z-index:20}
+#chatDemo .app-tab-content{
+  position:absolute!important;
+  inset:0 0 86px 0!important;
+  display:none;
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  background:#f7f7f7!important;
+}
+#chatDemo .app-tab-content.active,
+#chatDemo .app-tab-content.bb-active,
+#chatDemo .app-tab-content[data-active="true"]{
+  display:block;
+}
+#chatDemo #tabChat{display:block;}
+#chatDemo .app-tabbar{
+  position:absolute!important;
+  left:0!important;
+  right:0!important;
+  bottom:0!important;
+  height:86px!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,1fr)!important;
+  align-items:center!important;
+  background:rgba(255,255,255,.96)!important;
+  border-top:1px solid #ececf1!important;
+  box-shadow:0 -8px 20px rgba(0,0,0,.03)!important;
+  z-index:5!important;
+}
+#chatDemo .app-tabbar-item{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  height:100%!important;
+  font-size:14px!important;
+  font-weight:600!important;
+  color:#a0a0a8!important;
+}
+#chatDemo .app-tabbar-item.active{color:#1f1f24!important;font-weight:800!important;}
+#chatDemo.bb-chat-room-open{display:none!important;}
+</style>
+
+
+<style id="bb-chat-polish-v375">
+/* 顶部留白做成轻柔的磨砂雾面，不再像空白断层。 */
+#chatDemo #tabChat.bb-message-layout{
+  position:absolute!important;
+  isolation:isolate;
+  background:
+    linear-gradient(180deg,rgba(247,247,247,.82) 0,rgba(247,247,247,.96) 155px,#f7f7f7 225px)!important;
+}
+#chatDemo #tabChat.bb-message-layout::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  pointer-events:none;
+  left:-12%;
+  right:-12%;
+  top:-54px;
+  height:236px;
+  background:
+    radial-gradient(circle at 18% 36%,rgba(175,181,199,.30),rgba(175,181,199,0) 44%),
+    radial-gradient(circle at 73% 18%,rgba(207,202,216,.32),rgba(207,202,216,0) 47%),
+    radial-gradient(circle at 50% 72%,rgba(229,230,235,.68),rgba(229,230,235,0) 58%);
+  filter:blur(28px);
+  -webkit-filter:blur(28px);
+  opacity:.78;
+}
+/* 图片仍然整块可点换图，但不再显示“换图”胶囊文字。 */
+#chatDemo #tabChat.bb-message-layout .bb-msg-photo::before,
+#chatDemo #tabChat.bb-message-layout .bb-msg-photo.has-image::before{
+  content:none!important;
+  display:none!important;
+}
+/* “新建聊天室”仅作版面装饰：吃掉点击，避免穿透到桌面世界书。 */
+#chatDemo #tabChat.bb-message-layout .bb-chat-self-row{
+  position:relative!important;
+  z-index:8!important;
+  pointer-events:auto!important;
+  cursor:default!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  -webkit-tap-highlight-color:transparent!important;
+  touch-action:pan-y!important;
+}
+#chatDemo #tabChat.bb-message-layout .bb-chat-self-row *{
+  pointer-events:none!important;
+}
+#chatDemo #tabChat.bb-message-layout .bb-chat-self-avatar{
+  cursor:default!important;
+}
+</style>
 
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
@@ -833,26 +997,67 @@ API Key<br>
 </div>
 
 <!-- Tab: 聊天 -->
-<div class="app-tab-content" id="tabChat">
-<div class="chat-top"><span onclick="closeWeChatApp()" style="cursor:pointer">‹</span><span>Chat</span><span style="font-size:32px;cursor:pointer" onclick="openChatPlusMenu()">＋</span></div>
+<div class="app-tab-content bb-message-layout" id="tabChat">
+<div class="bb-message-header">
+  <div class="bb-message-title">Message</div>
+  <button class="bb-message-icon-btn" type="button" onclick="openChatPlusMenu()" aria-label="聊天菜单">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 6.75A2.25 2.25 0 0 1 6.75 4.5h10.5a2.25 2.25 0 0 1 2.25 2.25v7.5a2.25 2.25 0 0 1-2.25 2.25H10.2l-4.62 3.33a.75.75 0 0 1-1.18-.61v-2.72A2.24 2.24 0 0 1 2.5 14.25v-7.5A2.25 2.25 0 0 1 4.5 6.75Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M8 9.25h8M8 12.25h5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+  </button>
+</div>
 
-<div class="ig-profile-top">
-<div class="ig-avatar" id="wechatAvatar" onclick="triggerWechatAvatarUpload(event)" style="cursor:pointer"></div>
-<input class="hidden-input" type="file" accept="image/*" id="wechatAvatarInput" onchange="wechatAvatarChosen(this)">
-<div class="ig-stats">
-<div><b>0</b><span>Posts</span></div>
-<div><b>1314</b><span>Followers</span></div>
-<div><b>520</b><span>Following</span></div>
+<div class="bb-message-tabs">
+  <span class="active">Works ▾</span>
+  <span>Daily</span>
+  <span>Collections</span>
+  <span>Likes</span>
 </div>
+
+<div class="bb-private-works-bar">
+  <div class="bb-private-works-left"><span class="bb-private-lock">🔒</span><span>Private works</span></div>
+  <div class="bb-private-works-right">22 ›</div>
 </div>
-<div class="ig-handle" id="wechatHandle">@cline_123</div>
-<div class="ig-btn-row">
-<div class="ig-btn">Following ⌄</div>
-<div class="ig-btn" style="pointer-events:none">Message</div>
-<div class="ig-btn-add">+</div>
+
+<div class="bb-message-gallery">
+  <div class="bb-message-gallery-left">
+    <div class="bb-msg-photo" id="chatLandingPhoto0" onclick="bbOpenChatLandingPhoto(0)">
+      <div class="bb-msg-photo-meta">
+        <div class="bb-msg-photo-title">#inmyfeeling</div>
+        <div class="bb-msg-photo-sub">04-20</div>
+      </div>
+    </div>
+    <div class="bb-msg-photo" id="chatLandingPhoto1" onclick="bbOpenChatLandingPhoto(1)">
+      <div class="bb-msg-photo-meta">
+        <div class="bb-msg-photo-title">soft memory</div>
+        <div class="bb-msg-photo-sub">04-19</div>
+      </div>
+    </div>
+  </div>
+  <div class="bb-msg-photo bb-msg-photo-large" id="chatLandingPhoto2" onclick="bbOpenChatLandingPhoto(2)">
+    <div class="bb-msg-photo-meta">
+      <div class="bb-msg-photo-title">Dont_leave_me_alone</div>
+      <div class="bb-msg-photo-sub">33w</div>
+    </div>
+  </div>
 </div>
-<div class="ig-search"> <span id="friendBio">请继续成为我生命中不可替代的存在</span></div>
-<div class="chat-recent-list" id="chatRecentList"></div>
+<input class="hidden-input" type="file" accept="image/*" id="chatLandingPhotoInput" onchange="bbHandleChatLandingPhoto(this)">
+
+<div class="bb-open-question">
+  <span>“新对话 · 是否展开”</span>
+  <strong>YES/NO</strong>
+</div>
+
+<div class="bb-chat-self-row" role="presentation" aria-hidden="true">
+  <div class="bb-chat-self-avatar" id="wechatAvatar"></div>
+  <div class="bb-chat-self-info">
+    <div class="bb-chat-self-top">新建聊天室 <span class="bb-chat-self-count">👥2</span></div>
+    <div class="bb-chat-self-handle" id="wechatHandle">@cline_123</div>
+    <div class="bb-chat-self-bio" id="friendBio">それは私の夢の住所への道だから</div>
+  </div>
+  <div class="bb-chat-self-time">夜8:04</div>
+</div>
+
+<div class="bb-message-section-title">Mates<span>⌄</span></div>
+<div class="chat-recent-list bb-chat-home-list" id="chatRecentList"></div>
 </div>
 
 <!-- Tab: 创建人设 / Contacts -->
@@ -1803,7 +2008,7 @@ API Key<br>
 
 <!-- index(315)：人设读取强化；每轮先从完整人物资料提取相关锚点，涉及角色生活、经历、习惯、偏好与关系时必须自然调用具体内容，不再只模仿语气。 -->
 <!-- index(316)：AI 生图新增“读取当前角色人设外貌”，可按角色外貌与气质自动生成头像、自拍、全身图和生活照。 -->
-<script>window.addEventListener("load",()=>{setTimeout(()=>{const d=document.getElementById("desktop");d&&d.classList.remove("hidden");const ids=["desktop","photoWidget","pagesContainer","dots"];const out={};ids.forEach(id=>{const e=document.getElementById(id);if(e){const r=e.getBoundingClientRect();out[id]={x:r.x,y:r.y,w:r.width,h:r.height,cs:{pos:getComputedStyle(e).position,margin:getComputedStyle(e).margin,transform:getComputedStyle(e).transform,pad:getComputedStyle(e).padding}}}});const dock=document.querySelector("#desktop .dock");if(dock){const r=dock.getBoundingClientRect();out.dock={x:r.x,y:r.y,w:r.width,h:r.height,cs:{pos:getComputedStyle(dock).position,bottom:getComputedStyle(dock).bottom}}};out.apps=[...document.querySelectorAll("#desktop .apps-page:first-child>.app")].map(e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height,text:e.textContent.trim()}});document.documentElement.innerHTML='<body><pre id="debug">'+JSON.stringify(out,null,2).replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</pre>
+
 <script>
 /* baobao-v357-desktop-icon-fit-and-fill */
 (function(){
@@ -1826,14 +2031,14 @@ API Key<br>
         flex-direction:column!important;
         align-items:center!important;
         justify-content:flex-start!important;
-        height:110px!important;
-        min-height:110px!important;
+        height:96px!important;
+        min-height:96px!important;
       }
       html body #desktop .apps-page>.app .icon{
-        width:68px!important;
-        height:68px!important;
-        margin:0 auto 9px!important;
-        border-radius:18px!important;
+        width:60px!important;
+        height:60px!important;
+        margin:0 auto 8px!important;
+        border-radius:15px!important;
         overflow:hidden!important;
         display:flex!important;
         align-items:center!important;
@@ -1841,12 +2046,12 @@ API Key<br>
         flex:0 0 auto!important;
       }
       html body #desktop .apps-page>.app .icon>img{
-        width:118%!important;
-        height:118%!important;
+        width:110%!important;
+        height:110%!important;
         object-fit:contain!important;
         object-position:center!important;
         display:block!important;
-        transform:scale(1.06)!important;
+        transform:scale(1.02)!important;
       }
       html body #desktop .apps-page>.app .icon>svg{
         width:82%!important;
@@ -1854,25 +2059,25 @@ API Key<br>
         display:block!important;
       }
       html body #desktop .apps-page>.app{
-        font-size:15px!important;
+        font-size:13px!important;
         line-height:1.15!important;
       }
       html body #desktop:not(.page-two-mode) .apps-page{
-        grid-template-rows:repeat(2,110px)!important;
-        column-gap:6px!important;
-        row-gap:20px!important;
+        grid-template-rows:repeat(2,96px)!important;
+        column-gap:8px!important;
+        row-gap:14px!important;
         padding:44px 16px 0!important;
       }
       html body #desktop.page-two-mode .apps-page,
       html body #desktop .apps-page.page2-only{
-        column-gap:6px!important;
-        row-gap:20px!important;
+        column-gap:8px!important;
+        row-gap:14px!important;
         padding-left:16px!important;
         padding-right:16px!important;
       }
       html body #desktop .dock>.dock-icon{
-        width:68px!important;
-        min-width:68px!important;
+        width:60px!important;
+        min-width:60px!important;
         height:76px!important;
         display:flex!important;
         flex-direction:column!important;
@@ -1880,9 +2085,9 @@ API Key<br>
         justify-content:flex-start!important;
       }
       html body #desktop .dock .dock-symbol{
-        width:52px!important;
-        height:52px!important;
-        border-radius:16px!important;
+        width:48px!important;
+        height:48px!important;
+        border-radius:15px!important;
         overflow:hidden!important;
         display:flex!important;
         align-items:center!important;
@@ -1890,12 +2095,12 @@ API Key<br>
         flex:0 0 auto!important;
       }
       html body #desktop .dock .dock-symbol>img{
-        width:118%!important;
-        height:118%!important;
+        width:110%!important;
+        height:110%!important;
         object-fit:contain!important;
         object-position:center!important;
         display:block!important;
-        transform:scale(1.06)!important;
+        transform:scale(1.02)!important;
       }
       html body #desktop .dock .dock-symbol>svg{
         width:82%!important;
@@ -1903,8 +2108,8 @@ API Key<br>
         display:block!important;
       }
       html body #desktop .dock small{
-        margin-top:7px!important;
-        font-size:14px!important;
+        margin-top:6px!important;
+        font-size:13px!important;
         line-height:1.08!important;
       }
     `;
@@ -1913,27 +2118,27 @@ API Key<br>
 
   function tuneAppIcon(app){
     if(!app)return;
-    app.style.setProperty('height','110px','important');
-    app.style.setProperty('min-height','110px','important');
+    app.style.setProperty('height','96px','important');
+    app.style.setProperty('min-height','96px','important');
     app.style.setProperty('justify-content','flex-start','important');
     const icon=app.querySelector('.icon');
     if(icon){
-      icon.style.setProperty('width','68px','important');
-      icon.style.setProperty('height','68px','important');
-      icon.style.setProperty('margin','0 auto 9px','important');
-      icon.style.setProperty('border-radius','18px','important');
+      icon.style.setProperty('width','60px','important');
+      icon.style.setProperty('height','60px','important');
+      icon.style.setProperty('margin','0 auto 8px','important');
+      icon.style.setProperty('border-radius','16px','important');
       icon.style.setProperty('overflow','hidden','important');
       icon.style.setProperty('display','flex','important');
       icon.style.setProperty('align-items','center','important');
       icon.style.setProperty('justify-content','center','important');
       const img=icon.querySelector('img');
       if(img){
-        img.style.setProperty('width','118%','important');
-        img.style.setProperty('height','118%','important');
+        img.style.setProperty('width','110%','important');
+        img.style.setProperty('height','110%','important');
         img.style.setProperty('object-fit','contain','important');
         img.style.setProperty('object-position','center','important');
         img.style.setProperty('display','block','important');
-        img.style.setProperty('transform','scale(1.06)','important');
+        img.style.setProperty('transform','scale(1.02)','important');
       }
       const svg=icon.querySelector('svg');
       if(svg){
@@ -1946,30 +2151,30 @@ API Key<br>
 
   function tuneDockIcon(item){
     if(!item)return;
-    item.style.setProperty('width','68px','important');
-    item.style.setProperty('min-width','68px','important');
-    item.style.setProperty('height','76px','important');
+    item.style.setProperty('width','64px','important');
+    item.style.setProperty('min-width','64px','important');
+    item.style.setProperty('height','72px','important');
     item.style.setProperty('display','flex','important');
     item.style.setProperty('flex-direction','column','important');
     item.style.setProperty('align-items','center','important');
     item.style.setProperty('justify-content','flex-start','important');
     const box=item.querySelector('.dock-symbol');
     if(box){
-      box.style.setProperty('width','52px','important');
-      box.style.setProperty('height','52px','important');
-      box.style.setProperty('border-radius','16px','important');
+      box.style.setProperty('width','48px','important');
+      box.style.setProperty('height','48px','important');
+      box.style.setProperty('border-radius','15px','important');
       box.style.setProperty('overflow','hidden','important');
       box.style.setProperty('display','flex','important');
       box.style.setProperty('align-items','center','important');
       box.style.setProperty('justify-content','center','important');
       const img=box.querySelector('img');
       if(img){
-        img.style.setProperty('width','118%','important');
-        img.style.setProperty('height','118%','important');
+        img.style.setProperty('width','110%','important');
+        img.style.setProperty('height','110%','important');
         img.style.setProperty('object-fit','contain','important');
         img.style.setProperty('object-position','center','important');
         img.style.setProperty('display','block','important');
-        img.style.setProperty('transform','scale(1.06)','important');
+        img.style.setProperty('transform','scale(1.02)','important');
       }
       const svg=box.querySelector('svg');
       if(svg){
@@ -1980,8 +2185,8 @@ API Key<br>
     }
     const small=item.querySelector('small');
     if(small){
-      small.style.setProperty('margin-top','7px','important');
-      small.style.setProperty('font-size','14px','important');
+      small.style.setProperty('margin-top','6px','important');
+      small.style.setProperty('font-size','13px','important');
       small.style.setProperty('line-height','1.08','important');
     }
   }
@@ -1991,8 +2196,8 @@ API Key<br>
     const desktop=document.getElementById('desktop');
     if(!desktop)return;
     desktop.querySelectorAll('.apps-page').forEach(page=>{
-      page.style.setProperty('column-gap','6px','important');
-      page.style.setProperty('row-gap','20px','important');
+      page.style.setProperty('column-gap','8px','important');
+      page.style.setProperty('row-gap','14px','important');
       page.style.setProperty('padding-left','16px','important');
       page.style.setProperty('padding-right','16px','important');
       if(!desktop.classList.contains('page-two-mode')&&!page.classList.contains('page2-only')){
@@ -2030,233 +2235,139 @@ API Key<br>
   [0,80,260,700,1600,3000,5200].forEach(ms=>setTimeout(install,ms));
 })();
 </script>
-</body>';},2500);});</script>
-<script>
-/* baobao-v357-desktop-icon-fit-and-fill */
+
+<script id="bb-chat-message-home-v373-script">
 (function(){
-  "use strict";
-  if(window.__bbV357DesktopIconFit)return;
-  window.__bbV357DesktopIconFit=true;
-
-  const STYLE_ID='bbV357DesktopIconFitStyle';
-  let busy=false;
-
-  function ensureStyle(){
-    let style=document.getElementById(STYLE_ID);
-    if(!style){
-      style=document.createElement('style');
-      style.id=STYLE_ID;
-    }
-    style.textContent=`
-      html body #desktop .apps-page>.app{
-        display:flex!important;
-        flex-direction:column!important;
-        align-items:center!important;
-        justify-content:flex-start!important;
-        height:110px!important;
-        min-height:110px!important;
-      }
-      html body #desktop .apps-page>.app .icon{
-        width:68px!important;
-        height:68px!important;
-        margin:0 auto 9px!important;
-        border-radius:18px!important;
-        overflow:hidden!important;
-        display:flex!important;
-        align-items:center!important;
-        justify-content:center!important;
-        flex:0 0 auto!important;
-      }
-      html body #desktop .apps-page>.app .icon>img{
-        width:118%!important;
-        height:118%!important;
-        object-fit:contain!important;
-        object-position:center!important;
-        display:block!important;
-        transform:scale(1.06)!important;
-      }
-      html body #desktop .apps-page>.app .icon>svg{
-        width:82%!important;
-        height:82%!important;
-        display:block!important;
-      }
-      html body #desktop .apps-page>.app{
-        font-size:15px!important;
-        line-height:1.15!important;
-      }
-      html body #desktop:not(.page-two-mode) .apps-page{
-        grid-template-rows:repeat(2,110px)!important;
-        column-gap:6px!important;
-        row-gap:20px!important;
-        padding:44px 16px 0!important;
-      }
-      html body #desktop.page-two-mode .apps-page,
-      html body #desktop .apps-page.page2-only{
-        column-gap:6px!important;
-        row-gap:20px!important;
-        padding-left:16px!important;
-        padding-right:16px!important;
-      }
-      html body #desktop .dock>.dock-icon{
-        width:68px!important;
-        min-width:68px!important;
-        height:76px!important;
-        display:flex!important;
-        flex-direction:column!important;
-        align-items:center!important;
-        justify-content:flex-start!important;
-      }
-      html body #desktop .dock .dock-symbol{
-        width:52px!important;
-        height:52px!important;
-        border-radius:16px!important;
-        overflow:hidden!important;
-        display:flex!important;
-        align-items:center!important;
-        justify-content:center!important;
-        flex:0 0 auto!important;
-      }
-      html body #desktop .dock .dock-symbol>img{
-        width:118%!important;
-        height:118%!important;
-        object-fit:contain!important;
-        object-position:center!important;
-        display:block!important;
-        transform:scale(1.06)!important;
-      }
-      html body #desktop .dock .dock-symbol>svg{
-        width:82%!important;
-        height:82%!important;
-        display:block!important;
-      }
-      html body #desktop .dock small{
-        margin-top:7px!important;
-        font-size:14px!important;
-        line-height:1.08!important;
-      }
-    `;
-    document.head.appendChild(style);
+  function ensureState(){
+    if(!window.state) window.state={};
+    if(!Array.isArray(window.state.chatLandingPhotos)) window.state.chatLandingPhotos=["","",""];
   }
-
-  function tuneAppIcon(app){
-    if(!app)return;
-    app.style.setProperty('height','110px','important');
-    app.style.setProperty('min-height','110px','important');
-    app.style.setProperty('justify-content','flex-start','important');
-    const icon=app.querySelector('.icon');
-    if(icon){
-      icon.style.setProperty('width','68px','important');
-      icon.style.setProperty('height','68px','important');
-      icon.style.setProperty('margin','0 auto 9px','important');
-      icon.style.setProperty('border-radius','18px','important');
-      icon.style.setProperty('overflow','hidden','important');
-      icon.style.setProperty('display','flex','important');
-      icon.style.setProperty('align-items','center','important');
-      icon.style.setProperty('justify-content','center','important');
-      const img=icon.querySelector('img');
-      if(img){
-        img.style.setProperty('width','118%','important');
-        img.style.setProperty('height','118%','important');
-        img.style.setProperty('object-fit','contain','important');
-        img.style.setProperty('object-position','center','important');
-        img.style.setProperty('display','block','important');
-        img.style.setProperty('transform','scale(1.06)','important');
-      }
-      const svg=icon.querySelector('svg');
-      if(svg){
-        svg.style.setProperty('width','82%','important');
-        svg.style.setProperty('height','82%','important');
-        svg.style.setProperty('display','block','important');
-      }
+  function getEl(id){ return document.getElementById(id); }
+  function render(){
+    ensureState();
+    var photos=window.state.chatLandingPhotos;
+    for(var i=0;i<3;i++){
+      var el=getEl('chatLandingPhoto'+i);
+      if(!el) continue;
+      var url=photos[i]||'';
+      el.style.backgroundImage=url?('url('+url+')'):'linear-gradient(180deg,#ececf1,#dbdbe2)';
+      el.classList.toggle('has-image',!!url);
+      el.classList.toggle('empty',!url);
     }
   }
-
-  function tuneDockIcon(item){
-    if(!item)return;
-    item.style.setProperty('width','68px','important');
-    item.style.setProperty('min-width','68px','important');
-    item.style.setProperty('height','76px','important');
-    item.style.setProperty('display','flex','important');
-    item.style.setProperty('flex-direction','column','important');
-    item.style.setProperty('align-items','center','important');
-    item.style.setProperty('justify-content','flex-start','important');
-    const box=item.querySelector('.dock-symbol');
-    if(box){
-      box.style.setProperty('width','52px','important');
-      box.style.setProperty('height','52px','important');
-      box.style.setProperty('border-radius','16px','important');
-      box.style.setProperty('overflow','hidden','important');
-      box.style.setProperty('display','flex','important');
-      box.style.setProperty('align-items','center','important');
-      box.style.setProperty('justify-content','center','important');
-      const img=box.querySelector('img');
-      if(img){
-        img.style.setProperty('width','118%','important');
-        img.style.setProperty('height','118%','important');
-        img.style.setProperty('object-fit','contain','important');
-        img.style.setProperty('object-position','center','important');
-        img.style.setProperty('display','block','important');
-        img.style.setProperty('transform','scale(1.06)','important');
-      }
-      const svg=box.querySelector('svg');
-      if(svg){
-        svg.style.setProperty('width','82%','important');
-        svg.style.setProperty('height','82%','important');
-        svg.style.setProperty('display','block','important');
-      }
-    }
-    const small=item.querySelector('small');
-    if(small){
-      small.style.setProperty('margin-top','7px','important');
-      small.style.setProperty('font-size','14px','important');
-      small.style.setProperty('line-height','1.08','important');
-    }
-  }
-
-  function enforce(){
-    ensureStyle();
-    const desktop=document.getElementById('desktop');
-    if(!desktop)return;
-    desktop.querySelectorAll('.apps-page').forEach(page=>{
-      page.style.setProperty('column-gap','6px','important');
-      page.style.setProperty('row-gap','20px','important');
-      page.style.setProperty('padding-left','16px','important');
-      page.style.setProperty('padding-right','16px','important');
-      if(!desktop.classList.contains('page-two-mode')&&!page.classList.contains('page2-only')){
-        page.style.setProperty('padding-top','44px','important');
-      }
-    });
-    desktop.querySelectorAll('.apps-page>.app').forEach(tuneAppIcon);
-    desktop.querySelectorAll('.dock>.dock-icon').forEach(tuneDockIcon);
-  }
-
-  function schedule(){
-    if(busy)return;
-    busy=true;
-    requestAnimationFrame(()=>{busy=false;enforce();});
-  }
-
-  function install(){
-    enforce();
-    const pages=document.getElementById('pagesContainer');
-    if(pages&&!pages.__bbV357Observer){
-      pages.__bbV357Observer=new MutationObserver(schedule);
-      pages.__bbV357Observer.observe(pages,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
-    }
-    const desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV357DesktopObserver){
-      desktop.__bbV357DesktopObserver=new MutationObserver(schedule);
-      desktop.__bbV357DesktopObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
-    }
-  }
-
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
-  else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',install);
-  [0,80,260,700,1600,3000,5200].forEach(ms=>setTimeout(install,ms));
+  window.bbOpenChatLandingPhoto=function(index){
+    ensureState();
+    window.__bbChatLandingPhotoIndex=index;
+    var input=getEl('chatLandingPhotoInput');
+    if(input) input.click();
+  };
+  window.bbHandleChatLandingPhoto=function(input){
+    if(!input || !input.files || !input.files[0]) return;
+    ensureState();
+    var idx=Number(window.__bbChatLandingPhotoIndex||0);
+    var file=input.files[0];
+    var reader=new FileReader();
+    reader.onload=function(e){
+      window.state.chatLandingPhotos[idx]=String(e.target.result||'');
+      try{ if(typeof saveLocal==='function') saveLocal(); }catch(error){}
+      render();
+    };
+    reader.readAsDataURL(file);
+    input.value='';
+  };
+  window.bbRenderChatLandingPhotos=render;
+  document.addEventListener('DOMContentLoaded', function(){
+    setTimeout(render, 50);
+    setTimeout(render, 500);
+  });
+  window.addEventListener('load', function(){ setTimeout(render, 200); });
 })();
 </script>
+
+
+<script id="bb-chat-overlay-fix-v374-script">
+(function(){
+  function syncChatTabState(){
+    var root=document.getElementById('chatDemo');
+    if(!root) return;
+    var items=root.querySelectorAll('.app-tabbar-item');
+    var tabs=root.querySelectorAll('.app-tab-content');
+    var activeId='tabChat';
+    items.forEach(function(it){ if(it.classList.contains('active')) activeId=it.getAttribute('data-tab')||activeId; });
+    tabs.forEach(function(tab){
+      var on=tab.id===activeId;
+      tab.style.display=on?'block':'none';
+      tab.classList.toggle('bb-active',on);
+      tab.setAttribute('data-active', on ? 'true':'false');
+    });
+  }
+  var oldSwitch=window.switchAppTab;
+  window.switchAppTab=function(tabId){
+    if(typeof oldSwitch==='function'){
+      try{ oldSwitch(tabId); }catch(e){}
+    }
+    var root=document.getElementById('chatDemo');
+    if(root){
+      root.querySelectorAll('.app-tabbar-item').forEach(function(el){
+        el.classList.toggle('active', el.getAttribute('data-tab')===tabId);
+      });
+      root.querySelectorAll('.app-tab-content').forEach(function(el){
+        var on=el.id===tabId;
+        el.style.display=on?'block':'none';
+        el.classList.toggle('bb-active',on);
+        el.setAttribute('data-active', on ? 'true':'false');
+      });
+    }
+  };
+  var oldOpen=window.openChatRoom;
+  if(typeof oldOpen==='function'){
+    window.openChatRoom=function(){
+      var root=document.getElementById('chatDemo');
+      if(root) root.classList.add('bb-chat-room-open');
+      return oldOpen.apply(this, arguments);
+    };
+  }
+  var oldClose=window.closeChatRoom;
+  if(typeof oldClose==='function'){
+    window.closeChatRoom=function(){
+      var res=oldClose.apply(this, arguments);
+      var root=document.getElementById('chatDemo');
+      if(root) root.classList.remove('bb-chat-room-open');
+      syncChatTabState();
+      return res;
+    };
+  }
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(syncChatTabState, 60); });
+  window.addEventListener('load', function(){ setTimeout(syncChatTabState, 180); });
+})();
+</script>
+
+
+<script id="bb-chat-polish-v375-script">
+(function(){
+  function blockDecorativeChatRow(){
+    var root=document.getElementById('chatDemo');
+    if(!root || root.__bbDecorativeChatRow375)return;
+    root.__bbDecorativeChatRow375=true;
+    root.addEventListener('click',function(event){
+      var row=event.target && event.target.closest ? event.target.closest('.bb-chat-self-row') : null;
+      if(!row)return;
+      event.preventDefault();
+      event.stopPropagation();
+      if(event.stopImmediatePropagation)event.stopImmediatePropagation();
+    },true);
+    root.addEventListener('contextmenu',function(event){
+      var row=event.target && event.target.closest ? event.target.closest('.bb-chat-self-row') : null;
+      if(!row)return;
+      event.preventDefault();
+      event.stopPropagation();
+    },true);
+  }
+  document.addEventListener('DOMContentLoaded',function(){setTimeout(blockDecorativeChatRow,60);});
+  window.addEventListener('load',function(){setTimeout(blockDecorativeChatRow,180);});
+})();
+</script>
+
 </body>
 </html>
 
