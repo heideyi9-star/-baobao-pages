@@ -610,6 +610,7 @@ function installSafeDesktopCoordinateDispatcher(){
   function desktopUsable(){
     const desktop=document.getElementById("desktop");
     if(!desktop||!desktop.isConnected)return false;
+    if(document.body&&document.body.classList.contains("bb-v377-subpage-open"))return false;
     const cs=getComputedStyle(desktop);
     if(cs.display==="none"||cs.visibility==="hidden"||Number(cs.opacity||1)===0||cs.pointerEvents==="none")return false;
     if(document.getElementById("lock")&&!document.getElementById("lock").classList.contains("hidden"))return false;
@@ -618,6 +619,11 @@ function installSafeDesktopCoordinateDispatcher(){
 
   function appAt(x,y){
     if(!desktopUsable())return null;
+    /* 377：只有真实最上层落点属于桌面时，才允许命中桌面图标。
+       Chat、世界书、音乐、设置、朋友圈发布器等页面盖在桌面上时，
+       空白处绝不能再按坐标穿透到底下的图标。 */
+    const top=document.elementFromPoint(Number(x)||0,Number(y)||0);
+    if(!top||!top.closest||!top.closest("#desktop"))return null;
     const vw=window.innerWidth||document.documentElement.clientWidth||0;
     const vh=window.innerHeight||document.documentElement.clientHeight||0;
     for(const app of document.querySelectorAll("#desktop .apps-page > .app")){
@@ -42208,24 +42214,14 @@ window.updateArchiveChatStyleHintV324=function(){
       room.style.setProperty("z-index","1300","important");
       room.style.setProperty("pointer-events","auto","important");
     }
-    const dock=desktop && (desktop.querySelector(":scope > .dock") || desktop.querySelector(".dock"));
     if(chatOpen()){
       document.body.classList.add(HIDE_CLASS);
+      const dock=desktop && (desktop.querySelector(":scope > .dock") || desktop.querySelector(".dock"));
       if(dock){
         dock.style.setProperty("display","none","important");
         dock.style.setProperty("opacity","0","important");
         dock.style.setProperty("visibility","hidden","important");
         dock.style.setProperty("pointer-events","none","important");
-      }
-    }else{
-      /* 聊天室已关闭：撤销之前强制加的内联样式，把底栏显示的决定权交还给其他逻辑（如 v354），
-         否则这几条内联 !important 样式会一直卡住，导致退出聊天后底栏消失且点不动。 */
-      document.body.classList.remove(HIDE_CLASS);
-      if(dock){
-        dock.style.removeProperty("display");
-        dock.style.removeProperty("opacity");
-        dock.style.removeProperty("visibility");
-        dock.style.removeProperty("pointer-events");
       }
     }
   }
@@ -42271,4 +42267,152 @@ window.updateArchiveChatStyleHintV324=function(){
   window.addEventListener("pageshow",install);
   document.addEventListener("click",schedule,true);
   [0,80,220,600,1400,3000].forEach(function(ms){setTimeout(install,ms)});
+})();
+
+
+/* baobao-v377-route-isolation-and-panel-position-fix */
+(function(){
+  "use strict";
+  if(window.__bbV377RouteIsolation)return;
+  window.__bbV377RouteIsolation=true;
+
+  const ACTIVE_CLASS="bb-v377-subpage-open";
+  const OVERLAY_SELECTORS=[
+    "#chatDemo","#chatRoom","#momentsPublisher.show","#momentsSubpanel.show",
+    "#personaSelectPanel","#friendSearchPanel","#chatSettingsPanel",
+    "#dualAvatarPanel","#chatBgSettings","#favoriteMsgOverlay.show",
+    "#innerVoiceOverlay.show","#subjectsPanel","#bbMusicApp.show",
+    "#bbMusicComplete239.show","#wechatProfileEditor.show",".panel"
+  ];
+  let scheduled=false;
+
+  function byId(id){return document.getElementById(id)}
+  function visible(el){
+    if(!el||!el.isConnected||el.hidden)return false;
+    if(el.classList&&el.classList.contains("hidden"))return false;
+    const cs=getComputedStyle(el);
+    if(cs.display==="none"||cs.visibility==="hidden"||Number(cs.opacity||1)===0)return false;
+    const r=el.getBoundingClientRect();
+    return r.width>2&&r.height>2;
+  }
+  function hide(id){
+    const el=typeof id==="string"?byId(id):id;
+    if(!el)return;
+    el.classList.remove("show","active","bb-active");
+    el.style.setProperty("display","none");
+    el.style.setProperty("pointer-events","none");
+  }
+  function allow(id){
+    const el=typeof id==="string"?byId(id):id;
+    if(!el)return;
+    el.style.setProperty("pointer-events","auto","important");
+  }
+  function anyOverlay(){
+    for(const selector of OVERLAY_SELECTORS){
+      for(const el of document.querySelectorAll(selector)){
+        if(el.id==="modal"&&getComputedStyle(el).display==="none")continue;
+        if(visible(el))return true;
+      }
+    }
+    return false;
+  }
+  function sync(){
+    scheduled=false;
+    const active=anyOverlay();
+    document.body.classList.toggle(ACTIVE_CLASS,active);
+    const desktop=byId("desktop");
+    if(desktop){
+      if(active)desktop.style.setProperty("pointer-events","none","important");
+      else desktop.style.removeProperty("pointer-events");
+    }
+    ["chatDemo","chatRoom","chatSettingsPanel","momentsPublisher","momentsSubpanel","personaSelectPanel","friendSearchPanel","tools"].forEach(id=>{
+      const el=byId(id);
+      if(el&&visible(el))allow(el);
+    });
+  }
+  function schedule(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(sync);
+  }
+  function wrap(name,before,after){
+    const old=window[name];
+    if(typeof old!=="function"||old.__bbV377Wrapped)return;
+    const fn=function(){
+      if(before)before.apply(this,arguments);
+      const result=old.apply(this,arguments);
+      if(after)after.apply(this,arguments);
+      schedule();
+      setTimeout(schedule,0);
+      setTimeout(schedule,80);
+      return result;
+    };
+    fn.__bbV377Wrapped=true;
+    window[name]=fn;
+    try{eval(name+"=fn")}catch(_){ }
+  }
+
+  function closeChatLayers(keepDemo){
+    ["chatSettingsPanel","dualAvatarPanel","chatBgSettings","favoriteMsgOverlay","innerVoiceOverlay","personaSelectPanel","friendSearchPanel","momentsPublisher","momentsSubpanel"].forEach(hide);
+    const tools=byId("tools");
+    if(tools){tools.style.display="none";tools.style.pointerEvents="none";}
+    const plus=byId("chatPlusMenu");
+    if(plus)plus.style.display="none";
+    if(!keepDemo)hide("chatDemo");
+  }
+
+  function install(){
+    wrap("closeWeChatApp",function(){closeChatLayers(false);hide("chatRoom")});
+    wrap("startPersonaChat",function(){closeChatLayers(false)},function(){
+      const demo=byId("chatDemo");if(demo)demo.style.display="none";
+      const room=byId("chatRoom");if(room){room.style.display="block";allow(room)}
+    });
+    wrap("openRoom",function(){closeChatLayers(false)},function(){
+      const room=byId("chatRoom");if(room){room.style.display="block";allow(room)}
+    });
+    wrap("closeChatRoom",function(){
+      ["chatSettingsPanel","dualAvatarPanel","chatBgSettings","favoriteMsgOverlay","innerVoiceOverlay"].forEach(hide);
+      const tools=byId("tools");if(tools)tools.style.display="none";
+    },function(){
+      const demo=byId("chatDemo");if(demo){demo.style.display="block";allow(demo)}
+    });
+    wrap("openChatSettings",function(){
+      const tools=byId("tools");if(tools)tools.style.display="none";
+    },function(){
+      const panel=byId("chatSettingsPanel");if(panel){panel.style.display="block";allow(panel)}
+    });
+    wrap("closeChatSettings",null,function(){
+      const panel=byId("chatSettingsPanel");if(panel){panel.style.display="none";panel.style.pointerEvents="none"}
+      const room=byId("chatRoom");if(room&&visible(room))allow(room);
+    });
+    wrap("openTools",null,function(){
+      const tools=byId("tools");if(tools&&tools.style.display!=="none")allow(tools);
+    });
+    wrap("openMomentsPublisher",function(){
+      const plus=byId("chatPlusMenu");if(plus)plus.style.display="none";
+    },function(){
+      const p=byId("momentsPublisher");if(p){p.classList.add("show");allow(p)}
+    });
+    wrap("closeMomentsPublisher",null,function(){hide("momentsPublisher")});
+    wrap("openMomentsPeoplePanel",null,function(){const p=byId("momentsSubpanel");if(p){p.classList.add("show");allow(p)}});
+    wrap("openMomentsVisibilityPanel",null,function(){const p=byId("momentsSubpanel");if(p){p.classList.add("show");allow(p)}});
+    wrap("closeMomentsSubpanel",null,function(){hide("momentsSubpanel")});
+    wrap("switchAppTab",function(tabId){
+      const plus=byId("chatPlusMenu");if(plus)plus.style.display="none";
+      if(tabId!=="tabDiscover"){hide("momentsPublisher");hide("momentsSubpanel")}
+    });
+
+    if(!document.body.__bbV377Observer){
+      document.body.__bbV377Observer=new MutationObserver(schedule);
+      document.body.__bbV377Observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:["style","class","hidden"]});
+    }
+    schedule();
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
+  else install();
+  window.addEventListener("load",install);
+  window.addEventListener("pageshow",install);
+  document.addEventListener("click",schedule,true);
+  [0,80,240,700,1600,3200].forEach(ms=>setTimeout(install,ms));
 })();
