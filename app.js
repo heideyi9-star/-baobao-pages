@@ -1867,13 +1867,13 @@ function phoneMode(){
 }
 function fullMode(){
   try{ localStorage.setItem("screenMode","full"); }catch(error){}
-  document.body.classList.add("fullscreen-mode","bb-true-fullscreen-v382");
+  document.body.classList.add("fullscreen-mode","bb-true-fullscreen-v386");
   const phone = document.querySelector(".phone");
   if(phone){
     phone.style.setProperty("position","fixed","important");
     phone.style.setProperty("inset","0","important");
-    phone.style.setProperty("width","100dvw","important");
-    phone.style.setProperty("height","100dvh","important");
+    phone.style.setProperty("width","100vw","important");
+    phone.style.setProperty("height","100vh","important");
     phone.style.setProperty("max-width","none","important");
     phone.style.setProperty("max-height","none","important");
     phone.style.setProperty("border","0","important");
@@ -30997,7 +30997,7 @@ ${offline}
       })||null;
   }
 
-  const REACTION_EMOJIS_V322=["❤️","🤍","👍","😂","😮","😢","😡","🥺","😘","🥰","😳","😭","👀","🙄","🫶","😏"];
+  const REACTION_EMOJIS_V322=["❤️","🤍","🩷","💖","💕","💞","💓","💋","👍","👏","👌","🫶","🤝","😂","🤣","😆","🤭","😏","😉","😘","🥰","😳","🥺","😭","😢","😔","😞","😮","😱","👀","🙄","😒","😤","😡","💢","🤨","🫠","🤗","😋","🐶","🐱","🔥","✨","❗","❓"];
   function reactionEmojiV322(value){
     const raw=clean(value).replace(/\uFE0E/g,"\uFE0F");
     return REACTION_EMOJIS_V322.find(emoji=>raw.includes(emoji)||raw.replace(/\uFE0F/g,"").includes(emoji.replace(/\uFE0F/g,"")))||"";
@@ -31039,13 +31039,19 @@ ${offline}
     const context=clean([last.content,last.text,last.name,last.visionDesc,replyText].filter(Boolean).join(" "));
     const type=clean(last.type||"text").toLowerCase();
     let emoji="",chance=0;
-    if(/爱你|喜欢你|想你|亲亲|抱抱|最帅|真帅|好帅|可爱|宝宝|宝贝|老婆|老公/.test(context)){emoji=/帅|可爱/.test(context)?"🥰":"❤️";chance=.58;}
-    else if(/哈哈|笑死|笑疯|好好笑|乐死|绷不住/.test(context)){emoji="😂";chance=.52;}
-    else if(/呜|难过|委屈|想哭|不开心|不要我|不理我/.test(context)){emoji="🥺";chance=.45;}
-    else if(/震惊|真的假的|不会吧|居然|啊\?|啊？/.test(context)){emoji="😮";chance=.42;}
-    else if(/生气|讨厌|烦死|无语|服了|滚/.test(context)){emoji=/无语|服了/.test(context)?"🙄":"😡";chance=.34;}
+    if(/小狗|狗狗|乖狗|修狗|汪汪|汪|当你.*狗|你的狗/.test(context)){emoji="🐶";chance=.62;}
+    else if(/小猫|猫猫|喵喵|喵|猫咪|你的猫/.test(context)){emoji="🐱";chance=.56;}
+    else if(/亲亲|亲一口|啵啵|吻我|亲我/.test(context)){emoji=/亲一口|吻我|亲我/.test(context)?"💋":"😘";chance=.60;}
+    else if(/爱你|喜欢你|想你|抱抱|最帅|真帅|好帅|可爱|宝宝|宝贝|老婆|老公/.test(context)){emoji=/帅|可爱/.test(context)?"🥰":(/抱抱/.test(context)?"🤗":"❤️");chance=.58;}
+    else if(/害羞|不好意思|脸红|别说了|羞死/.test(context)){emoji=/脸红|害羞/.test(context)?"😳":"🤭";chance=.49;}
+    else if(/哈哈|笑死|笑疯|好好笑|乐死|绷不住/.test(context)){emoji=/笑疯|绷不住/.test(context)?"🤣":"😂";chance=.52;}
+    else if(/呜|难过|委屈|想哭|不开心|不要我|不理我/.test(context)){emoji=/想哭|难过/.test(context)?"😭":"🥺";chance=.45;}
+    else if(/震惊|真的假的|不会吧|居然|啊\?|啊？/.test(context)){emoji=/真的假的|不会吧/.test(context)?"😱":"😮";chance=.42;}
+    else if(/什么意思|为什么|你认真的|确定吗|怎么回事/.test(context)){emoji=/你认真的|确定吗/.test(context)?"🤨":"❓";chance=.34;}
+    else if(/生气|讨厌|烦死|无语|服了|滚/.test(context)){emoji=/无语|服了/.test(context)?"🙄":(/烦死/.test(context)?"💢":"😡");chance=.34;}
+    else if(/厉害|真棒|太强|绝了|牛|好看|帅炸/.test(context)){emoji=/好看|帅炸/.test(context)?"🔥":"👏";chance=.28;}
     else if(type==="image"||type==="sticker"){emoji=type==="image"?"👀":"😂";chance=.36;}
-    else if(/好|行|可以|收到|谢谢|晚安|早安/.test(context)){emoji="👍";chance=.13;}
+    else if(/好|行|可以|收到|谢谢|晚安|早安/.test(context)){emoji=/谢谢/.test(context)?"🫶":"👍";chance=.16;}
     if(!emoji||Math.random()>chance)return chunks;
     return [{type:"reaction",emoji,autoV322:true},...(chunks||[])];
   }
@@ -39389,7 +39395,7 @@ ${userProfile()}
 18.5 年上简洁型：先把话接稳，再给一句有方向的回应。避免超过3条消息、连续感叹、幼态撒娇、重复亲昵称呼和长篇解释；但也禁止退化成“嗯/哦/行”的无人格回复。
 19. 格式是硬规则，和人设、活人感同等重要。普通文字只能输出真正会发给用户看的正文；绝不能把“[照片]、[图片]、[photo]、[image]、[picture]、[selfie]、[表情包]、表情包：、.gif 文件名、URL、JSON、代码块、格式说明”当作聊天文字发出来。需要发表情包时，只能另起一行输出一次 [[STICKER:表情包原名]]；确实要发送角色照片时，只能另起一行输出一次 [[PHOTO]]；需要处理转账时，只能保留规定的 [[TRANSFER:...]] 标记。不要自行发明任何其他括号标签。
 20. 媒体顺序必须和真实发送顺序完全一致。若一轮是“先说一句 → 发照片或表情包 → 再说一句”，就必须依次输出前置文字、单独一行的媒体标记、后置文字。媒体标记后面的文字属于媒体发送成功后的下一条消息，绝不能提前到照片或表情包前面；媒体没有成功发送时，也不能继续发后置文字。
-21. 你可以像真实聊天软件一样，对用户最近一条气泡点一个上标表情。只有确实有自然、即时的情绪反应时才使用，不能每条消息都点。需要点气泡表情时，只能另起一行输出一次 [[REACT:表情]]，表情只能从 ❤️、🤍、👍、😂、😮、😢、😡、🥺、😘、🥰、😳、😭、👀、🙄、🫶、😏 中选择。这个标记只会显示在用户气泡边缘，不是聊天文字；不要解释标记。可以只点表情不发文字，也可以点完再正常回复。
+21. 你可以像真实聊天软件一样，对用户最近一条气泡点一个上标表情。只有确实有自然、即时的情绪反应时才使用，不能每条消息都点。需要点气泡表情时，只能另起一行输出一次 [[REACT:表情]]，表情只能从 ❤️、🤍、🩷、💖、💕、💞、💓、💋、👍、👏、👌、🫶、🤝、😂、🤣、😆、🤭、😏、😉、😘、🥰、😳、🥺、😭、😢、😔、😞、😮、😱、👀、🙄、😒、😤、😡、💢、🤨、🫠、🤗、😋、🐶、🐱、🔥、✨、❗、❓ 中选择。尤其当用户说自己是小狗、狗狗、汪汪或撒娇求认领时，可以自然使用 🐶；提到小猫、猫猫、喵时可以使用 🐱。这个标记只会显示在用户气泡边缘，不是聊天文字；不要解释标记。可以只点表情不发文字，也可以点完再正常回复。
 
 ${continuation?`【本轮是爱心续聊】
 用户没有新增文字，只是再次按下爱心让你继续说。紧接你上一条已发送消息自然往下聊，不要重新回答更早的用户消息，也不要说“你没说话”“怎么了”或解释按钮。
@@ -39539,7 +39545,7 @@ ${continuation?`【本轮是爱心续聊】
     const name=clean(sticker.name||sticker.stickerName).replace(/[\[\]\n\r]/g," ").trim();
     return name?`[[STICKER:${name}]]`:"";
   }
-  const REACTION_EMOJIS_V322=["❤️","🤍","👍","😂","😮","😢","😡","🥺","😘","🥰","😳","😭","👀","🙄","🫶","😏"];
+  const REACTION_EMOJIS_V322=["❤️","🤍","🩷","💖","💕","💞","💓","💋","👍","👏","👌","🫶","🤝","😂","🤣","😆","🤭","😏","😉","😘","🥰","😳","🥺","😭","😢","😔","😞","😮","😱","👀","🙄","😒","😤","😡","💢","🤨","🫠","🤗","😋","🐶","🐱","🔥","✨","❗","❓"];
   function canonicalReactionEmojiV322(value){
     const raw=clean(value).replace(/^(?:react|reaction|回应|反应|气泡表情)\s*[:：]?\s*/i,"");
     const normalized=raw.replace(/\uFE0E/g,"\uFE0F");
@@ -41612,7 +41618,7 @@ window.updateArchiveChatStyleHintV324=function(){
       item.style.setProperty('height','96px','important');
       item.style.setProperty('min-height','96px','important');
       item.style.setProperty('transform','none','important');
-      item.style.setProperty('pointer-events','none','important');
+      item.style.setProperty('pointer-events','auto','important');
     });
     if(dock){
       dock.style.setProperty('position','absolute','important');
@@ -41677,17 +41683,14 @@ window.updateArchiveChatStyleHintV324=function(){
       new MutationObserver(function(){requestAnimationFrame(syncPanelState);}).observe(panel,{attributes:true,attributeFilter:['style','class']});
     });
     var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV344Observer){
-      desktop.__bbV344Observer=new MutationObserver(schedule);
-      desktop.__bbV344Observer.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
+    /* 386：桌面布局只初始化一次，不再监听自身 style/class 形成重排循环。 */
+    if(desktop&&!desktop.__bbV344Observer) desktop.__bbV344Observer=true;
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',function(){setTimeout(install,0)});
-  [0,60,180,420,900,1800,3600,7000].forEach(function(ms){setTimeout(install,ms);});
+  window.addEventListener('load',install,{once:true});
+  window.addEventListener('pageshow',function(){setTimeout(syncPanelState,0)});
 })();
 
 
@@ -41768,16 +41771,12 @@ window.updateArchiveChatStyleHintV324=function(){
   function install(){
     enforce();
     var desktop=document.getElementById('desktop');
-    if(desktop&&!desktop.__bbV352DockObserver){
-      desktop.__bbV352DockObserver=new MutationObserver(schedule);
-      desktop.__bbV352DockObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['class','style']});
-    }
+    /* 386：不再监听 style/class 后反复 setProperty，避免无限重排和弹动。 */
+    if(desktop&&!desktop.__bbV352DockObserver) desktop.__bbV352DockObserver=true;
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});
   else install();
-  window.addEventListener('load',install);
-  window.addEventListener('pageshow',install);
-  [0,80,250,700,1500,3200,6000].forEach(function(ms){setTimeout(install,ms);});
+  window.addEventListener('load',install,{once:true});
 })();
 
 /* =========================================================
@@ -41935,7 +41934,8 @@ window.updateArchiveChatStyleHintV324=function(){
 
   function desktopIsHome(){
     const desktop=document.getElementById("desktop");
-    return !!desktop && visible(desktop) && !explicitBlockerVisible() && !genericFullscreenBlocker();
+    /* 386：只看真正打开的功能页；全屏 .phone 外壳不再误判成遮罩。 */
+    return !!desktop && visible(desktop) && !explicitBlockerVisible();
   }
 
   function clearBlackSquareState(){
@@ -42011,24 +42011,15 @@ window.updateArchiveChatStyleHintV324=function(){
       document.addEventListener("pointerup",schedule,true);
     }
 
-    if(!document.body.__bbV354Observer){
-      document.body.__bbV354Observer=new MutationObserver(schedule);
-      document.body.__bbV354Observer.observe(document.body,{
-        childList:true,
-        subtree:true,
-        attributes:true,
-        attributeFilter:["class","style","hidden"]
-      });
-    }
+    /* 386：取消全页面属性监听，防止任何 style 变化都触发桌面重新计算。 */
+    if(!document.body.__bbV354Observer) document.body.__bbV354Observer=true;
     sync();
   }
 
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});
   else install();
-  window.addEventListener("load",install);
-  window.addEventListener("pageshow",()=>setTimeout(install,0));
-  window.addEventListener("resize",schedule);
-  [0,80,240,600,1200,2500,5000].forEach(ms=>setTimeout(install,ms));
+  window.addEventListener("load",install,{once:true});
+  window.addEventListener("pageshow",()=>setTimeout(sync,0));
 })();
 
 
@@ -42837,3 +42828,6 @@ window.updateArchiveChatStyleHintV324=function(){
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bb380Start,{once:true});
   else bb380Start();
 })();
+
+
+console.log("豹豹机 387：气泡表情扩充已启用，新增 🐶、🐱、💋、🤭、🤣、🔥 等回应");

@@ -1,5 +1,5 @@
-/* 豹豹机 382：真全屏模式。 */
-const CACHE_NAME = "baobao-shell-v382";
+/* 豹豹机 386：桌面防弹动与底栏恢复。 */
+const CACHE_NAME = "baobao-shell-v386";
 const SHELL = [
   "./",
   "./index.html",

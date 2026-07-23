@@ -1,10 +1,10 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 382 · 真全屏模式",
+  "description": "豹豹机 386 · 桌面稳定全屏",
   "start_url": "./",
   "scope": "./",
-  "display": "fullscreen",
+  "display": "standalone",
   "orientation": "portrait",
   "background_color": "#f7f7f7",
   "theme_color": "#f7f7f7",
