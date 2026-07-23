@@ -1,5 +1,5 @@
-/* 豹豹机 381：图片自动压缩与缓存整理。 */
-const CACHE_NAME = "baobao-shell-v381";
+/* 豹豹机 382：真全屏模式。 */
+const CACHE_NAME = "baobao-shell-v382";
 const SHELL = [
   "./",
   "./index.html",

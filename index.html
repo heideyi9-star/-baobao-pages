@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=381">
+<link rel="manifest" href="./baobao-manifest.json?v=382">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=381",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=382",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -39,8 +39,10 @@
 <meta name="theme-color" content="#f7f7f7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 
-<title>豹豹机4.9 · 381 流畅稳定版</title>
+<title>豹豹机4.9 · 382 真全屏版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -164,7 +166,7 @@ html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row
 html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=381"></script>
+<script defer src="./app.js?v=382"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -405,6 +407,86 @@ html body #desktop .dock>.dock-icon::after{
 #bbTimestampMask,#bbBlacklistMask{z-index:6265!important;pointer-events:auto!important;}
 #innerVoiceOverlay,#msgEditOverlay{z-index:6270!important;pointer-events:auto!important;}
 </style>
+
+<style id="bb-true-fullscreen-v382">
+/* 豹豹机 382：彻底移除“小手机机身”，页面直接铺满真实视口。 */
+html,
+body{
+  width:100%!important;
+  height:100%!important;
+  min-width:100%!important;
+  min-height:100%!important;
+  margin:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  background:#f7f7f7!important;
+}
+body{
+  position:fixed!important;
+  inset:0!important;
+  display:block!important;
+  align-items:initial!important;
+  justify-content:initial!important;
+  touch-action:none!important;
+}
+html body .phone{
+  position:fixed!important;
+  inset:0!important;
+  left:0!important;
+  top:0!important;
+  right:0!important;
+  bottom:0!important;
+  width:100vw!important;
+  width:100dvw!important;
+  height:100vh!important;
+  height:100dvh!important;
+  min-width:100vw!important;
+  min-height:100vh!important;
+  max-width:none!important;
+  max-height:none!important;
+  margin:0!important;
+  padding:0!important;
+  border:0!important;
+  outline:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+  background:#f7f7f7!important;
+  transform:none!important;
+}
+html body .phone > .screen,
+html body .phone .screen{
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  border-radius:0!important;
+}
+/* 不再模拟第二套状态栏和灵动岛，直接使用手机真实状态栏。 */
+html body .phone > .mini-phone-statusbar,
+html body .phone #miniPhoneStatusbar,
+html body .phone .dynamic{
+  display:none!important;
+  visibility:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+/* 所有全屏应用层也贴紧真实屏幕，不能再出现内层圆角小手机。 */
+html body .phone > [data-bb-fullscreen],
+html body .phone > .chat-demo,
+html body .phone > #chatDemo,
+html body .phone > #chatRoom,
+html body .phone > #settings,
+html body .phone > #beauty,
+html body .phone > #musicApp{
+  max-width:none!important;
+  max-height:none!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+/* 设置页中的整屏开关保持开启状态。 */
+#fullScreenToggle{pointer-events:none!important;}
+</style>
+
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
@@ -2450,6 +2532,48 @@ API Key<br>
   }
   document.addEventListener('DOMContentLoaded',function(){setTimeout(blockDecorativeChatRow,60);});
   window.addEventListener('load',function(){setTimeout(blockDecorativeChatRow,180);});
+})();
+</script>
+
+
+<script id="bb-true-fullscreen-v382-script">
+(function(){
+  "use strict";
+  function enforceTrueFullscreenV382(){
+    try{ localStorage.setItem("screenMode","full"); }catch(error){}
+    var body=document.body;
+    if(body) body.classList.add("fullscreen-mode","bb-true-fullscreen-v382");
+    var phone=document.querySelector(".phone");
+    if(phone){
+      phone.style.setProperty("position","fixed","important");
+      phone.style.setProperty("inset","0","important");
+      phone.style.setProperty("width","100dvw","important");
+      phone.style.setProperty("height","100dvh","important");
+      phone.style.setProperty("max-width","none","important");
+      phone.style.setProperty("max-height","none","important");
+      phone.style.setProperty("border","0","important");
+      phone.style.setProperty("border-radius","0","important");
+      phone.style.setProperty("box-shadow","none","important");
+      phone.style.setProperty("margin","0","important");
+      phone.style.setProperty("transform","none","important");
+    }
+    var fakeStatus=document.getElementById("miniPhoneStatusbar");
+    if(fakeStatus) fakeStatus.style.setProperty("display","none","important");
+    var island=document.querySelector(".dynamic");
+    if(island) island.style.setProperty("display","none","important");
+    var toggle=document.getElementById("fullScreenToggle");
+    if(toggle){ toggle.checked=true; toggle.disabled=true; }
+  }
+  window.bbEnforceTrueFullscreenV382=enforceTrueFullscreenV382;
+  document.addEventListener("DOMContentLoaded",function(){
+    enforceTrueFullscreenV382();
+    setTimeout(enforceTrueFullscreenV382,120);
+    setTimeout(enforceTrueFullscreenV382,700);
+  },{once:true});
+  window.addEventListener("load",enforceTrueFullscreenV382,{once:true});
+  window.addEventListener("pageshow",enforceTrueFullscreenV382);
+  window.addEventListener("orientationchange",function(){setTimeout(enforceTrueFullscreenV382,180);});
+  window.addEventListener("resize",function(){requestAnimationFrame(enforceTrueFullscreenV382);});
 })();
 </script>
 
