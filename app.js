@@ -735,6 +735,118 @@ function buildPage1(){
   return pageDiv;
 }
 
+// ---- 第二页资料卡文字：直接在卡片里编辑，并显示键盘上方确认栏 ----
+let page2ProfileEditingInput = null;
+
+function ensurePage2ProfileEditbar(){
+  let bar = document.getElementById("p2ProfileEditbar");
+  if(bar) return bar;
+
+  bar = document.createElement("div");
+  bar.id = "p2ProfileEditbar";
+  bar.className = "p2-profile-editbar";
+  bar.setAttribute("aria-hidden", "true");
+  bar.innerHTML = `
+    <button type="button" class="p2-profile-edit-action" data-action="start" aria-label="移动到文字开头">⌃</button>
+    <button type="button" class="p2-profile-edit-action" data-action="end" aria-label="移动到文字结尾">⌄</button>
+    <button type="button" class="p2-profile-edit-action p2-profile-edit-done" data-action="done" aria-label="完成编辑">✓</button>`;
+  document.body.appendChild(bar);
+
+  function runAction(action){
+    const input = page2ProfileEditingInput;
+    if(!input) return;
+    if(action === "start"){
+      input.focus({preventScroll:true});
+      try{ input.setSelectionRange(0,0); }catch(_){ }
+      return;
+    }
+    if(action === "end"){
+      input.focus({preventScroll:true});
+      const end = input.value.length;
+      try{ input.setSelectionRange(end,end); }catch(_){ }
+      return;
+    }
+    if(action === "done") finishPage2ProfileTextEdit(true);
+  }
+
+  bar.querySelectorAll("button").forEach(button=>{
+    button.addEventListener("pointerdown", event=>{
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    button.addEventListener("click", event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      runAction(button.dataset.action || "");
+    });
+  });
+
+  const viewport = window.visualViewport;
+  if(viewport && !window.__bbP2ProfileViewportBound){
+    window.__bbP2ProfileViewportBound = true;
+    viewport.addEventListener("resize", positionPage2ProfileEditbar, {passive:true});
+    viewport.addEventListener("scroll", positionPage2ProfileEditbar, {passive:true});
+  }
+  return bar;
+}
+
+function positionPage2ProfileEditbar(){
+  const bar = document.getElementById("p2ProfileEditbar");
+  if(!bar || !bar.classList.contains("is-visible")) return;
+  const viewport = window.visualViewport;
+  if(viewport){
+    const top = Math.max(viewport.offsetTop + 8, viewport.offsetTop + viewport.height - bar.offsetHeight - 8);
+    bar.style.top = `${Math.round(top)}px`;
+    bar.style.bottom = "auto";
+  }else{
+    bar.style.top = "auto";
+    bar.style.bottom = "calc(env(safe-area-inset-bottom) + 8px)";
+  }
+}
+
+function beginPage2ProfileTextEdit(input){
+  if(!input) return;
+  if(page2ProfileEditingInput && page2ProfileEditingInput !== input){
+    finishPage2ProfileTextEdit(true);
+  }
+  page2ProfileEditingInput = input;
+  input.classList.add("is-editing");
+  input.readOnly = false;
+  const bar = ensurePage2ProfileEditbar();
+  bar.classList.add("is-visible");
+  bar.setAttribute("aria-hidden", "false");
+  requestAnimationFrame(()=>{
+    try{
+      input.focus({preventScroll:true});
+      const end = input.value.length;
+      input.setSelectionRange(end,end);
+    }catch(_){ input.focus(); }
+    positionPage2ProfileEditbar();
+    setTimeout(positionPage2ProfileEditbar,120);
+    setTimeout(positionPage2ProfileEditbar,360);
+  });
+}
+
+function finishPage2ProfileTextEdit(blurInput){
+  const input = page2ProfileEditingInput;
+  if(!input) return;
+  const cleaned = String(input.value || "").trim() || "自定义文字";
+  state.page2ProfileText = cleaned;
+  input.value = cleaned;
+  input.classList.remove("is-editing");
+  input.readOnly = true;
+  saveLocal();
+  const bar = document.getElementById("p2ProfileEditbar");
+  if(bar){
+    bar.classList.remove("is-visible");
+    bar.setAttribute("aria-hidden", "true");
+  }
+  page2ProfileEditingInput = null;
+  if(blurInput !== false){
+    try{ input.blur(); }catch(_){ }
+  }
+}
+
 // ---- 第二页：完全独立的构建函数，自己的数据源、事件与交互 ----
 function buildPage2ProfileWidget(){
   const widget = document.createElement("section");
@@ -749,7 +861,6 @@ function buildPage2ProfileWidget(){
   widget.innerHTML = `
     <div class="p2-profile-top">
       <span class="p2-profile-userdot" aria-hidden="true"></span>
-      <span>4/8</span>
       <span class="p2-profile-spark" aria-hidden="true">✦</span>
     </div>
     <div class="p2-profile-handle">${escapeHtml(state.page2ProfileHandle)}</div>
@@ -759,14 +870,14 @@ function buildPage2ProfileWidget(){
       <div class="p2-profile-copy">
         <div class="p2-profile-script"><small>SOFT BREATH</small>Feel coded</div>
         <div class="p2-profile-meta">— WRTHORIA · 401N, 60W —</div>
-        <button type="button" class="p2-profile-text-btn" aria-label="修改自定义文字">${escapeHtml(state.page2ProfileText)}</button>
+        <input type="text" class="p2-profile-text-input" aria-label="修改自定义文字" value="${escapeHtml(state.page2ProfileText)}" readonly autocomplete="off" autocapitalize="off" spellcheck="false">
       </div>
     </div>
     <div class="p2-profile-footer"><span>Collapss</span><span>· ✦ · ♡ · ✦ ·</span><span>Collapss</span></div>`;
 
   const avatarButton = widget.querySelector(".p2-profile-avatar-btn");
   const avatarInput = widget.querySelector(".p2-profile-avatar-input");
-  const textButton = widget.querySelector(".p2-profile-text-btn");
+  const textInput = widget.querySelector(".p2-profile-text-input");
 
   avatarButton.addEventListener("click", function(event){
     event.preventDefault();
@@ -795,17 +906,32 @@ function buildPage2ProfileWidget(){
     }
   });
 
-  textButton.addEventListener("click", function(event){
-    event.preventDefault();
+  textInput.addEventListener("click", function(event){
     event.stopPropagation();
-    const current = String(state.page2ProfileText || "自定义文字");
-    const next = window.prompt("修改组件文字", current);
-    if(next === null) return;
-    const cleaned = String(next).trim();
-    if(!cleaned) return;
-    state.page2ProfileText = cleaned;
-    textButton.textContent = cleaned;
-    saveLocal();
+    beginPage2ProfileTextEdit(textInput);
+  });
+
+  textInput.addEventListener("focus", function(){
+    if(page2ProfileEditingInput !== textInput) beginPage2ProfileTextEdit(textInput);
+  });
+
+  textInput.addEventListener("input", function(){
+    state.page2ProfileText = textInput.value;
+  });
+
+  textInput.addEventListener("keydown", function(event){
+    if(event.key === "Enter"){
+      event.preventDefault();
+      finishPage2ProfileTextEdit(true);
+    }
+  });
+
+  textInput.addEventListener("blur", function(){
+    if(page2ProfileEditingInput === textInput){
+      setTimeout(()=>{
+        if(page2ProfileEditingInput === textInput) finishPage2ProfileTextEdit(false);
+      },80);
+    }
   });
 
   return widget;
@@ -41192,7 +41318,7 @@ window.updateArchiveChatStyleHintV324=function(){
       #desktop .dots{
         margin-top:10px!important;
       }
-      #desktop:not(.page-two-mode) .apps-page{
+      #desktop:not(.page-two-mode) .apps-page:not(.page2-only){
         padding-top:2px!important;
       }
     `;
@@ -41465,7 +41591,7 @@ window.updateArchiveChatStyleHintV324=function(){
     html body #desktop:not(.page-two-mode) .pages-container{
       height:292px!important;
     }
-    html body #desktop:not(.page-two-mode) .apps-page{
+    html body #desktop:not(.page-two-mode) .apps-page:not(.page2-only){
       width:100%!important;
       height:292px!important;
       display:grid!important;
@@ -41477,7 +41603,7 @@ window.updateArchiveChatStyleHintV324=function(){
       padding:44px 20px 0!important;
       margin:0!important;
     }
-    html body #desktop:not(.page-two-mode) .apps-page > .app{
+    html body #desktop:not(.page-two-mode) .apps-page:not(.page2-only) > .app{
       position:relative!important;
       display:flex!important;
       flex-direction:column!important;
@@ -41494,7 +41620,7 @@ window.updateArchiveChatStyleHintV324=function(){
       pointer-events:auto!important;
       z-index:20!important;
     }
-    html body #desktop:not(.page-two-mode) .apps-page > .app .icon{
+    html body #desktop:not(.page-two-mode) .apps-page:not(.page2-only) > .app .icon{
       flex:0 0 auto!important;
       width:60px!important;
       height:60px!important;
@@ -41503,7 +41629,7 @@ window.updateArchiveChatStyleHintV324=function(){
       transform:none!important;
       pointer-events:none!important;
     }
-    html body #desktop:not(.page-two-mode) .apps-page > .app small{
+    html body #desktop:not(.page-two-mode) .apps-page:not(.page2-only) > .app small{
       font-size:13px!important;
       line-height:1.16!important;
       white-space:nowrap!important;
@@ -41649,12 +41775,12 @@ window.updateArchiveChatStyleHintV324=function(){
         viewport.style.setProperty('margin','0','important');
         viewport.style.setProperty('overflow','hidden','important');
       }
-      desktop.querySelectorAll('.apps-page').forEach(function(page){
+      desktop.querySelectorAll('.apps-page:not(.page2-only)').forEach(function(page){
         page.style.setProperty('height','292px','important');
         page.style.setProperty('padding','44px 20px 0','important');
         page.style.setProperty('row-gap','14px','important');
       });
-      desktop.querySelectorAll('.apps-page > .app').forEach(function(item){
+      desktop.querySelectorAll('.apps-page:not(.page2-only) > .app').forEach(function(item){
         item.style.setProperty('height','96px','important');
         item.style.setProperty('min-height','96px','important');
         item.style.setProperty('transform','none','important');
