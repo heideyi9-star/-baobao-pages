@@ -618,6 +618,10 @@ function installSafeDesktopCoordinateDispatcher(){
 
   function appAt(x,y){
     if(!desktopUsable())return null;
+    /* 378：坐标分发只允许命中真正位于桌面最上层的区域。
+       Chat、朋友圈、设置、工具箱等页面打开时，空白处不会再穿透到桌面图标。 */
+    const top=document.elementFromPoint(Number(x)||0,Number(y)||0);
+    if(!top||!top.closest||!top.closest("#desktop"))return null;
     const vw=window.innerWidth||document.documentElement.clientWidth||0;
     const vh=window.innerHeight||document.documentElement.clientHeight||0;
     for(const app of document.querySelectorAll("#desktop .apps-page > .app")){
@@ -42208,24 +42212,14 @@ window.updateArchiveChatStyleHintV324=function(){
       room.style.setProperty("z-index","1300","important");
       room.style.setProperty("pointer-events","auto","important");
     }
-    const dock=desktop && (desktop.querySelector(":scope > .dock") || desktop.querySelector(".dock"));
     if(chatOpen()){
       document.body.classList.add(HIDE_CLASS);
+      const dock=desktop && (desktop.querySelector(":scope > .dock") || desktop.querySelector(".dock"));
       if(dock){
         dock.style.setProperty("display","none","important");
         dock.style.setProperty("opacity","0","important");
         dock.style.setProperty("visibility","hidden","important");
         dock.style.setProperty("pointer-events","none","important");
-      }
-    }else{
-      /* 聊天室已关闭：撤销之前强制加的内联样式，把底栏显示的决定权交还给其他逻辑（如 v354），
-         否则这几条内联 !important 样式会一直卡住，导致退出聊天后底栏消失且点不动。 */
-      document.body.classList.remove(HIDE_CLASS);
-      if(dock){
-        dock.style.removeProperty("display");
-        dock.style.removeProperty("opacity");
-        dock.style.removeProperty("visibility");
-        dock.style.removeProperty("pointer-events");
       }
     }
   }
