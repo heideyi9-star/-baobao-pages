@@ -42208,14 +42208,24 @@ window.updateArchiveChatStyleHintV324=function(){
       room.style.setProperty("z-index","1300","important");
       room.style.setProperty("pointer-events","auto","important");
     }
+    const dock=desktop && (desktop.querySelector(":scope > .dock") || desktop.querySelector(".dock"));
     if(chatOpen()){
       document.body.classList.add(HIDE_CLASS);
-      const dock=desktop && (desktop.querySelector(":scope > .dock") || desktop.querySelector(".dock"));
       if(dock){
         dock.style.setProperty("display","none","important");
         dock.style.setProperty("opacity","0","important");
         dock.style.setProperty("visibility","hidden","important");
         dock.style.setProperty("pointer-events","none","important");
+      }
+    }else{
+      /* 聊天室已关闭：撤销之前强制加的内联样式，把底栏显示的决定权交还给其他逻辑（如 v354），
+         否则这几条内联 !important 样式会一直卡住，导致退出聊天后底栏消失且点不动。 */
+      document.body.classList.remove(HIDE_CLASS);
+      if(dock){
+        dock.style.removeProperty("display");
+        dock.style.removeProperty("opacity");
+        dock.style.removeProperty("visibility");
+        dock.style.removeProperty("pointer-events");
       }
     }
   }
