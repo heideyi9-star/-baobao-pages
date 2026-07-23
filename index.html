@@ -1836,14 +1836,14 @@ API Key<br>
         flex-direction:column!important;
         align-items:center!important;
         justify-content:flex-start!important;
-        height:110px!important;
-        min-height:110px!important;
+        height:96px!important;
+        min-height:96px!important;
       }
       html body #desktop .apps-page>.app .icon{
-        width:68px!important;
-        height:68px!important;
-        margin:0 auto 9px!important;
-        border-radius:18px!important;
+        width:60px!important;
+        height:60px!important;
+        margin:0 auto 8px!important;
+        border-radius:15px!important;
         overflow:hidden!important;
         display:flex!important;
         align-items:center!important;
@@ -1851,12 +1851,12 @@ API Key<br>
         flex:0 0 auto!important;
       }
       html body #desktop .apps-page>.app .icon>img{
-        width:118%!important;
-        height:118%!important;
+        width:110%!important;
+        height:110%!important;
         object-fit:contain!important;
         object-position:center!important;
         display:block!important;
-        transform:scale(1.06)!important;
+        transform:scale(1.02)!important;
       }
       html body #desktop .apps-page>.app .icon>svg{
         width:82%!important;
@@ -1864,25 +1864,25 @@ API Key<br>
         display:block!important;
       }
       html body #desktop .apps-page>.app{
-        font-size:15px!important;
+        font-size:13px!important;
         line-height:1.15!important;
       }
       html body #desktop:not(.page-two-mode) .apps-page{
-        grid-template-rows:repeat(2,110px)!important;
-        column-gap:6px!important;
-        row-gap:20px!important;
-        padding:44px 16px 0!important;
+        grid-template-rows:repeat(2,96px)!important;
+        column-gap:8px!important;
+        row-gap:14px!important;
+        padding:24px 16px 0!important;
       }
       html body #desktop.page-two-mode .apps-page,
       html body #desktop .apps-page.page2-only{
-        column-gap:6px!important;
-        row-gap:20px!important;
+        column-gap:8px!important;
+        row-gap:14px!important;
         padding-left:16px!important;
         padding-right:16px!important;
       }
       html body #desktop .dock>.dock-icon{
-        width:68px!important;
-        min-width:68px!important;
+        width:60px!important;
+        min-width:60px!important;
         height:76px!important;
         display:flex!important;
         flex-direction:column!important;
@@ -1890,9 +1890,9 @@ API Key<br>
         justify-content:flex-start!important;
       }
       html body #desktop .dock .dock-symbol{
-        width:52px!important;
-        height:52px!important;
-        border-radius:16px!important;
+        width:48px!important;
+        height:48px!important;
+        border-radius:15px!important;
         overflow:hidden!important;
         display:flex!important;
         align-items:center!important;
@@ -1900,12 +1900,12 @@ API Key<br>
         flex:0 0 auto!important;
       }
       html body #desktop .dock .dock-symbol>img{
-        width:118%!important;
-        height:118%!important;
+        width:110%!important;
+        height:110%!important;
         object-fit:contain!important;
         object-position:center!important;
         display:block!important;
-        transform:scale(1.06)!important;
+        transform:scale(1.02)!important;
       }
       html body #desktop .dock .dock-symbol>svg{
         width:82%!important;
@@ -1913,8 +1913,8 @@ API Key<br>
         display:block!important;
       }
       html body #desktop .dock small{
-        margin-top:7px!important;
-        font-size:14px!important;
+        margin-top:6px!important;
+        font-size:13px!important;
         line-height:1.08!important;
       }
     `;
@@ -1923,27 +1923,27 @@ API Key<br>
 
   function tuneAppIcon(app){
     if(!app)return;
-    app.style.setProperty('height','110px','important');
-    app.style.setProperty('min-height','110px','important');
+    app.style.setProperty('height','96px','important');
+    app.style.setProperty('min-height','96px','important');
     app.style.setProperty('justify-content','flex-start','important');
     const icon=app.querySelector('.icon');
     if(icon){
-      icon.style.setProperty('width','68px','important');
-      icon.style.setProperty('height','68px','important');
-      icon.style.setProperty('margin','0 auto 9px','important');
-      icon.style.setProperty('border-radius','18px','important');
+      icon.style.setProperty('width','60px','important');
+      icon.style.setProperty('height','60px','important');
+      icon.style.setProperty('margin','0 auto 8px','important');
+      icon.style.setProperty('border-radius','16px','important');
       icon.style.setProperty('overflow','hidden','important');
       icon.style.setProperty('display','flex','important');
       icon.style.setProperty('align-items','center','important');
       icon.style.setProperty('justify-content','center','important');
       const img=icon.querySelector('img');
       if(img){
-        img.style.setProperty('width','118%','important');
-        img.style.setProperty('height','118%','important');
+        img.style.setProperty('width','110%','important');
+        img.style.setProperty('height','110%','important');
         img.style.setProperty('object-fit','contain','important');
         img.style.setProperty('object-position','center','important');
         img.style.setProperty('display','block','important');
-        img.style.setProperty('transform','scale(1.06)','important');
+        img.style.setProperty('transform','scale(1.02)','important');
       }
       const svg=icon.querySelector('svg');
       if(svg){
@@ -1956,30 +1956,30 @@ API Key<br>
 
   function tuneDockIcon(item){
     if(!item)return;
-    item.style.setProperty('width','68px','important');
-    item.style.setProperty('min-width','68px','important');
-    item.style.setProperty('height','76px','important');
+    item.style.setProperty('width','64px','important');
+    item.style.setProperty('min-width','64px','important');
+    item.style.setProperty('height','72px','important');
     item.style.setProperty('display','flex','important');
     item.style.setProperty('flex-direction','column','important');
     item.style.setProperty('align-items','center','important');
     item.style.setProperty('justify-content','flex-start','important');
     const box=item.querySelector('.dock-symbol');
     if(box){
-      box.style.setProperty('width','52px','important');
-      box.style.setProperty('height','52px','important');
-      box.style.setProperty('border-radius','16px','important');
+      box.style.setProperty('width','48px','important');
+      box.style.setProperty('height','48px','important');
+      box.style.setProperty('border-radius','15px','important');
       box.style.setProperty('overflow','hidden','important');
       box.style.setProperty('display','flex','important');
       box.style.setProperty('align-items','center','important');
       box.style.setProperty('justify-content','center','important');
       const img=box.querySelector('img');
       if(img){
-        img.style.setProperty('width','118%','important');
-        img.style.setProperty('height','118%','important');
+        img.style.setProperty('width','110%','important');
+        img.style.setProperty('height','110%','important');
         img.style.setProperty('object-fit','contain','important');
         img.style.setProperty('object-position','center','important');
         img.style.setProperty('display','block','important');
-        img.style.setProperty('transform','scale(1.06)','important');
+        img.style.setProperty('transform','scale(1.02)','important');
       }
       const svg=box.querySelector('svg');
       if(svg){
@@ -1990,8 +1990,8 @@ API Key<br>
     }
     const small=item.querySelector('small');
     if(small){
-      small.style.setProperty('margin-top','7px','important');
-      small.style.setProperty('font-size','14px','important');
+      small.style.setProperty('margin-top','6px','important');
+      small.style.setProperty('font-size','13px','important');
       small.style.setProperty('line-height','1.08','important');
     }
   }
@@ -2001,12 +2001,12 @@ API Key<br>
     const desktop=document.getElementById('desktop');
     if(!desktop)return;
     desktop.querySelectorAll('.apps-page').forEach(page=>{
-      page.style.setProperty('column-gap','6px','important');
-      page.style.setProperty('row-gap','20px','important');
+      page.style.setProperty('column-gap','8px','important');
+      page.style.setProperty('row-gap','14px','important');
       page.style.setProperty('padding-left','16px','important');
       page.style.setProperty('padding-right','16px','important');
       if(!desktop.classList.contains('page-two-mode')&&!page.classList.contains('page2-only')){
-        page.style.setProperty('padding-top','44px','important');
+        page.style.setProperty('padding-top','24px','important');
       }
     });
     desktop.querySelectorAll('.apps-page>.app').forEach(tuneAppIcon);
