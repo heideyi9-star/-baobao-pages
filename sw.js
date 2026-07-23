@@ -1,5 +1,5 @@
-/* 豹豹机 394：第二页双对话组件。 */
-const CACHE_NAME = "baobao-shell-v394";
+/* 豹豹机 395：第二页完整对话组件与可换壁纸。 */
+const CACHE_NAME = "baobao-shell-v395";
 const SHELL = [
   "./",
   "./index.html",

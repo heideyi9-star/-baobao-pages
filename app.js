@@ -189,6 +189,7 @@ const state = {
     { id:"couple", icon:"", label:"情侣空间", action:"placeholder" }
   ],
   page2DialogueLines: ["今天有好好吃饭吗", "等你回来再慢慢说"],
+  page2DialogueWallpaper: null,
   timeAware: true,       // 时间感知：把真实时间/时间差告诉AI
   lastMsgTime: null,     // 上一条消息发送的时间戳
   lockPassword: "0601",  // 锁屏密码，默认 0601
@@ -237,6 +238,9 @@ state.page2DialogueLines = [0,1].map(function(i){
   const value = String(state.page2DialogueLines[i] == null ? fallback : state.page2DialogueLines[i]).trim();
   return value || fallback;
 });
+if(typeof state.page2DialogueWallpaper !== "string" || !state.page2DialogueWallpaper.startsWith("data:image/")){
+  state.page2DialogueWallpaper = null;
+}
 if(!Array.isArray(state.stickers)) state.stickers = [];
 if(!state.wallet || typeof state.wallet !== "object") state.wallet = { balance: 0, history: [] };
 if(typeof state.wallet.balance !== "number" || isNaN(state.wallet.balance)) state.wallet.balance = 0;
@@ -731,7 +735,7 @@ function buildPage1(){
 // ---- 第二页：完全独立的构建函数，自己的数据源、事件与交互 ----
 function buildPage2DialogueWidget(){
   const widget = document.createElement("section");
-  widget.className = "p2-dialogue-widget";
+  widget.className = "p2-dialogue-widget" + (state.page2DialogueWallpaper ? " has-wallpaper" : "");
   widget.setAttribute("aria-label", "可编辑双对话组件");
 
   const now = new Date();
@@ -739,6 +743,9 @@ function buildPage2DialogueWidget(){
   const lines = state.page2DialogueLines;
 
   widget.innerHTML = `
+    <div class="p2-dialogue-wallpaper"></div>
+    <button type="button" class="p2-dialogue-wallpaper-hit" aria-label="更换对话组件壁纸"></button>
+    <input class="p2-dialogue-wallpaper-input" type="file" accept="image/*">
     <div class="p2-dialogue-head">
       <span>DIALOGUE ARCHIVE</span>
       <span class="p2-dialogue-count">02 / ${stamp}</span>
@@ -752,8 +759,46 @@ function buildPage2DialogueWidget(){
       <span class="p2-dialogue-mark">M</span>
     </div>
     <div class="p2-dialogue-foot">
-      <span>TAP TO EDIT</span><span class="p2-dialogue-line"></span><span>PRIVATE NOTE</span>
+      <span>EDIT DIALOGUE</span><span class="p2-dialogue-line"></span><span>CHANGE WALLPAPER</span>
     </div>`;
+
+  const wallpaper = widget.querySelector(".p2-dialogue-wallpaper");
+  const picker = widget.querySelector(".p2-dialogue-wallpaper-input");
+  const wallpaperHit = widget.querySelector(".p2-dialogue-wallpaper-hit");
+
+  function renderWallpaper(){
+    const source = state.page2DialogueWallpaper;
+    widget.classList.toggle("has-wallpaper", !!source);
+    wallpaper.style.backgroundImage = source ? `url(${JSON.stringify(source)})` : "none";
+  }
+  renderWallpaper();
+
+  wallpaperHit.addEventListener("click", function(event){
+    event.preventDefault();
+    event.stopPropagation();
+    picker.click();
+  });
+
+  picker.addEventListener("change", async function(){
+    const file = picker.files && picker.files[0];
+    picker.value = "";
+    if(!file) return;
+    try{
+      state.page2DialogueWallpaper = await compressImageToBudget(file,{
+        maxDim:1000,
+        quality:.78,
+        maxChars:260000,
+        minDim:480,
+        minQuality:.48,
+        mime:"image/webp"
+      });
+      renderWallpaper();
+      saveLocal();
+      if(typeof showToast === "function") showToast("对话组件壁纸已更换");
+    }catch(error){
+      if(typeof showToast === "function") showToast("图片读取失败",true);
+    }
+  });
 
   widget.addEventListener("click", function(event){
     const bubble = event.target && event.target.closest ? event.target.closest("[data-p2-dialogue]") : null;

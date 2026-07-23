@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=394">
+<link rel="manifest" href="./baobao-manifest.json?v=395">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=394",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=395",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 394 第二页双对话组件版</title>
+<title>豹豹机4.9 · 395 第二页完整对话壁纸版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -198,9 +198,23 @@ html body #desktop.page-two-mode .desk-scroll>#deskIns{
 .p2h-wtext{font-size:12px;opacity:.85;margin-top:2px}
 
 /* 第二页双对话组件：跟随第二页 App 网格，不影响第一页与底栏 */
+html body #desktop.page-two-mode .pages-viewport{
+  height:430px!important;
+  min-height:430px!important;
+  overflow:visible!important;
+}
+html body #desktop.page-two-mode .pages-container{
+  height:430px!important;
+  min-height:430px!important;
+  overflow:visible!important;
+}
 html body #desktop.page-two-mode .apps-page.page2-only{
   grid-auto-flow:row!important;
   align-content:start!important;
+  height:430px!important;
+  min-height:430px!important;
+  overflow:visible!important;
+  padding-bottom:0!important;
 }
 html body #desktop.page-two-mode .p2-dialogue-widget{
   grid-column:1 / -1!important;
@@ -221,6 +235,39 @@ html body #desktop.page-two-mode .p2-dialogue-widget{
   z-index:22!important;
   touch-action:manipulation!important;
 }
+html body #desktop.page-two-mode .p2-dialogue-widget.has-wallpaper{
+  background:rgba(255,255,255,.48)!important;
+}
+.p2-dialogue-wallpaper{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-position:center bottom;
+  background-size:cover;
+  background-repeat:no-repeat;
+  opacity:.72;
+}
+.p2-dialogue-wallpaper::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg,rgba(255,255,255,.48),rgba(255,255,255,.20) 52%,rgba(255,255,255,.38));
+}
+.p2-dialogue-wallpaper-hit{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  display:block;
+  border:0;
+  outline:0;
+  padding:0;
+  margin:0;
+  background:transparent;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.p2-dialogue-wallpaper-input{display:none!important}
 html body #desktop.page-two-mode .p2-dialogue-widget::before{
   content:"";
   position:absolute;
@@ -242,6 +289,8 @@ html body #desktop.page-two-mode .p2-dialogue-widget::after{
   pointer-events:none;
 }
 .p2-dialogue-head{
+  position:relative;
+  z-index:3;
   display:flex;
   align-items:center;
   justify-content:space-between;
@@ -258,6 +307,8 @@ html body #desktop.page-two-mode .p2-dialogue-widget::after{
   font-variant-numeric:tabular-nums;
 }
 .p2-dialogue-row{
+  position:relative;
+  z-index:3;
   display:flex;
   align-items:flex-end;
   gap:7px;
@@ -306,6 +357,7 @@ html body #desktop.page-two-mode .p2-dialogue-widget::after{
 .p2-dialogue-bubble:active{transform:scale(.985);opacity:.86}
 .p2-dialogue-foot{
   position:absolute;
+  z-index:3;
   left:16px;
   right:16px;
   bottom:11px;
@@ -354,7 +406,7 @@ html body #desktop .dock{
 }
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=394"></script>
+<script defer src="./app.js?v=395"></script>
 
 
 <style id="bb-chat-message-home-v373">
