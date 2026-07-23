@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=389">
+<link rel="manifest" href="./baobao-manifest.json?v=391">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=389",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=391",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 389 桌面稳定·底栏修复版</title>
+<title>豹豹机4.9 · 391 自适应人设核心版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -161,10 +161,26 @@ html body #desktop:not(.page-two-mode) .bb-showcase-shell{width:100%!important;p
 html body #desktop:not(.page-two-mode) .bb-showcase-grid>.photo-slot.bb-showcase-photo{height:136px!important;min-height:136px!important}
 html body #desktop:not(.page-two-mode) .pages-viewport{margin-top:0!important}
 html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row-gap:14px!important}
-html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
+html body #desktop>.dock,
+html body #desktop .dock{
+  position:absolute!important;
+  left:12px!important;
+  right:12px!important;
+  top:auto!important;
+  bottom:4px!important;
+  width:auto!important;
+  height:87px!important;
+  margin:0!important;
+  transform:none!important;
+  z-index:80!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-around!important;
+  overflow:visible!important;
+}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=389"></script>
+<script defer src="./app.js?v=391"></script>
 
 
 <style id="bb-chat-message-home-v373">
