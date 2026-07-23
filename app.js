@@ -12937,6 +12937,7 @@ window.baobaoAI = {
   /* 把同一瞬间的多次整包保存合并成一次，避免每点一下都同步序列化全部导入数据。 */
   const rawSave=typeof window.saveLocal==="function"?window.saveLocal:null;
   let saveTimer=0;
+  let saveIdle=0;
   let savePending=false;
   let saveBusy=false;
 
@@ -12948,6 +12949,8 @@ window.baobaoAI = {
     }
     clearTimeout(saveTimer);
     saveTimer=0;
+    if(saveIdle&&typeof cancelIdleCallback==="function")cancelIdleCallback(saveIdle);
+    saveIdle=0;
     if(!savePending)return true;
     savePending=false;
     saveBusy=true;
@@ -12963,13 +12966,25 @@ window.baobaoAI = {
 
   function scheduleSave(delay){
     clearTimeout(saveTimer);
-    saveTimer=setTimeout(flushSave,Math.max(40,Number(delay)||220));
+    if(saveIdle&&typeof cancelIdleCallback==="function")cancelIdleCallback(saveIdle);
+    saveIdle=0;
+    saveTimer=setTimeout(function(){
+      saveTimer=0;
+      if(typeof requestIdleCallback==="function"){
+        saveIdle=requestIdleCallback(function(){
+          saveIdle=0;
+          flushSave();
+        },{timeout:1000});
+      }else{
+        flushSave();
+      }
+    },Math.max(120,Number(delay)||420));
   }
 
   function smoothSave(force){
     savePending=true;
     if(force===true)return flushSave();
-    scheduleSave(240);
+    scheduleSave(420);
     return true;
   }
 
@@ -42531,12 +42546,19 @@ window.updateArchiveChatStyleHintV324=function(){
     const seen=new WeakSet();
     const memo=new Map();
     let changed=0;
+    let sliceStarted=performance.now();
+    async function yieldToUI(){
+      if(performance.now()-sliceStarted<8)return;
+      await new Promise(resolve=>setTimeout(resolve,0));
+      sliceStarted=performance.now();
+    }
     async function walk(node,path){
       if(!node || typeof node!=='object')return;
       if(seen.has(node))return;
       seen.add(node);
       const entries=Array.isArray(node)?node.map((v,i)=>[i,v]):Object.entries(node);
       for(const [key,value] of entries){
+        await yieldToUI();
         const nextPath=path?path+'.'+key:String(key);
         if(bb380IsDataImage(value) && !bb380SkipImage(value)){
           const opt=bb380OptionsForPath(nextPath,value);
@@ -42802,7 +42824,15 @@ window.updateArchiveChatStyleHintV324=function(){
   window.bbHandleChatLandingPhoto=landingImport;
 
   function bb380Start(){
-    setTimeout(()=>bb380RunStorageCleanup(false),1200);
+    /* 新图片仍会在导入时自动压缩；旧数据整理不再在正在操作页面时强制运行。 */
+    const runWhenHidden=function(){
+      if(!document.hidden || state[OPTIMIZE_MARK])return;
+      document.removeEventListener('visibilitychange',runWhenHidden);
+      const run=()=>bb380RunStorageCleanup(false);
+      if(typeof requestIdleCallback==='function')requestIdleCallback(run,{timeout:5000});
+      else setTimeout(run,800);
+    };
+    document.addEventListener('visibilitychange',runWhenHidden);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bb380Start,{once:true});
   else bb380Start();

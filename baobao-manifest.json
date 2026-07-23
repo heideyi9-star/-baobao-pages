@@ -1,7 +1,7 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 380 · 图片自动压缩与缓存整理",
+  "description": "豹豹机 381 · 流畅稳定与图片压缩",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

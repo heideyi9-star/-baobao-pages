@@ -1,5 +1,5 @@
-/* 豹豹机 380：图片自动压缩与缓存整理。 */
-const CACHE_NAME = "baobao-shell-v380";
+/* 豹豹机 381：图片自动压缩与缓存整理。 */
+const CACHE_NAME = "baobao-shell-v381";
 const SHELL = [
   "./",
   "./index.html",

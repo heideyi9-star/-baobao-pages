@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=378">
+<link rel="manifest" href="./baobao-manifest.json?v=381">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=378",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=381",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 378 无黑框点击隔离版</title>
+<title>豹豹机4.9 · 381 流畅稳定版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -164,7 +164,7 @@ html body #desktop:not(.page-two-mode) .apps-page{padding-top:44px!important;row
 html body #desktop:not(.page-two-mode) .dock{bottom:34px!important}
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=380"></script>
+<script defer src="./app.js?v=381"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -2304,12 +2304,12 @@ API Key<br>
     const pages=document.getElementById('pagesContainer');
     if(pages&&!pages.__bbV357Observer){
       pages.__bbV357Observer=new MutationObserver(schedule);
-      pages.__bbV357Observer.observe(pages,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+      pages.__bbV357Observer.observe(pages,{childList:true,subtree:true});
     }
     const desktop=document.getElementById('desktop');
     if(desktop&&!desktop.__bbV357DesktopObserver){
       desktop.__bbV357DesktopObserver=new MutationObserver(schedule);
-      desktop.__bbV357DesktopObserver.observe(desktop,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+      desktop.__bbV357DesktopObserver.observe(desktop,{childList:true,subtree:true});
     }
   }
 
@@ -2317,7 +2317,7 @@ API Key<br>
   else install();
   window.addEventListener('load',install);
   window.addEventListener('pageshow',install);
-  [0,80,260,700,1600,3000,5200].forEach(ms=>setTimeout(install,ms));
+  [0,180,900].forEach(ms=>setTimeout(install,ms));
 })();
 </script>
 
