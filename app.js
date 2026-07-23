@@ -489,10 +489,13 @@ function normalizeDesktopAppSets(){
 normalizeDesktopAppSets();
 
 function ensurePage1PolaroidWidgetStyle(){
-  const STYLE_ID = "bb-page1-polaroid-widget-v398-style";
-  if(document.getElementById(STYLE_ID)) return;
-  const style = document.createElement("style");
-  style.id = STYLE_ID;
+  const STYLE_ID = "bb-page1-polaroid-widget-v399-style";
+  let style = document.getElementById(STYLE_ID);
+  if(!style){
+    style = document.createElement("style");
+    style.id = STYLE_ID;
+    document.head.appendChild(style);
+  }
   style.textContent = `
     html body #desktop:not(.page-two-mode) .apps-page.bb-page1-custom-layout{
       display:grid!important;
@@ -512,127 +515,161 @@ function ensurePage1PolaroidWidgetStyle(){
     html body #desktop:not(.page-two-mode) .apps-page.bb-page1-custom-layout>.app[data-slot="2"]{grid-column:2;grid-row:1;}
     html body #desktop:not(.page-two-mode) .apps-page.bb-page1-custom-layout>.app[data-slot="3"]{grid-column:1;grid-row:2;}
     html body #desktop:not(.page-two-mode) .apps-page.bb-page1-custom-layout>.app[data-slot="4"]{grid-column:2;grid-row:2;}
+
     html body #desktop:not(.page-two-mode) .bb-page1-polaroid-widget{
       grid-column:3 / 5;
       grid-row:1 / 3;
-      align-self:stretch;
-      position:relative;
-      min-height:232px;
-      margin:2px 0 0;
-      border-radius:26px;
-      overflow:visible;
-      -webkit-tap-highlight-color:transparent;
-      user-select:none;
-    }
-    html body #desktop:not(.page-two-mode) .bb-page1-polaroid-surface{
-      position:absolute;
-      inset:0;
-      background-image:url(${PAGE1_POLAROID_WIDGET_BG});
-      background-repeat:no-repeat;
-      background-position:center;
-      background-size:contain;
-      filter:drop-shadow(0 10px 20px rgba(0,0,0,.08));
-      pointer-events:none;
+      position:relative!important;
+      width:calc(100% + 28px)!important;
+      height:266px!important;
+      min-height:266px!important;
+      margin:-14px -8px 0 -18px!important;
+      border:0!important;
+      padding:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      overflow:visible!important;
+      cursor:pointer!important;
+      -webkit-tap-highlight-color:transparent!important;
+      user-select:none!important;
+      touch-action:manipulation!important;
     }
     html body #desktop:not(.page-two-mode) .bb-page1-polaroid-photo{
-      position:absolute;
-      left:16.8%;
-      top:18.5%;
-      width:54.8%;
-      aspect-ratio:1 / 1;
-      border:0;
-      padding:0;
-      margin:0;
-      border-radius:22px;
-      overflow:hidden;
-      background:linear-gradient(180deg,rgba(255,255,255,.97),rgba(240,240,240,.92));
-      box-shadow:0 10px 22px rgba(0,0,0,.08);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:2;
+      position:absolute!important;
+      z-index:1!important;
+      left:18.2%!important;
+      top:18.3%!important;
+      width:55.8%!important;
+      height:49.2%!important;
+      border:0!important;
+      padding:0!important;
+      margin:0!important;
+      border-radius:5px!important;
+      overflow:hidden!important;
+      background:transparent!important;
+      box-shadow:none!important;
+      transform:rotate(-3.8deg)!important;
+      transform-origin:center!important;
+      pointer-events:none!important;
     }
     html body #desktop:not(.page-two-mode) .bb-page1-polaroid-photo img{
-      width:100%;
-      height:100%;
-      object-fit:cover;
-      display:block;
+      width:100%!important;
+      height:100%!important;
+      object-fit:cover!important;
+      object-position:center!important;
+      display:block!important;
     }
-    html body #desktop:not(.page-two-mode) .bb-page1-polaroid-placeholder{
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
-      color:#a7a7ad;
-      font-size:26px;
-      font-weight:500;
-      letter-spacing:.3px;
+    html body #desktop:not(.page-two-mode) .bb-page1-polaroid-surface{
+      position:absolute!important;
+      z-index:2!important;
+      inset:0!important;
+      background-image:url(${PAGE1_POLAROID_WIDGET_BG})!important;
+      background-repeat:no-repeat!important;
+      background-position:center!important;
+      background-size:contain!important;
+      filter:drop-shadow(0 10px 18px rgba(0,0,0,.075))!important;
+      pointer-events:none!important;
     }
-    html body #desktop:not(.page-two-mode) .bb-page1-polaroid-placeholder small{
-      font-size:11px;
-      font-weight:700;
-      letter-spacing:.2px;
-      color:#98989f;
+    html body #desktop:not(.page-two-mode) .bb-page1-polaroid-widget:active{
+      transform:scale(.988)!important;
     }
-    html body #desktop:not(.page-two-mode) .bb-page1-polaroid-photo:active{transform:scale(.985);}
-    html body #desktop:not(.page-two-mode) .bb-page1-polaroid-action{
-      position:absolute;
-      right:10px;
-      bottom:14px;
-      z-index:3;
-      padding:6px 10px;
-      border:none;
-      border-radius:999px;
-      background:rgba(255,255,255,.9);
-      color:#7d7d84;
-      font-size:11px;
-      font-weight:700;
-      box-shadow:0 6px 12px rgba(0,0,0,.08);
+
+    /* 第二页：删除天气/日期 hero，把复古资料卡直接放到最上面。 */
+    html body #desktop.page-two-mode #p2hWrap{
+      display:none!important;
+      width:0!important;
+      height:0!important;
+      min-height:0!important;
+      margin:0!important;
+      padding:0!important;
+      overflow:hidden!important;
+      opacity:0!important;
+      pointer-events:none!important;
     }
-    html body #desktop:not(.page-two-mode) .bb-page1-polaroid-action:active{transform:scale(.98);}
+    html body #desktop.page-two-mode .pages-viewport{
+      margin-top:8px!important;
+      height:500px!important;
+      min-height:500px!important;
+      overflow:visible!important;
+    }
+    html body #desktop.page-two-mode .pages-container{
+      height:500px!important;
+      min-height:500px!important;
+      overflow:visible!important;
+    }
+    html body #desktop.page-two-mode .apps-page.page2-only{
+      display:grid!important;
+      grid-template-columns:repeat(4,minmax(0,1fr))!important;
+      grid-template-rows:176px 96px 96px!important;
+      grid-auto-flow:row!important;
+      grid-auto-rows:96px!important;
+      column-gap:8px!important;
+      row-gap:12px!important;
+      align-content:start!important;
+      height:500px!important;
+      min-height:500px!important;
+      padding:6px 16px 0!important;
+      overflow:visible!important;
+    }
+    html body #desktop.page-two-mode .apps-page.page2-only>.p2-profile-widget{
+      grid-column:1 / -1!important;
+      grid-row:1!important;
+      width:100%!important;
+      height:176px!important;
+      margin:0!important;
+    }
+
+    /* 最终把桌面底栏再向下放一点。 */
+    html body #desktop>.dock,
+    html body #desktop .dock{
+      top:auto!important;
+      bottom:-8px!important;
+    }
   `;
-  document.head.appendChild(style);
 }
 
 function buildPage1PolaroidWidget(){
   ensurePage1PolaroidWidgetStyle();
   const widget = document.createElement("section");
   widget.className = "bb-page1-polaroid-widget";
-  widget.setAttribute("aria-label","you and me 拍立得组件");
+  widget.setAttribute("role","button");
+  widget.setAttribute("tabindex","0");
+  widget.setAttribute("aria-label","点击更换拍立得照片");
   const photo = state.page1PolaroidPhoto || "";
   widget.innerHTML = `
+    <div class="bb-page1-polaroid-photo">${photo ? `<img src="${photo}" alt="拍立得照片">` : ""}</div>
     <div class="bb-page1-polaroid-surface" aria-hidden="true"></div>
-    <button type="button" class="bb-page1-polaroid-photo" aria-label="更换拍立得照片">${photo ? `<img src="${photo}" alt="拍立得照片">` : `<div class="bb-page1-polaroid-placeholder"><span>＋</span><small>换照片</small></div>`}</button>
-    <button type="button" class="bb-page1-polaroid-action">更换照片</button>
     <input type="file" class="bb-page1-polaroid-input" accept="image/*" hidden>
   `;
   const fileInput = widget.querySelector('.bb-page1-polaroid-input');
-  const photoBtn = widget.querySelector('.bb-page1-polaroid-photo');
-  const actionBtn = widget.querySelector('.bb-page1-polaroid-action');
+  const photoLayer = widget.querySelector('.bb-page1-polaroid-photo');
   const openPicker = (event)=>{
     if(event){ event.preventDefault(); event.stopPropagation(); }
     fileInput.click();
   };
-  photoBtn.addEventListener('click', openPicker);
-  actionBtn.addEventListener('click', openPicker);
-  fileInput.addEventListener('change', async ()=>{
+  widget.addEventListener('click', openPicker);
+  widget.addEventListener('keydown', event=>{
+    if(event.key === 'Enter' || event.key === ' '){ openPicker(event); }
+  });
+  fileInput.addEventListener('click', event=>event.stopPropagation());
+  fileInput.addEventListener('change', async event=>{
+    event.stopPropagation();
     const file = fileInput.files && fileInput.files[0];
     fileInput.value = '';
     if(!file) return;
     try{
       const data = await compressImageToBudget(file,{
-        maxDim:900,
-        minDim:420,
-        quality:.86,
-        minQuality:.56,
-        maxChars:220000,
+        maxDim:1000,
+        minDim:480,
+        quality:.88,
+        minQuality:.58,
+        maxChars:240000,
         mime:'image/webp'
       });
       state.page1PolaroidPhoto = data;
-      photoBtn.innerHTML = `<img src="${data}" alt="拍立得照片">`;
+      photoLayer.innerHTML = `<img src="${data}" alt="拍立得照片">`;
       saveLocal();
-      if(typeof showToast === 'function') showToast('拍立得照片已更换');
+      if(typeof showToast === 'function') showToast('照片已更换');
     }catch(error){
       if(typeof showToast === 'function') showToast('照片读取失败', true);
     }
@@ -1135,6 +1172,8 @@ function buildPage2(){
   const pageDiv = document.createElement("div");
   pageDiv.className = "apps-page page2-only";
 
+  pageDiv.appendChild(buildPage2ProfileWidget());
+
   state.page2Apps.forEach((app, aIdx) => {
     const appDiv = document.createElement("div");
     appDiv.className = "app";
@@ -1153,7 +1192,6 @@ function buildPage2(){
     pageDiv.appendChild(appDiv);
   });
 
-  pageDiv.appendChild(buildPage2ProfileWidget());
   return pageDiv;
 }
 
@@ -41853,7 +41891,7 @@ window.updateArchiveChatStyleHintV324=function(){
       left:12px!important;
       right:12px!important;
       top:auto!important;
-      bottom:4px!important;
+      bottom:-8px!important;
       width:auto!important;
       height:87px!important;
       margin:0!important;
@@ -41945,7 +41983,7 @@ window.updateArchiveChatStyleHintV324=function(){
       dock.style.setProperty('left','12px','important');
       dock.style.setProperty('right','12px','important');
       dock.style.setProperty('top','auto','important');
-      dock.style.setProperty('bottom','4px','important');
+      dock.style.setProperty('bottom','-8px','important');
       dock.style.setProperty('width','auto','important');
       dock.style.setProperty('height','87px','important');
       dock.style.setProperty('margin','0','important');
@@ -43037,4 +43075,30 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, {once:true});
   else install();
   window.addEventListener("load", function(){ setTimeout(install, 200); });
+})();
+
+
+/* baobao-v399-final-layout-lock */
+(function(){
+  function applyV399Layout(){
+    const desktop=document.getElementById('desktop');
+    if(!desktop)return;
+    const dock=desktop.querySelector(':scope > .dock')||desktop.querySelector('.dock');
+    if(dock){
+      dock.style.setProperty('top','auto','important');
+      dock.style.setProperty('bottom','-8px','important');
+    }
+    const hero=document.getElementById('p2hWrap');
+    if(hero){
+      hero.style.setProperty('display','none','important');
+      hero.style.setProperty('height','0','important');
+      hero.style.setProperty('margin','0','important');
+      hero.style.setProperty('padding','0','important');
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',applyV399Layout,{once:true});
+  else applyV399Layout();
+  window.addEventListener('load',applyV399Layout,{once:true});
+  setTimeout(applyV399Layout,80);
+  setTimeout(applyV399Layout,360);
 })();
