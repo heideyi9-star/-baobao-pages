@@ -2204,6 +2204,96 @@ function compressImageToBudget(source, options){
   }));
 }
 
+
+async function baobaoOptimizeExistingChatMediaV404(){
+  const migrationKey="bb_media_compact_v404";
+  try{ if(localStorage.getItem(migrationKey)==="1") return; }catch(e){}
+  if(!window.state||typeof compressImageToBudget!=="function")return;
+
+  const groups=[];
+  if(Array.isArray(state.chatMessages))groups.push(state.chatMessages);
+  if(state.chatRecords&&typeof state.chatRecords==="object"){
+    Object.values(state.chatRecords).forEach(list=>{if(Array.isArray(list))groups.push(list)});
+  }
+
+  const objects=new Set();
+  const queue=[];
+  groups.forEach(list=>list.forEach(message=>{
+    if(!message||objects.has(message))return;
+    objects.add(message);
+    const type=String(message.type||"").toLowerCase();
+    const src=String(message.content||"");
+    if((type==="image"||type==="textphoto")&&/^data:image\//i.test(src)&&src.length>190000){
+      queue.push(message);
+    }
+  }));
+
+  if(!queue.length){
+    try{localStorage.setItem(migrationKey,"1")}catch(e){}
+    return;
+  }
+
+  const cache=new Map();
+  let changed=0;
+  for(const message of queue){
+    const source=String(message.content||"");
+    try{
+      let compact=cache.get(source);
+      if(!compact){
+        compact=await compressImageToBudget(source,{
+          maxDim:900,
+          minDim:480,
+          quality:.72,
+          minQuality:.46,
+          maxChars:175000,
+          mime:"image/webp"
+        });
+        cache.set(source,compact);
+      }
+      if(compact&&compact.length<source.length){
+        ["content","originalMedia","mediaSource","imageUrl","image"].forEach(key=>{
+          if(String(message[key]||"")===source)message[key]=compact;
+        });
+        message.mediaCompactV404=true;
+        changed++;
+      }
+    }catch(e){}
+    await new Promise(resolve=>setTimeout(resolve,16));
+  }
+
+  let saved=true;
+  if(changed){
+    try{
+      const fn=typeof window.saveLocal==="function"?window.saveLocal:(typeof saveLocal==="function"?saveLocal:null);
+      if(fn){
+        const result=fn();
+        if(result===false)saved=false;
+        if(window.saveLocal&&typeof window.saveLocal.flush==="function"){
+          const flushed=window.saveLocal.flush();
+          if(flushed===false)saved=false;
+        }
+      }
+    }catch(e){saved=false;}
+  }
+  if(saved){
+    try{localStorage.setItem(migrationKey,"1")}catch(e){}
+    if(changed&&typeof showToast==="function")showToast("聊天图片已自动压缩，点击仍可放大查看");
+    try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();}catch(e){}
+  }
+}
+
+(function scheduleMediaCompactionV404(){
+  const start=()=>setTimeout(()=>{
+    if("requestIdleCallback" in window){
+      requestIdleCallback(()=>baobaoOptimizeExistingChatMediaV404(),{timeout:1800});
+    }else{
+      baobaoOptimizeExistingChatMediaV404();
+    }
+  },1200);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});
+  else start();
+})();
+
 function baobaoAssignImageSafely(field,value,render,successMessage){
   const old=state[field];
   state[field]=value;
@@ -2979,7 +3069,7 @@ function renderChatMessages(){
 
     let bubbleHtml;
     if(m.type === "image"){
-      bubbleHtml = `<div class="${cls}" data-msg-index="${i}"><img src="${m.content}"></div>`;
+      bubbleHtml = `<div class="${cls} bb-media-thumb" data-msg-index="${i}"><img loading="lazy" decoding="async" src="${m.content}" alt="图片，点击查看"></div>`;
     }else{
       const speakBtn = m.role === "assistant"
         ? `<span class="bubble-speak" onclick="event.stopPropagation();speakMessage(${i})"></span>` : "";
@@ -8947,13 +9037,29 @@ ${clean(reply)}
  window.chooseBaobaoAlbum=function(){closeBaobaoToolModal();$id('bbAlbumInput').click()}
  window.openBaobaoTextPhoto=function(){$id('bbToolModalContent').innerHTML='<div class="bb-tool-title">文字照片</div><div class="bb-tool-sub">输入文字，会生成一张简洁的照片卡片。</div><textarea class="bb-tool-textarea" id="bbTextPhotoText" maxlength="120" placeholder="写下想放在图片里的文字…"></textarea><div class="bb-tool-actions"><button class="bb-tool-cancel" onclick="openBaobaoImageChoice()">返回</button><button class="bb-tool-send" onclick="sendBaobaoTextPhoto()">生成并发送</button></div>';setTimeout(()=>$id('bbTextPhotoText').focus(),60)}
  window.sendBaobaoTextPhoto=function(){const t=($id('bbTextPhotoText').value||'').trim();if(!t)return showToast('请输入文字',true);const c=document.createElement('canvas');c.width=900;c.height=900;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,900,900);g.addColorStop(0,'#f5efe8');g.addColorStop(1,'#dfe6ea');x.fillStyle=g;x.fillRect(0,0,900,900);x.fillStyle='rgba(255,255,255,.72)';x.roundRect(90,110,720,680,42);x.fill();x.fillStyle='#333';x.textAlign='center';x.textBaseline='middle';x.font='600 46px -apple-system,BlinkMacSystemFont,sans-serif';const chars=[...t],lines=[];let line='';for(const ch of chars){if(x.measureText(line+ch).width>610){lines.push(line);line=ch}else line+=ch}if(line)lines.push(line);const lh=70,start=450-(lines.length-1)*lh/2;lines.slice(0,7).forEach((l,i)=>x.fillText(l,450,start+i*lh));x.font='24px -apple-system';x.fillStyle='rgba(0,0,0,.38)';x.fillText('BAOBAO MEMORY',450,735);pushToolMessage('textphoto',c.toDataURL('image/jpeg',.88),{text:t});closeBaobaoToolModal()}
- function readImage(file){if(!file)return; if(file.size>12*1024*1024)return showToast('图片太大，请选择小于12MB的图片',true);const r=new FileReader();r.onload=()=>pushToolMessage('image',r.result,{caption:'[图片]'});r.readAsDataURL(file)}
+ async function readImage(file){
+   if(!file)return;
+   if(file.size>20*1024*1024)return showToast('图片太大，请选择小于20MB的图片',true);
+   try{
+     const compact=await compressImageToBudget(file,{
+       maxDim:900,
+       minDim:480,
+       quality:.72,
+       minQuality:.46,
+       maxChars:175000,
+       mime:'image/webp'
+     });
+     pushToolMessage('image',compact,{caption:'[图片]',mediaCompactV404:true});
+   }catch(error){
+     showToast('图片读取失败，请重新选择',true);
+   }
+ }
  document.addEventListener('DOMContentLoaded',()=>{$id('bbCameraInput').addEventListener('change',e=>{readImage(e.target.files[0]);e.target.value=''});$id('bbAlbumInput').addEventListener('change',e=>{readImage(e.target.files[0]);e.target.value=''})});
  function customBubble(m){
    let body="";
 
    if(m.type==='image'||m.type==='textphoto'){
-     body='<img src="'+m.content+'" alt="图片">';
+     body='<img loading="lazy" decoding="async" src="'+m.content+'" alt="图片，点击查看">';
    }else if(m.type==='sticker'){
      const stickerSrc=String(m.url||m.imageUrl||m.content||'');
      const stickerName=String(m.name||m.stickerName||'表情包');
@@ -9126,7 +9232,7 @@ ${clean(reply)}
          avatar+
          '<div class="msg-content-wrap">'+
            outside+
-           '<div class="'+cls+(m.type==="textphoto"?" bb-text-photo":m.type==="sticker"?" bb-sticker-bubble":"")+'" data-msg-index="'+i+'">'+
+           '<div class="'+cls+((m.type==="image"||m.type==="textphoto")?" bb-media-thumb":m.type==="sticker"?" bb-sticker-bubble":"")+'" data-msg-index="'+i+'">'+
              content+
            '</div>'+
            rejected+meta+
@@ -12265,7 +12371,7 @@ window.appendChatMessageRow=function(){
     const outside=ts.enabled&&ts.position==='outside'?'<div class="msg-time-outside">'+ft+'</div>':'';
     const rejected=m.rejected?'<span class="msg-reject-icon">!</span>':'';
     const meta=m.rejected?'<div class="msg-rejected-note">消息已发出，但被对方拒收</div>':((isMe||m.edited)?'<div class="msg-meta-line">'+(isMe?'<span class="msg-delivery '+(m.delivery||'sent')+'">'+deliveryFn(m)+'</span>':'')+(m.edited?'<span class="msg-edited">已编辑</span>':'')+'</div>':'');
-    rowHtml=center+'<div class="'+rowCls+' baobao-arrive" data-msg-row="'+i+'">'+avatar+'<div class="msg-content-wrap">'+outside+'<div class="'+cls+(m.type==='textphoto'?' bb-text-photo':m.type==='sticker'?' bb-sticker-bubble':'')+'" data-msg-index="'+i+'">'+content+'</div>'+rejected+meta+'</div></div>';
+    rowHtml=center+'<div class="'+rowCls+' baobao-arrive" data-msg-row="'+i+'">'+avatar+'<div class="msg-content-wrap">'+outside+'<div class="'+cls+((m.type==='image'||m.type==='textphoto')?' bb-media-thumb':m.type==='sticker'?' bb-sticker-bubble':'')+'" data-msg-index="'+i+'">'+content+'</div>'+rejected+meta+'</div></div>';
   }
   wrap.insertAdjacentHTML('beforeend',rowHtml);
   if(typeof bindMessageGestures==='function') bindMessageGestures();
@@ -40790,7 +40896,7 @@ window.openPersonaDebugPanel = function(){
       const img=new Image();
       img.onload=()=>{
         try{
-          const max=1400;
+          const max=900;
           const scale=Math.min(1,max/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
           const width=Math.max(1,Math.round((img.naturalWidth||img.width)*scale));
           const height=Math.max(1,Math.round((img.naturalHeight||img.height)*scale));
@@ -40798,7 +40904,7 @@ window.openPersonaDebugPanel = function(){
           canvas.width=width; canvas.height=height;
           const ctx=canvas.getContext('2d',{alpha:false});
           ctx.fillStyle='#fff'; ctx.fillRect(0,0,width,height); ctx.drawImage(img,0,0,width,height);
-          resolve(canvas.toDataURL('image/jpeg',0.84));
+          resolve(canvas.toDataURL('image/webp',0.72));
         }catch(_){resolve(source)}
       };
       img.onerror=()=>resolve(source);
@@ -41182,7 +41288,7 @@ window.openPersonaDebugPanel = function(){
       const img=new Image();
       img.onload=()=>{
         try{
-          const max=1400;
+          const max=900;
           const scale=Math.min(1,max/Math.max(img.naturalWidth||img.width,img.naturalHeight||img.height));
           const width=Math.max(1,Math.round((img.naturalWidth||img.width)*scale));
           const height=Math.max(1,Math.round((img.naturalHeight||img.height)*scale));
@@ -41190,7 +41296,7 @@ window.openPersonaDebugPanel = function(){
           canvas.width=width; canvas.height=height;
           const ctx=canvas.getContext('2d',{alpha:false});
           ctx.fillStyle='#fff'; ctx.fillRect(0,0,width,height); ctx.drawImage(img,0,0,width,height);
-          resolve(canvas.toDataURL('image/jpeg',0.84));
+          resolve(canvas.toDataURL('image/webp',0.72));
         }catch(_){resolve(source)}
       };
       img.onerror=()=>resolve(source);

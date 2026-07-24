@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=397">
+<link rel="manifest" href="./baobao-manifest.json?v=404">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=397",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=404",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,7 +40,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 395 第二页完整对话壁纸版</title>
+<title>豹豹机4.9 · 404 聊天媒体缩略图版</title>
 <style id="bb-startup-v285-style"></style>
 
 
@@ -149,6 +149,35 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-phone-statusbar{position:absolute;top:20px;left:24px;right:24px;height:28px;display:flex;align-items:center;justify-content:space-between;color:#252525;z-index:3;pointer-events:none;font-size:13px;font-weight:600;letter-spacing:1.5px}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
+
+/* 聊天图片统一使用轻量缩略图；点击后仍由现有媒体查看器放大。 */
+#chatRoom .bubble.bb-media-thumb{
+  width:136px!important;
+  height:136px!important;
+  max-width:136px!important;
+  min-width:136px!important;
+  padding:0!important;
+  overflow:hidden!important;
+  border-radius:16px!important;
+  border:1px solid rgba(0,0,0,.05)!important;
+  background:#f2f2f4!important;
+  box-shadow:none!important;
+  cursor:pointer!important;
+}
+#chatRoom .bubble.bb-media-thumb>img{
+  display:block!important;
+  width:136px!important;
+  height:136px!important;
+  max-width:none!important;
+  max-height:none!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  border-radius:15px!important;
+  background:#f2f2f4!important;
+}
+#chatRoom .bubble.bb-media-thumb:active{transform:scale(.985)}
+#chatRoom .bubble.bb-media-thumb .msg-time-inline{display:none!important}
+
 </style>
 <style id="bb-page2-hero-widget-v391">
 /* 第二页专属 hero 组件：默认隐藏，仅在桌面第二页（page-two-mode）显示 */
@@ -513,7 +542,7 @@ html body #desktop .dock{
 }
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=403"></script>
+<script defer src="./app.js?v=404"></script>
 
 
 <style id="bb-chat-message-home-v373">
