@@ -493,7 +493,7 @@ html body #desktop .dock{
 }
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=403"></script>
+<script defer src="./app.js?v=405"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -1002,6 +1002,45 @@ html body #desktop .dock>.dock-icon::after{
   box-sizing:border-box;
 }
 .bb-sticker-recognizing.show{display:block}
+</style>
+
+
+<style id="bb-chat-media-thumbnail-v405">
+html body #chatRoom #chatMsgs .bubble.bb-chat-photo-bubble,
+html body #chatRoom #chatMsgs .bubble:has(>img.bb-chat-photo-thumb){
+  width:136px!important;
+  min-width:136px!important;
+  max-width:136px!important;
+  height:136px!important;
+  min-height:136px!important;
+  max-height:136px!important;
+  padding:0!important;
+  border:0!important;
+  border-radius:16px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  overflow:hidden!important;
+}
+html body #chatRoom #chatMsgs img.bb-chat-photo-thumb,
+html body #chatRoom #chatMsgs .bubble>img:not(.bb-chat-sticker-image){
+  display:block!important;
+  width:136px!important;
+  min-width:136px!important;
+  max-width:136px!important;
+  height:136px!important;
+  min-height:136px!important;
+  max-height:136px!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  border-radius:16px!important;
+  margin:0!important;
+  cursor:zoom-in!important;
+  content-visibility:auto;
+}
+html body #chatRoom #chatMsgs .bb-chat-photo-missing{
+  width:136px;height:136px;border-radius:16px;background:#f1f1f3;color:#a2a2a8;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+}
 </style>
 
 </head>

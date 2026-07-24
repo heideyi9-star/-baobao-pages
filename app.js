@@ -824,6 +824,176 @@ function baobaoCleanupTemporaryStorage(){
   }catch(e){}
 }
 
+
+// ===== 聊天媒体存储：缩略图留在聊天记录，较清晰原图放 IndexedDB =====
+const BB_CHAT_MEDIA_DB_V405 = "baobao_chat_media_v405";
+const BB_CHAT_MEDIA_STORE_V405 = "media";
+let bbChatMediaDbPromiseV405 = null;
+let bbChatMediaMigrationRunningV405 = false;
+
+function bbOpenChatMediaDbV405(){
+  if(bbChatMediaDbPromiseV405) return bbChatMediaDbPromiseV405;
+  bbChatMediaDbPromiseV405 = new Promise((resolve,reject)=>{
+    if(!window.indexedDB){ reject(new Error("当前浏览器不支持图片仓库")); return; }
+    const req = indexedDB.open(BB_CHAT_MEDIA_DB_V405,1);
+    req.onupgradeneeded = ()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(BB_CHAT_MEDIA_STORE_V405)){
+        db.createObjectStore(BB_CHAT_MEDIA_STORE_V405,{keyPath:"id"});
+      }
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error("图片仓库打开失败"));
+  });
+  return bbChatMediaDbPromiseV405;
+}
+
+async function bbPutChatMediaV405(dataUrl,id){
+  const db=await bbOpenChatMediaDbV405();
+  const key=id||("media_"+Date.now()+"_"+Math.random().toString(36).slice(2,10));
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(BB_CHAT_MEDIA_STORE_V405,"readwrite");
+    tx.objectStore(BB_CHAT_MEDIA_STORE_V405).put({id:key,data:String(dataUrl||""),updatedAt:Date.now()});
+    tx.oncomplete=()=>resolve();
+    tx.onerror=()=>reject(tx.error||new Error("图片保存失败"));
+    tx.onabort=()=>reject(tx.error||new Error("图片保存中断"));
+  });
+  return key;
+}
+
+async function bbGetChatMediaV405(id){
+  if(!id) return "";
+  const db=await bbOpenChatMediaDbV405();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(BB_CHAT_MEDIA_STORE_V405,"readonly");
+    const req=tx.objectStore(BB_CHAT_MEDIA_STORE_V405).get(String(id));
+    req.onsuccess=()=>resolve(req.result&&req.result.data?String(req.result.data):"");
+    req.onerror=()=>reject(req.error||new Error("图片读取失败"));
+  });
+}
+
+function bbReadFileDataUrlV405(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=()=>resolve(String(reader.result||""));
+    reader.onerror=()=>reject(new Error("图片读取失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+function bbLoadImageV405(src){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>resolve(img);
+    img.onerror=()=>reject(new Error("图片解析失败"));
+    img.src=String(src||"");
+  });
+}
+
+async function bbCompressChatImageV405(source,options){
+  const opt=Object.assign({maxDim:1080,maxChars:320000,quality:.78,minQuality:.48,minDim:360},options||{});
+  const src=source instanceof File?await bbReadFileDataUrlV405(source):String(source||"");
+  if(!/^data:image\//i.test(src)) return src;
+  if(/^data:image\/(?:gif|svg\+xml)/i.test(src)) return src;
+  const img=await bbLoadImageV405(src);
+  let width=img.naturalWidth||img.width||1;
+  let height=img.naturalHeight||img.height||1;
+  const scale=Math.min(1,opt.maxDim/Math.max(width,height));
+  width=Math.max(1,Math.round(width*scale));
+  height=Math.max(1,Math.round(height*scale));
+  const canvas=document.createElement("canvas");
+  const ctx=canvas.getContext("2d",{alpha:false});
+  let quality=opt.quality;
+  let result=src;
+  for(let attempt=0;attempt<12;attempt++){
+    canvas.width=width; canvas.height=height;
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height);
+    ctx.drawImage(img,0,0,width,height);
+    result=canvas.toDataURL("image/webp",quality);
+    if(!/^data:image\/webp/i.test(result)) result=canvas.toDataURL("image/jpeg",quality);
+    if(result.length<=opt.maxChars) return result;
+    if(quality>opt.minQuality+.04) quality=Math.max(opt.minQuality,quality-.08);
+    else{
+      width=Math.max(opt.minDim,Math.round(width*.84));
+      height=Math.max(opt.minDim,Math.round(height*.84));
+      quality=Math.min(.68,opt.quality);
+    }
+    if(width<=opt.minDim&&height<=opt.minDim&&quality<=opt.minQuality) break;
+    await new Promise(resolve=>requestAnimationFrame(resolve));
+  }
+  return result;
+}
+
+async function bbPrepareChatMediaV405(fileOrSource){
+  const source=fileOrSource instanceof File?await bbReadFileDataUrlV405(fileOrSource):String(fileOrSource||"");
+  const full=await bbCompressChatImageV405(source,{maxDim:1080,maxChars:300000,quality:.76,minQuality:.46,minDim:420});
+  const thumb=await bbCompressChatImageV405(source,{maxDim:300,maxChars:30000,quality:.68,minQuality:.42,minDim:180});
+  const key=await bbPutChatMediaV405(full);
+  return {thumb,fullMediaKey:key};
+}
+window.bbPrepareChatMediaV405=bbPrepareChatMediaV405;
+window.bbGetChatMediaV405=bbGetChatMediaV405;
+
+function bbEmergencyStoragePayloadV405(){
+  return JSON.stringify(baobaoStorageSnapshot(),(key,value)=>{
+    if(typeof value==="string"&&/^data:image\//i.test(value)&&value.length>45000) return null;
+    return value;
+  });
+}
+
+async function bbMigrateChatMediaV405(force){
+  if(bbChatMediaMigrationRunningV405) return false;
+  if(!force&&localStorage.getItem("bb_chat_media_migrated_v405")==="1") return true;
+  bbChatMediaMigrationRunningV405=true;
+  let changed=0;
+  try{
+    const arrays=[];
+    const seenArrays=new Set();
+    const addArray=arr=>{ if(Array.isArray(arr)&&!seenArrays.has(arr)){seenArrays.add(arr);arrays.push(arr);} };
+    addArray(state.chatMessages);
+    if(state.chatRecords&&typeof state.chatRecords==="object") Object.values(state.chatRecords).forEach(addArray);
+    for(const arr of arrays){
+      for(const message of arr){
+        if(!message||String(message.type||"").toLowerCase()!=="image") continue;
+        const src=[message.originalMedia,message.mediaSource,message.url,message.content].find(v=>typeof v==="string"&&/^data:image\//i.test(v));
+        if(!src) continue;
+        if(message.fullMediaKey&&String(message.content||"").length<=40000){
+          delete message.originalMedia; delete message.mediaSource;
+          if(message.url===message.content) delete message.url;
+          continue;
+        }
+        try{
+          const prepared=await bbPrepareChatMediaV405(src);
+          message.content=prepared.thumb;
+          message.fullMediaKey=prepared.fullMediaKey;
+          delete message.originalMedia;
+          delete message.mediaSource;
+          delete message.url;
+          changed++;
+        }catch(error){ console.warn("旧聊天图片整理失败",error); }
+        if(changed&&changed%3===0) await new Promise(resolve=>setTimeout(resolve,0));
+      }
+    }
+    localStorage.setItem("bb_chat_media_migrated_v405","1");
+    if(changed){
+      saveLocal();
+      if(typeof window.renderChatMessages==="function") window.renderChatMessages();
+    }
+    return true;
+  }finally{
+    bbChatMediaMigrationRunningV405=false;
+  }
+}
+window.bbMigrateChatMediaV405=bbMigrateChatMediaV405;
+
+function bbScheduleChatMediaMigrationV405(force){
+  const run=()=>bbMigrateChatMediaV405(!!force).catch(error=>console.warn("聊天图片整理未完成",error));
+  if(typeof requestIdleCallback==="function") requestIdleCallback(run,{timeout:2500});
+  else setTimeout(run,900);
+}
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",()=>bbScheduleChatMediaMigrationV405(false),{once:true});
+else bbScheduleChatMediaMigrationV405(false);
+
 function saveLocal(){
   const payload=JSON.stringify(baobaoStorageSnapshot());
   try{
@@ -836,8 +1006,16 @@ function saveLocal(){
       localStorage.setItem("baobao_state",payload);
       return true;
     }catch(err){
-      console.error("保存失败：",err);
-      return false;
+      console.error("完整数据保存失败，先保存不含大图的文字记录：",err);
+      try{
+        localStorage.setItem("baobao_state",bbEmergencyStoragePayloadV405());
+        bbScheduleChatMediaMigrationV405(true);
+        if(typeof showToast==="function") showToast("图片正在压缩整理，聊天文字已先保存",true);
+        return true;
+      }catch(finalError){
+        console.error("紧急保存也失败：",finalError);
+        return false;
+      }
     }
   }
 }
@@ -2979,7 +3157,7 @@ function renderChatMessages(){
 
     let bubbleHtml;
     if(m.type === "image"){
-      bubbleHtml = `<div class="${cls}" data-msg-index="${i}"><img src="${m.content}"></div>`;
+      bubbleHtml = `<div class="${cls} bb-chat-photo-bubble" data-msg-index="${i}"><img class="bb-chat-photo-thumb" loading="lazy" decoding="async" src="${m.content||""}" alt="图片"></div>`;
     }else{
       const speakBtn = m.role === "assistant"
         ? `<span class="bubble-speak" onclick="event.stopPropagation();speakMessage(${i})"></span>` : "";
@@ -8908,11 +9086,14 @@ ${clean(reply)}
    const rejected=blocked();
    state.chatMessages=state.chatMessages||[];
    const msg=Object.assign({role:'user',type,content,time:Date.now(),id:'msg_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),delivery:rejected?'rejected':'sent',rejected},extra||{});
-   if(type==='image'||type==='textphoto'||type==='sticker'){
+   if(type==='sticker'){
      const src=String((extra&&extra.url)||content||'');
      msg.url=msg.url||src;
-     msg.mediaSource=msg.mediaSource||src;
-     msg.originalMedia=msg.originalMedia||src;
+   }else if(type==='image'||type==='textphoto'){
+     // 图片正文只保存一份缩略图；清晰图由 fullMediaKey 指向 IndexedDB。
+     delete msg.url;
+     delete msg.mediaSource;
+     delete msg.originalMedia;
    }
    state.chatMessages.push(msg);
    persist();
@@ -8941,13 +9122,24 @@ ${clean(reply)}
  window.chooseBaobaoAlbum=function(){closeBaobaoToolModal();$id('bbAlbumInput').click()}
  window.openBaobaoTextPhoto=function(){$id('bbToolModalContent').innerHTML='<div class="bb-tool-title">文字照片</div><div class="bb-tool-sub">输入文字，会生成一张简洁的照片卡片。</div><textarea class="bb-tool-textarea" id="bbTextPhotoText" maxlength="120" placeholder="写下想放在图片里的文字…"></textarea><div class="bb-tool-actions"><button class="bb-tool-cancel" onclick="openBaobaoImageChoice()">返回</button><button class="bb-tool-send" onclick="sendBaobaoTextPhoto()">生成并发送</button></div>';setTimeout(()=>$id('bbTextPhotoText').focus(),60)}
  window.sendBaobaoTextPhoto=function(){const t=($id('bbTextPhotoText').value||'').trim();if(!t)return showToast('请输入文字',true);const c=document.createElement('canvas');c.width=900;c.height=900;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,900,900);g.addColorStop(0,'#f5efe8');g.addColorStop(1,'#dfe6ea');x.fillStyle=g;x.fillRect(0,0,900,900);x.fillStyle='rgba(255,255,255,.72)';x.roundRect(90,110,720,680,42);x.fill();x.fillStyle='#333';x.textAlign='center';x.textBaseline='middle';x.font='600 46px -apple-system,BlinkMacSystemFont,sans-serif';const chars=[...t],lines=[];let line='';for(const ch of chars){if(x.measureText(line+ch).width>610){lines.push(line);line=ch}else line+=ch}if(line)lines.push(line);const lh=70,start=450-(lines.length-1)*lh/2;lines.slice(0,7).forEach((l,i)=>x.fillText(l,450,start+i*lh));x.font='24px -apple-system';x.fillStyle='rgba(0,0,0,.38)';x.fillText('BAOBAO MEMORY',450,735);pushToolMessage('textphoto',c.toDataURL('image/jpeg',.88),{text:t});closeBaobaoToolModal()}
- function readImage(file){if(!file)return; if(file.size>12*1024*1024)return showToast('图片太大，请选择小于12MB的图片',true);const r=new FileReader();r.onload=()=>pushToolMessage('image',r.result,{caption:'[图片]'});r.readAsDataURL(file)}
+ async function readImage(file){
+   if(!file)return;
+   if(file.size>25*1024*1024)return showToast('图片太大，请选择小于25MB的图片',true);
+   try{
+     if(typeof showToast==='function')showToast('正在压缩图片…');
+     const prepared=await window.bbPrepareChatMediaV405(file);
+     pushToolMessage('image',prepared.thumb,{caption:'[图片]',fullMediaKey:prepared.fullMediaKey});
+   }catch(error){
+     console.warn('聊天图片处理失败',error);
+     showToast('图片处理失败，请换一张试试',true);
+   }
+ }
  document.addEventListener('DOMContentLoaded',()=>{$id('bbCameraInput').addEventListener('change',e=>{readImage(e.target.files[0]);e.target.value=''});$id('bbAlbumInput').addEventListener('change',e=>{readImage(e.target.files[0]);e.target.value=''})});
  function customBubble(m){
    let body="";
 
    if(m.type==='image'||m.type==='textphoto'){
-     body='<img src="'+m.content+'" alt="图片">';
+     body=m.content?'<img class="bb-chat-photo-thumb" loading="lazy" decoding="async" src="'+m.content+'" alt="图片">':'<div class="bb-chat-photo-missing">图片已清理</div>';
    }else if(m.type==='sticker'){
      const stickerSrc=String(m.url||m.imageUrl||m.content||'');
      const stickerName=String(m.name||m.stickerName||'表情包');
@@ -13637,8 +13829,15 @@ window.baobaoAI = {
       const m=window.state&&Array.isArray(state.chatMessages)?state.chatMessages[idx]:null;
       const type=String(m&&m.type||'').toLowerCase();
       if(type!=='image'&&type!=='textphoto')return;
+      e.preventDefault();e.stopPropagation();
+      if(m&&m.fullMediaKey&&typeof window.bbGetChatMediaV405==="function"){
+        window.bbGetChatMediaV405(m.fullMediaKey).then(function(full){
+          window.openBaobaoMediaViewerV212(full||sourceOf(m)||img.src);
+        }).catch(function(){window.openBaobaoMediaViewerV212(sourceOf(m)||img.src);});
+        return;
+      }
       const src=sourceOf(m)||img.src;
-      if(src){e.preventDefault();e.stopPropagation();window.openBaobaoMediaViewerV212(src)}
+      if(src)window.openBaobaoMediaViewerV212(src);
     },true);
   }
   document.addEventListener('DOMContentLoaded',bindMediaZoom);
@@ -42756,7 +42955,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
 ;/* ===== 豹豹机 380：图片自动压缩 + 存储缓存整理 ===== */
 (function(){
-  const OPTIMIZE_MARK='mediaStorageOptimizedV380';
+  const OPTIMIZE_MARK='mediaStorageOptimizedV405';
   const CHAT_TRIM_TRIGGER=2000;
   const CHAT_KEEP_RECENT=1800;
   let optimizing=false;
@@ -42856,7 +43055,7 @@ window.updateArchiveChatStyleHintV324=function(){
     if(/avatar|portrait|persona.*photo|user.*photo/.test(p))return {maxDim:420,maxChars:78000,quality:.74,minDim:240};
     if(/icon/.test(p))return {maxDim:260,maxChars:52000,quality:.74,minDim:140,preserveAlpha:true};
     if(/sticker|emoji/.test(p))return {maxDim:420,maxChars:90000,quality:.70,minDim:220,preserveAlpha:true};
-    if(/landingphoto|memoryboard|moment|message|image|photo/.test(p))return {maxDim:760,maxChars:115000,quality:.66,minDim:340};
+    if(/landingphoto|memoryboard|moment|message|image|photo/.test(p))return {maxDim:720,maxChars:80000,quality:.62,minDim:300};
     return {maxDim:760,maxChars:135000,quality:.68,minDim:320};
   }
   async function bb380CompactTree(root){
@@ -43141,15 +43340,11 @@ window.updateArchiveChatStyleHintV324=function(){
   window.bbHandleChatLandingPhoto=landingImport;
 
   function bb380Start(){
-    /* 新图片仍会在导入时自动压缩；旧数据整理不再在正在操作页面时强制运行。 */
-    const runWhenHidden=function(){
-      if(!document.hidden || state[OPTIMIZE_MARK])return;
-      document.removeEventListener('visibilitychange',runWhenHidden);
-      const run=()=>bb380RunStorageCleanup(false);
-      if(typeof requestIdleCallback==='function')requestIdleCallback(run,{timeout:5000});
-      else setTimeout(run,800);
-    };
-    document.addEventListener('visibilitychange',runWhenHidden);
+    /* 空闲时整理一次旧图片；不阻塞聊天操作。 */
+    if(state[OPTIMIZE_MARK])return;
+    const run=()=>bb380RunStorageCleanup(false);
+    if(typeof requestIdleCallback==='function')requestIdleCallback(run,{timeout:4500});
+    else setTimeout(run,1500);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bb380Start,{once:true});
   else bb380Start();
