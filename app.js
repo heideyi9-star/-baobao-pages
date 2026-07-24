@@ -208,7 +208,16 @@ const state = {
   stickers: [],           // 表情包 {id, url, name}
   wallet: { balance: 0, history: [] },  // 我的钱包：虚拟余额 + 充值/消费记录
   offlinePresets: [ { id:"preset_default", name:"线下文风预设", content: DEFAULT_OFFLINE_STYLE_PRESET, enabled:true } ],  // 线下剧情预设列表，可勾选多个同时生效
-  offlineWordLimit: 750   // 线下剧情单次生成的目标字数
+  offlineWordLimit: 750,  // 线下剧情单次生成的目标字数
+  socialStory: {
+    enabled: true,
+    intensity: "natural",
+    accounts: {},
+    requests: [],
+    conflicts: {},
+    seeded: false,
+    lastSpawnAt: 0
+  }
 };
 
 // 统一兼容层：原文件使用顶层 const state，后期模块需要 window.state。
@@ -40356,6 +40365,9 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const offline=offlineContext();
     const time=timeContext();
     const media=mediaContext();
+    const social=(window.BaobaoSocialStory&&typeof window.BaobaoSocialStory.contextForPersona==="function")
+      ? clean(window.BaobaoSocialStory.contextForPersona(person,history))
+      : "";
     const continuation=isHeartContinuation();
     const recentAssistant=recentAssistantLines(history,6);
     return `【豹豹机 391｜自适应完整人设核心】
@@ -40371,7 +40383,11 @@ ${behavior?`${behavior}
 `:""}${anchors.length?`【本轮优先读取的人设锚点】\n${anchors.map((line,index)=>`${index+1}. ${line}`).join("\n")}\n这些不是让你逐条复述。只有确实与当前话题有关、能帮助回答或体现态度时，才自然用到一两条具体内容；不要为了通过检查硬塞资料。\n\n`:""}${speech?`【原文中可直接证明口吻的内容】\n${speech}\n\n`:""}【正在聊天的用户】
 ${userProfile()}
 
-【本轮理解规则】
+${social?`【当前社交剧情隐藏事实】
+${social}
+这段是角色本人知道的现实背景，不是让你对用户复述的系统说明。只有在当前聊天自然相关时才使用；不相关时不要硬提。
+
+`:""}【本轮理解规则】
 1. 以用户最新消息和最近两三轮的真实指代为中心，先判断对方到底在回应哪一句。
 2. 角色的第一反应、愿不愿意回答、回几条、是否发表情包，都由原始人设决定，不使用随机“活人感策略”。
 3. 可以简短、冷淡、黏人、别扭、沙雕、认真或沉默。上方聊天风格只提供倾向，不是每轮必须执行的模板；以原始人设、当前关系、上下文和用户这句话为准。
@@ -43653,4 +43669,473 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
   window.addEventListener('load',applyV400Layout,{once:true});
   setTimeout(applyV400Layout,80);
   setTimeout(applyV400Layout,360);
+})();
+
+
+/* baobao-social-story-v408
+ * Chat 小号 / NPC / 好友申请 / 暧昧触发大号质问。
+ * 新功能使用独立状态与独立面板，不覆盖聊天核心、页面导航或存储函数。
+ */
+(function(){
+  "use strict";
+  if(window.__bbSocialStoryV408)return;
+  window.__bbSocialStoryV408=true;
+
+  const VERSION="408";
+  const AUTO_FIRST_DELAY=4200;
+  const CHECK_INTERVAL=2600;
+  const SPAWN_COOLDOWN={quiet:72*3600e3,natural:18*3600e3,drama:4*3600e3};
+  const FLIRT_THRESHOLD={quiet:15,natural:10,drama:6};
+  const CONFRONT_DELAY={quiet:65000,natural:28000,drama:8000};
+  const $=id=>document.getElementById(id);
+  const esc=value=>String(value==null?"":value)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+  const clean=value=>String(value==null?"":value).trim();
+  const now=()=>Date.now();
+
+  function appState(){
+    try{return window.state||state||{}}catch(_){return window.state||{}}
+  }
+  function story(){
+    const s=appState();
+    if(!s.socialStory||typeof s.socialStory!=="object")s.socialStory={};
+    const v=s.socialStory;
+    if(typeof v.enabled!=="boolean")v.enabled=true;
+    if(!["quiet","natural","drama"].includes(v.intensity))v.intensity="natural";
+    if(!v.accounts||typeof v.accounts!=="object"||Array.isArray(v.accounts))v.accounts={};
+    if(!Array.isArray(v.requests))v.requests=[];
+    if(!v.conflicts||typeof v.conflicts!=="object"||Array.isArray(v.conflicts))v.conflicts={};
+    if(typeof v.seeded!=="boolean")v.seeded=false;
+    if(!Number.isFinite(Number(v.lastSpawnAt)))v.lastSpawnAt=0;
+    return v;
+  }
+  function personas(){
+    const s=appState();
+    if(!Array.isArray(s.personas))s.personas=[];
+    return s.personas;
+  }
+  function records(){
+    const s=appState();
+    if(!s.chatRecords||typeof s.chatRecords!=="object")s.chatRecords={};
+    return s.chatRecords;
+  }
+  function personById(id){
+    return personas().find(p=>p&&String(p.id||"")===String(id||""))||null;
+  }
+  function realMainPersonas(){
+    return personas().filter(p=>p&&!p.socialMeta);
+  }
+  function currentMainPersona(){
+    const current=window.currentChatPersona;
+    if(current&&!current.socialMeta)return current;
+    const active=personById(appState().activeChatId);
+    if(active&&!active.socialMeta)return active;
+    return realMainPersonas()[0]||null;
+  }
+  function save(){
+    try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(error){console.warn("社交剧情保存失败",error)}
+  }
+  function toast(message,error){
+    try{if(typeof window.showToast==="function")window.showToast(message,!!error);else if(typeof showToast==="function")showToast(message,!!error)}catch(_){ }
+  }
+  function random(list){return list[Math.floor(Math.random()*list.length)]}
+  function uid(prefix){return prefix+"_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,7)}
+  function uniqueWechat(base){
+    const existing=new Set(personas().map(p=>String(p&&p.wechat||"")).concat(Object.values(story().accounts).map(a=>String(a&&a.wechat||""))));
+    let value=base.replace(/[^A-Za-z0-9_.-]/g,"").slice(0,18)||"visitor";
+    let out=value,round=1;
+    while(existing.has(out))out=value+"_"+(++round);
+    return out;
+  }
+  function avatarData(label,seed){
+    const safe=(clean(label)||"?").slice(0,2);
+    let hash=0;for(const ch of String(seed||label||""))hash=(hash*31+ch.charCodeAt(0))>>>0;
+    const a=210+(hash%25),b=225+((hash>>4)%20),c=235+((hash>>7)%16);
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="rgb(${a},${b},${c})"/><stop offset="1" stop-color="rgb(${Math.max(170,a-28)},${Math.max(180,b-30)},${Math.max(190,c-25)})"/></linearGradient><filter id="n"><feTurbulence baseFrequency=".8" numOctaves="2" seed="${hash%97}"/><feColorMatrix values="0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .08 0"/></filter></defs><rect width="200" height="200" rx="48" fill="url(#g)"/><rect width="200" height="200" rx="48" filter="url(#n)" opacity=".35"/><circle cx="100" cy="76" r="38" fill="rgba(255,255,255,.72)"/><path d="M43 176c8-42 31-62 57-62s49 20 57 62" fill="rgba(255,255,255,.72)"/><text x="100" y="112" text-anchor="middle" font-family="Arial,sans-serif" font-size="0">${safe}</text></svg>`;
+    return "data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(svg);
+  }
+  function clip(text,max=130){
+    const v=clean(text).replace(/\s+/g," ");return v.length>max?v.slice(0,max)+"…":v;
+  }
+  function messageText(message){
+    if(!message)return "";
+    if(message.type==="image")return "[图片]";
+    if(message.type==="sticker")return "[表情包]";
+    return clean(message.content||message.text||"");
+  }
+  function recentTranscript(personId,limit=10){
+    return (records()[personId]||[]).filter(m=>m&&!m.hiddenSystem&&["user","assistant"].includes(m.role)).slice(-limit)
+      .map(m=>(m.role==="user"?"用户":"对方")+"："+clip(messageText(m),120)).join("\n");
+  }
+  function mainPersonaSummary(main){
+    if(!main)return "";
+    return [main.persona,main.personality,main.brief].map(clean).filter(Boolean).join("\n").slice(0,2800);
+  }
+
+  const ALT_ALIASES=[
+    {name:"空白页",handle:"blankpage",source:"来自推荐联系人",intro:"好像在哪里见过你。",opening:"推荐联系人里刷到你了"},
+    {name:"未读",handle:"unread",source:"通过共同群聊添加",intro:"你头像有点眼熟。",opening:"你是不是经常在那个群里说话"},
+    {name:"NORTH",handle:"northside",source:"来自朋友圈",intro:"刚才看见你的动态。",opening:"你朋友圈那张图挺好看的"},
+    {name:"M.",handle:"m_private",source:"搜索微信号添加",intro:"有件事想问你。",opening:"冒昧问一句 你有对象吗"},
+    {name:"ECHO",handle:"echoafter",source:"来自共同好友",intro:"朋友说你挺有意思。",opening:"朋友把你推给我了"},
+    {name:"折返",handle:"turnback",source:"来自附近的人",intro:"随便聊聊？",opening:"这么晚还在线"}
+  ];
+  const NPC_PROFILES=[
+    {name:"林澈",handle:"linche",role:"独立乐队的贝斯手，话不多，但很会观察细节",source:"通过音乐动态添加",intro:"你也听这个乐队？",opening:"你发的那首歌我也在循环",tone:"克制、会接梗、不会刚认识就热情过头"},
+    {name:"季禾",handle:"jihe",role:"游戏里认识的固定队队友，嘴欠但靠谱",source:"通过游戏好友添加",intro:"昨天那局是你吧。",opening:"昨天那局最后救你的是我",tone:"短句、轻微欠揍、熟了以后会护短"},
+    {name:"许昼",handle:"xuzhou",role:"同城摄影爱好者，喜欢拍街景和旧建筑",source:"通过朋友圈添加",intro:"想问你照片在哪里拍的。",opening:"你朋友圈那张照片是在哪拍的",tone:"自然礼貌，但不是客服；对好看的画面会认真聊"},
+    {name:"陈栗",handle:"chenli",role:"朋友的朋友，爱逛古着店和咖啡馆",source:"通过共同好友添加",intro:"朋友说我们品味很像。",opening:"听说你也喜欢逛古着店",tone:"轻松、会主动分享生活，但有自己的安排"},
+    {name:"白川",handle:"white_river",role:"网上认识的插画师，作息很乱，偶尔突然失踪",source:"通过作品评论添加",intro:"看见你留的评论了。",opening:"你刚才那条评论我看见了",tone:"慵懒、跳跃、偶尔深夜话多"},
+    {name:"沈遥",handle:"shenyao",role:"同校但不同班的学生，认识一些共同同学",source:"通过学校好友添加",intro:"好像在学校见过你。",opening:"我是不是在学校见过你",tone:"有点试探，不会一上来就自来熟"}
+  ];
+
+  function buildAltAccount(main){
+    if(!main)return null;
+    const old=Object.values(story().accounts).find(a=>a&&a.type==="alt"&&String(a.linkedMainId)===String(main.id)&&a.status!=="rejected");
+    if(old)return old;
+    const alias=random(ALT_ALIASES);
+    const id=uid("social_alt");
+    const handle=uniqueWechat(alias.handle+"_"+Math.floor(10+Math.random()*89));
+    const mainName=clean(main.name)||"大号角色";
+    const account={
+      id,personaId:id,type:"alt",linkedMainId:String(main.id),jealousMainId:String(main.id),
+      name:alias.name,wechat:handle,photo:avatarData(alias.name,id),source:alias.source,
+      intro:alias.intro,opening:alias.opening,status:"pending",accepted:false,createdAt:now(),
+      flirtScore:0,confrontAt:0,confronted:false,lastCheckedLength:0,hiddenIdentity:true,
+      truth:`这个账号实际上是${mainName}偷偷开的匿名小号。`
+    };
+    story().accounts[id]=account;
+    return account;
+  }
+  function buildNpcAccount(){
+    const profile=random(NPC_PROFILES);
+    const id=uid("social_npc");
+    const main=currentMainPersona();
+    const account={
+      id,personaId:id,type:"npc",linkedMainId:"",jealousMainId:main?String(main.id):"",
+      name:profile.name,wechat:uniqueWechat(profile.handle+"_"+Math.floor(10+Math.random()*89)),
+      photo:avatarData(profile.name,id),source:profile.source,intro:profile.intro,opening:profile.opening,
+      role:profile.role,tone:profile.tone,status:"pending",accepted:false,createdAt:now(),
+      flirtScore:0,confrontAt:0,confronted:false,lastCheckedLength:0,hiddenIdentity:false
+    };
+    story().accounts[id]=account;
+    return account;
+  }
+  function personaFromAccount(account){
+    const main=account.linkedMainId?personById(account.linkedMainId):null;
+    const mainRaw=mainPersonaSummary(main);
+    const common=`你是豹豹机世界里真实存在的人，不是为了推动剧情才出现的工具人。你有自己的生活、上线时间、朋友、情绪和边界。刚认识时不要过度热情，不要每句话都围着用户转。用户拒绝暧昧时，退回普通朋友关系，不纠缠。`;
+    let persona,personality,brief;
+    if(account.type==="alt"){
+      persona=`${common}\n\n【隐藏身份】\n你是${clean(main&&main.name)||"某个熟人"}偷偷开的匿名小号。你的目的不是立刻自曝，而是以陌生人的身份观察、试探用户。绝不能主动说“我是他的小号”、不能直接引用只有大号才能知道的原话。你可以保留大号一两个很小的习惯或口癖，让用户有机会自己猜出来，但不能每句话都露馅。\n\n【大号完整资料】\n${mainRaw||"按当前大号资料行事"}`;
+      personality=`表面上像陌生人，语气比大号稍微收着一点。会旁敲侧击问感情状态，也会对用户和大号的关系好奇。试探要有过程，不要第一轮就逼问或表白。`;
+      brief=`匿名小号；真实身份与${clean(main&&main.name)||"大号"}相同。共享事实和记忆，但严格隔离身份表现。`;
+    }else{
+      persona=`${common}\n\n【NPC身份】\n${account.role||"普通网友"}。你和用户通过“${account.source||"社交推荐"}”认识。你不是任何主角的小号，也不能知道没有来源的聊天或隐私。`;
+      personality=account.tone||"自然、有自己的节奏";
+      brief=`真实NPC：${account.role||"普通网友"}。与用户从陌生关系开始，关系会根据聊天自然变化。`;
+    }
+    return {
+      id:account.personaId,name:account.name,wechat:account.wechat,photo:account.photo,
+      tags:[account.type==="alt"?"匿名小号":"NPC","社交剧情"],timezone:"SYSTEM",
+      persona,personality,brief,chatStyleMode:"auto",updatedAt:new Date().toISOString().slice(0,10),
+      socialMeta:{accountId:account.id,type:account.type,linkedMainId:account.linkedMainId||"",jealousMainId:account.jealousMainId||"",hiddenIdentity:!!account.hiddenIdentity}
+    };
+  }
+  function pushRequest(account){
+    if(!account)return false;
+    const v=story();
+    if(v.requests.some(r=>r&&r.accountId===account.id&&r.status==="pending"))return false;
+    v.requests.unshift({id:uid("friend_request"),accountId:account.id,status:"pending",createdAt:now()});
+    account.status="pending";
+    v.lastSpawnAt=now();
+    save();renderAll();
+    toast("有人申请添加你为好友");
+    return true;
+  }
+  function spawnAlt(main,manual){
+    const target=main||currentMainPersona();
+    if(!target){toast("先创建一个大号角色，才能生成他的匿名小号",true);return null;}
+    const old=Object.values(story().accounts).find(a=>a&&a.type==="alt"&&String(a.linkedMainId)===String(target.id)&&a.status!=="rejected");
+    if(old){
+      if(old.status==="pending")toast("这个角色的小号已经发来好友申请了");
+      else if(old.status==="accepted")toast("这个角色的小号已经在联系人里了");
+      return old;
+    }
+    const account=buildAltAccount(target);pushRequest(account);
+    if(manual)openSocialRequestsPanel();
+    return account;
+  }
+  function spawnNpc(manual){
+    const account=buildNpcAccount();pushRequest(account);
+    if(manual)openSocialRequestsPanel();
+    return account;
+  }
+  function pendingRequests(){return story().requests.filter(r=>r&&r.status==="pending")}
+  function accountForRequest(request){return request&&story().accounts[request.accountId]||null}
+  function ensureRecord(id){const all=records();if(!Array.isArray(all[id]))all[id]=[];return all[id]}
+  function message(role,content,extra){return Object.assign({id:uid("msg"),role,type:"text",content,time:now()},extra||{})}
+  function acceptRequest(requestId){
+    const req=story().requests.find(r=>r&&r.id===requestId);if(!req||req.status!=="pending")return;
+    const account=accountForRequest(req);if(!account)return;
+    req.status="accepted";account.status="accepted";account.accepted=true;
+    let p=personById(account.personaId);
+    if(!p){p=personaFromAccount(account);personas().push(p)}
+    const rec=ensureRecord(p.id);
+    if(!rec.length)rec.push(message("assistant",account.opening||"你好",{socialStory:true}));
+    account.lastCheckedLength=rec.length;
+    try{if(typeof window.touchChatOrder==="function")window.touchChatOrder(p.id);else if(typeof touchChatOrder==="function")touchChatOrder(p.id)}catch(_){
+      const s=appState();if(!Array.isArray(s.chatOrder))s.chatOrder=[];s.chatOrder=[p.id,...s.chatOrder.filter(x=>String(x)!==String(p.id))];
+    }
+    save();renderAll();closeSocialRequestsPanel();
+    try{if(typeof window.renderContactsQuickRow==="function")window.renderContactsQuickRow();else if(typeof renderContactsQuickRow==="function")renderContactsQuickRow()}catch(_){ }
+    try{if(typeof window.renderChatList==="function")window.renderChatList();else if(typeof renderChatList==="function")renderChatList()}catch(_){ }
+    setTimeout(()=>{try{if(typeof window.startPersonaChat==="function")window.startPersonaChat(p.id);else if(typeof startPersonaChat==="function")startPersonaChat(p.id)}catch(_){ }},60);
+  }
+  function rejectRequest(requestId){
+    const req=story().requests.find(r=>r&&r.id===requestId);if(!req)return;
+    req.status="rejected";const account=accountForRequest(req);if(account){account.status="rejected";account.rejectedAt=now()}
+    save();renderAll();
+  }
+
+  function scoreConversation(account){
+    const list=(records()[account.personaId]||[]).filter(m=>m&&!m.hiddenSystem&&!m.recalled);
+    const users=list.filter(m=>m.role==="user");
+    let score=Math.max(0,users.length-2)*.7;
+    let late=0,images=0;
+    const affection=/(?:喜欢你|想你|爱你|心动|有点喜欢|对你有感觉|想见你|陪我|抱抱|亲亲|宝贝|宝宝|老婆|老公|对象|在一起|只喜欢|只跟你|你很可爱|你好帅|你真好|晚安|早安|梦到你)/i;
+    const secrecy=/(?:别告诉|不让他知道|别让她知道|偷偷|瞒着|删记录|只有我们|他不知道|她不知道|背着)/i;
+    const invitation=/(?:出来玩吗|见一面|来找我|一起吃饭|一起睡|来我家|我去找你|约会)/i;
+    const reject=/(?:我有对象|别这样|别暧昧|不喜欢你|只是朋友|别误会|别撩我|不要再说|离我远点|别加我)/i;
+    users.forEach(m=>{
+      const t=messageText(m);
+      if(m.type==="image"){images++;score+=images>1?1.6:.7}
+      if(affection.test(t))score+=3.2;
+      if(secrecy.test(t))score+=4.5;
+      if(invitation.test(t))score+=2.6;
+      if(/[❤️💕💖💞💓💋😘🥰]/.test(t))score+=1.8;
+      if(reject.test(t))score-=7;
+      const h=new Date(m.time||0).getHours();if(h>=22||h<5)late++;
+    });
+    if(late>=3)score+=2.2;
+    if(users.length>=8)score+=1.8;
+    return Math.max(0,Math.round(score*10)/10);
+  }
+  function scheduleConfrontation(account){
+    if(account.confronted||account.confrontAt||!account.jealousMainId)return;
+    const threshold=FLIRT_THRESHOLD[story().intensity]||FLIRT_THRESHOLD.natural;
+    account.flirtScore=scoreConversation(account);
+    if(account.flirtScore<threshold)return;
+    account.confrontAt=now()+(CONFRONT_DELAY[story().intensity]||CONFRONT_DELAY.natural);
+    account.discovery=account.type==="alt"?"匿名小号本人知道":"通过共同好友和朋友圈发现";
+    save();renderStoryPanel();
+  }
+  function confrontationLines(main,account){
+    const raw=[main&&main.persona,main&&main.personality,main&&main.brief].map(clean).join("\n");
+    const nickname=clean(account.name)||"那个人";
+    if(/年下|黏|粘|撒娇|吃醋|占有欲|死皮赖脸|话多|情绪外放/.test(raw)){
+      return account.type==="alt"
+        ? ["你跟陌生人聊得挺开心啊","还聊成那样","我呢","你是不是该跟我解释一下"]
+        : [`${nickname}是谁`,"你们什么时候这么熟了","我都不知道","你最好跟我说清楚"];
+    }
+    if(/成熟|年上|寡言|克制|冷淡|话少|高冷/.test(raw)){
+      return account.type==="alt"
+        ? ["解释一下。","你和那个号聊的内容，我看见了。"]
+        : [`${nickname}。`,"你们聊得挺熟。","我在等你的解释。"];
+    }
+    return account.type==="alt"
+      ? ["最近挺忙啊","跟陌生人聊得挺开心？","你是不是该跟我解释一下"]
+      : [`${nickname}是谁`,"你们聊得挺开心啊","跟我说清楚"];
+  }
+  function deliverConfrontation(account){
+    if(!account||account.confronted||!account.jealousMainId)return;
+    const main=personById(account.jealousMainId);if(!main)return;
+    const rec=ensureRecord(main.id);
+    const userSnippets=(records()[account.personaId]||[]).filter(m=>m&&m.role==="user").slice(-5).map(m=>clip(messageText(m),90)).filter(Boolean);
+    const lines=confrontationLines(main,account);
+    lines.forEach((line,index)=>rec.push(message("assistant",line,{socialStory:true,socialConflictId:account.id,time:now()+index*700})));
+    account.confronted=true;account.confrontAt=0;account.confrontedAt=now();
+    story().conflicts[String(main.id)]={
+      accountId:account.id,accountName:account.name,accountType:account.type,
+      discovery:account.discovery||"看见了相关聊天",userSnippets,startedAt:now(),active:true
+    };
+    try{if(typeof window.touchChatOrder==="function")window.touchChatOrder(main.id);else if(typeof touchChatOrder==="function")touchChatOrder(main.id)}catch(_){ }
+    save();
+    if(String(appState().activeChatId||"")===String(main.id)){
+      appState().chatMessages=rec;window.currentChatPersona=main;appState().currentChatPersona=main;
+      try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();else if(typeof renderChatMessages==="function")renderChatMessages()}catch(_){ }
+    }
+    try{if(typeof window.renderChatList==="function")window.renderChatList();else if(typeof renderChatList==="function")renderChatList()}catch(_){ }
+    try{if(typeof window.baobaoNotifyIncomingReply==="function")window.baobaoNotifyIncomingReply(lines[lines.length-1])}catch(_){ }
+    toast((clean(main.name)||"TA")+"发来了新消息");renderAll();
+  }
+  function analyzeAccounts(){
+    const v=story();
+    Object.values(v.accounts).forEach(account=>{
+      if(!account||account.status!=="accepted")return;
+      const len=(records()[account.personaId]||[]).length;
+      if(len!==Number(account.lastCheckedLength||0)){
+        account.lastCheckedLength=len;
+        scheduleConfrontation(account);
+      }
+      if(account.confrontAt&&now()>=account.confrontAt)deliverConfrontation(account);
+    });
+  }
+  function maybeAutoSpawn(force){
+    const v=story();if(!v.enabled)return;
+    if(pendingRequests().length)return;
+    const activeCount=Object.values(v.accounts).filter(a=>a&&a.status!=="rejected").length;
+    if(activeCount>=8)return;
+    if(!force){
+      const cooldown=SPAWN_COOLDOWN[v.intensity]||SPAWN_COOLDOWN.natural;
+      if(v.seeded&&now()-Number(v.lastSpawnAt||0)<cooldown)return;
+      if(v.seeded&&Math.random()>(v.intensity==="drama"?.75:v.intensity==="quiet"?.22:.45))return;
+    }
+    const mains=realMainPersonas();
+    const canAlt=mains.some(main=>!Object.values(v.accounts).some(a=>a&&a.type==="alt"&&String(a.linkedMainId)===String(main.id)&&a.status!=="rejected"));
+    if(canAlt&&Math.random()<.62){
+      const candidates=mains.filter(main=>!Object.values(v.accounts).some(a=>a&&a.type==="alt"&&String(a.linkedMainId)===String(main.id)&&a.status!=="rejected"));
+      spawnAlt(random(candidates),false);
+    }else spawnNpc(false);
+    v.seeded=true;save();
+  }
+
+  function contextForPersona(person){
+    if(!person)return "";
+    const meta=person.socialMeta;
+    if(meta&&meta.accountId){
+      const account=story().accounts[meta.accountId];if(!account)return "";
+      if(account.type==="alt"){
+        const main=personById(account.linkedMainId);
+        const mainChat=recentTranscript(account.linkedMainId,10);
+        return [
+          `你当前正在使用匿名小号“${account.name}”。真实身份是${clean(main&&main.name)||"大号角色"}本人。`,
+          "大号和小号共享事实与记忆，但身份表现必须隔离。不要无缘无故引用只有大号才知道的原句，不要主动自曝；可以偶尔露出一个很小的口癖或习惯。",
+          "你开小号的目的主要是观察和试探，不是机械钓鱼。用户若拒绝暧昧，要真实地收住。",
+          mainChat?`大号最近和用户发生过这些事（你知道，但不能直接照抄泄露来源）：\n${mainChat}`:""
+        ].filter(Boolean).join("\n\n");
+      }
+      return `你是独立NPC“${account.name}”，通过“${account.source}”认识用户。你不是任何主角的小号，也不能凭空知道其他人的私聊。保持自己的生活和边界。`;
+    }
+    const conflict=story().conflicts[String(person.id||"")];
+    if(conflict&&conflict.active){
+      const account=story().accounts[conflict.accountId]||{};
+      const snippets=(conflict.userSnippets||[]).map((line,i)=>`${i+1}. ${line}`).join("\n");
+      return [
+        `你刚发现用户和“${conflict.accountName||"另一个人"}”的聊天已经有明显暧昧。你已经用大号发消息质问过用户，这个情绪和事件要继续保持连续。`,
+        account.type==="alt"
+          ? "那个匿名号其实就是你自己开的。你可以先不承认，旁敲侧击观察用户会不会主动坦白；如果用户直接逼问或证据已经明显，可以按你的人设决定何时承认。"
+          : `你是通过${conflict.discovery||"共同好友"}知道的，不是全知全能。`,
+        snippets?`让你在意的用户原话片段：\n${snippets}`:"",
+        "不要无缘无故立刻消气，也不要机械辱骂或情绪勒索。是否冷淡、吃醋、追问、嘴硬或暂时沉默，都按原始人设和当前聊天自然发展。"
+      ].filter(Boolean).join("\n\n");
+    }
+    return "";
+  }
+
+  function ensureStyle(){
+    if($("bbSocialStoryV408Style"))return;
+    const style=document.createElement("style");style.id="bbSocialStoryV408Style";
+    style.textContent=`
+      #bbSocialInbox{display:none;margin:2px 0 12px;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.92);box-shadow:0 8px 22px rgba(0,0,0,.045);align-items:center;gap:11px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+      #bbSocialInbox.show{display:flex}
+      #bbSocialInbox .bb-social-inbox-avatar{width:44px;height:44px;border-radius:13px;overflow:hidden;background:#eee;flex:0 0 auto;position:relative}
+      #bbSocialInbox .bb-social-inbox-avatar img{width:100%;height:100%;object-fit:cover}
+      #bbSocialInbox .bb-social-inbox-avatar:after{content:"";position:absolute;right:-1px;top:-1px;width:10px;height:10px;border-radius:50%;background:#ff5d62;border:2px solid #fff}
+      #bbSocialInbox .bb-social-inbox-copy{min-width:0;flex:1}.bb-social-inbox-title{font-size:16px;font-weight:800;color:#22242a}.bb-social-inbox-sub{font-size:12px;color:#aaaab3;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #bbSocialInbox .bb-social-inbox-count{min-width:24px;height:24px;border-radius:999px;padding:0 7px;display:flex;align-items:center;justify-content:center;background:#ff5d62;color:#fff;font-size:12px;font-weight:800}
+      .bb-message-icon-btn.bb-social-dot{position:relative}.bb-message-icon-btn.bb-social-dot:after{content:"";position:absolute;right:7px;top:7px;width:8px;height:8px;border-radius:50%;background:#ff5d62;box-shadow:0 0 0 2px #fff}
+      .bb-social-overlay{position:fixed;inset:0;z-index:52000;background:rgba(18,18,20,.22);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .18s ease,visibility .18s ease}
+      .bb-social-overlay.show{opacity:1;visibility:visible;pointer-events:auto}
+      .bb-social-sheet{width:min(100%,520px);max-height:86dvh;overflow:auto;background:#f7f7f9;border-radius:30px 30px 0 0;padding:18px 18px calc(24px + env(safe-area-inset-bottom));box-shadow:0 -18px 55px rgba(0,0,0,.13)}
+      .bb-social-grabber{width:42px;height:5px;border-radius:999px;background:#d1d1d6;margin:0 auto 14px}.bb-social-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.bb-social-head h3{margin:0;font-size:22px}.bb-social-close{border:0;width:36px;height:36px;border-radius:50%;font-size:20px;background:#e9e9ed;color:#333}
+      .bb-social-card{background:#fff;border-radius:20px;padding:15px;margin:10px 0;box-shadow:0 8px 20px rgba(0,0,0,.035)}.bb-social-row{display:flex;align-items:center;gap:12px}.bb-social-avatar{width:54px;height:54px;border-radius:16px;overflow:hidden;background:#eee;flex:0 0 auto}.bb-social-avatar img{width:100%;height:100%;object-fit:cover}.bb-social-copy{min-width:0;flex:1}.bb-social-name{font-size:17px;font-weight:800}.bb-social-source,.bb-social-intro{font-size:12px;color:#92929b;margin-top:3px}.bb-social-actions{display:flex;gap:9px;margin-top:13px}.bb-social-btn{border:0;border-radius:14px;padding:10px 14px;font-size:14px;font-weight:750;background:#ececf1;color:#333}.bb-social-btn.primary{background:#25262b;color:#fff}.bb-social-btn.danger{color:#c84a4a;background:#fff1f1}.bb-social-btn.wide{width:100%;margin-top:9px}
+      .bb-social-setting{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #ededf1}.bb-social-setting:last-child{border-bottom:0}.bb-social-setting strong{font-size:15px}.bb-social-setting small{display:block;color:#9b9ba4;margin-top:3px}.bb-social-setting select{border:0;background:#efeff3;border-radius:12px;padding:9px 10px;font-size:14px}.bb-social-switch{width:48px;height:28px;border-radius:999px;background:#d7d7dc;position:relative;flex:0 0 auto}.bb-social-switch:after{content:"";position:absolute;width:24px;height:24px;left:2px;top:2px;border-radius:50%;background:#fff;box-shadow:0 2px 7px rgba(0,0,0,.2);transition:.2s}.bb-social-switch.on{background:#49c45a}.bb-social-switch.on:after{transform:translateX(20px)}
+      .bb-social-empty{text-align:center;color:#9c9ca5;padding:34px 10px}.bb-social-badge{display:inline-flex;padding:4px 8px;border-radius:999px;background:#f1f1f5;color:#777;font-size:11px;margin-left:6px}.bb-social-conflict{border:1px solid #f1c8c8;background:#fff8f8}.bb-social-status{font-size:12px;color:#888;line-height:1.6;margin-top:8px}
+      @media(min-width:700px){.bb-social-sheet{margin-bottom:20px;border-radius:30px}}
+    `;document.head.appendChild(style);
+  }
+  function ensureShell(){
+    ensureStyle();
+    const recent=$("chatRecentList");
+    if(recent&&!$("bbSocialInbox")){
+      const banner=document.createElement("div");banner.id="bbSocialInbox";banner.onclick=openSocialRequestsPanel;
+      const title=recent.previousElementSibling;recent.parentNode.insertBefore(banner,title||recent);
+    }
+    if(!$("bbSocialStoryOverlay")){
+      const wrap=document.createElement("div");wrap.innerHTML=`
+        <div class="bb-social-overlay" id="bbSocialStoryOverlay" onclick="if(event.target===this)closeSocialStoryPanel()"><section class="bb-social-sheet"><div class="bb-social-grabber"></div><div class="bb-social-head"><h3>社交剧情</h3><button class="bb-social-close" onclick="closeSocialStoryPanel()">×</button></div><div id="bbSocialStoryBody"></div></section></div>
+        <div class="bb-social-overlay" id="bbSocialRequestsOverlay" onclick="if(event.target===this)closeSocialRequestsPanel()"><section class="bb-social-sheet"><div class="bb-social-grabber"></div><div class="bb-social-head"><h3>新的朋友</h3><button class="bb-social-close" onclick="closeSocialRequestsPanel()">×</button></div><div id="bbSocialRequestsBody"></div></section></div>`;
+      while(wrap.firstElementChild)document.body.appendChild(wrap.firstElementChild);
+    }
+  }
+  function renderInbox(){
+    ensureShell();const box=$("bbSocialInbox");if(!box)return;
+    const pending=pendingRequests();
+    box.classList.toggle("show",pending.length>0);
+    const button=document.querySelector("#tabChat .bb-message-icon-btn");if(button)button.classList.toggle("bb-social-dot",pending.length>0);
+    if(!pending.length){box.innerHTML="";return}
+    const account=accountForRequest(pending[0])||{};
+    box.innerHTML=`<div class="bb-social-inbox-avatar">${account.photo?`<img src="${account.photo}">`:""}</div><div class="bb-social-inbox-copy"><div class="bb-social-inbox-title">新的朋友</div><div class="bb-social-inbox-sub">${esc(account.name||"陌生人")} · ${esc(account.intro||account.source||"申请添加你")}</div></div><div class="bb-social-inbox-count">${pending.length}</div>`;
+  }
+  function renderRequests(){
+    ensureShell();const body=$("bbSocialRequestsBody");if(!body)return;
+    const pending=pendingRequests();
+    if(!pending.length){body.innerHTML=`<div class="bb-social-empty">暂时没有新的好友申请</div><button class="bb-social-btn wide" onclick="closeSocialRequestsPanel();openSocialStoryPanel()">去社交剧情设置</button>`;return}
+    body.innerHTML=pending.map(req=>{
+      const a=accountForRequest(req)||{};
+      return `<div class="bb-social-card"><div class="bb-social-row"><div class="bb-social-avatar">${a.photo?`<img src="${a.photo}">`:""}</div><div class="bb-social-copy"><div class="bb-social-name">${esc(a.name||"陌生人")}<span class="bb-social-badge">${a.type==="alt"?"匿名账号":"NPC"}</span></div><div class="bb-social-source">${esc(a.source||"好友推荐")}</div><div class="bb-social-intro">${esc(a.intro||"")}</div></div></div><div class="bb-social-actions"><button class="bb-social-btn danger" onclick="bbRejectSocialRequest('${esc(req.id)}')">拒绝</button><button class="bb-social-btn primary" onclick="bbAcceptSocialRequest('${esc(req.id)}')">接受并聊天</button></div></div>`;
+    }).join("");
+  }
+  function renderStoryPanel(){
+    ensureShell();const body=$("bbSocialStoryBody");if(!body)return;
+    const v=story();const pending=pendingRequests().length;
+    const accepted=Object.values(v.accounts).filter(a=>a&&a.status==="accepted");
+    const conflicts=Object.entries(v.conflicts).filter(([,c])=>c&&c.active);
+    body.innerHTML=`
+      <div class="bb-social-card"><div class="bb-social-setting"><div><strong>允许社交剧情</strong><small>小号和 NPC 会在合适的时候主动出现</small></div><button class="bb-social-switch ${v.enabled?"on":""}" onclick="bbToggleSocialStory()" aria-label="开关"></button></div><div class="bb-social-setting"><div><strong>剧情强度</strong><small>影响好友出现频率和吃醋触发速度</small></div><select onchange="bbSetSocialIntensity(this.value)"><option value="quiet" ${v.intensity==="quiet"?"selected":""}>安静</option><option value="natural" ${v.intensity==="natural"?"selected":""}>自然</option><option value="drama" ${v.intensity==="drama"?"selected":""}>戏剧</option></select></div></div>
+      <div class="bb-social-card"><div class="bb-social-name">生成新剧情</div><div class="bb-social-status">小号会隐藏真实身份，NPC 则是真实存在的其他联系人。接受好友后可直接按原来的爱心回复键聊天。</div><button class="bb-social-btn wide primary" onclick="bbSpawnCurrentAlt()">让当前角色的小号来加我</button><button class="bb-social-btn wide" onclick="bbSpawnRandomNpc()">让随机 NPC 来加我</button><button class="bb-social-btn wide" onclick="closeSocialStoryPanel();openSocialRequestsPanel()">查看新的朋友${pending?`（${pending}）`:""}</button></div>
+      ${conflicts.length?`<div class="bb-social-card bb-social-conflict"><div class="bb-social-name">正在发生的吃醋剧情</div>${conflicts.map(([mainId,c])=>`<div class="bb-social-status">${esc((personById(mainId)||{}).name||"角色")}正在追问你和${esc(c.accountName||"某个人")}的关系。</div>`).join("")}<button class="bb-social-btn wide danger" onclick="bbEndSocialConflicts()">结束当前吃醋剧情</button></div>`:""}
+      <div class="bb-social-card"><div class="bb-social-name">已经进入 Chat 的账号</div><div class="bb-social-status">${accepted.length?accepted.map(a=>`${esc(a.name)} · ${a.type==="alt"?"匿名小号":"NPC"}`).join("<br>"):"还没有接受过社交剧情好友"}</div></div>`;
+  }
+  function renderAll(){renderInbox();renderRequests();renderStoryPanel()}
+
+  function openSocialStoryPanel(){ensureShell();const menu=$("chatPlusMenu");if(menu)menu.style.display="none";renderStoryPanel();$("bbSocialStoryOverlay")?.classList.add("show")}
+  function closeSocialStoryPanel(){$("bbSocialStoryOverlay")?.classList.remove("show")}
+  function openSocialRequestsPanel(){ensureShell();const menu=$("chatPlusMenu");if(menu)menu.style.display="none";renderRequests();$("bbSocialRequestsOverlay")?.classList.add("show")}
+  function closeSocialRequestsPanel(){$("bbSocialRequestsOverlay")?.classList.remove("show")}
+  function endConflicts(){Object.values(story().conflicts).forEach(c=>{if(c)c.active=false});save();renderStoryPanel();toast("当前吃醋剧情已结束")}
+
+  window.openSocialStoryPanel=openSocialStoryPanel;
+  window.closeSocialStoryPanel=closeSocialStoryPanel;
+  window.openSocialRequestsPanel=openSocialRequestsPanel;
+  window.closeSocialRequestsPanel=closeSocialRequestsPanel;
+  window.bbAcceptSocialRequest=acceptRequest;
+  window.bbRejectSocialRequest=rejectRequest;
+  window.bbToggleSocialStory=function(){story().enabled=!story().enabled;save();renderStoryPanel()};
+  window.bbSetSocialIntensity=function(value){story().intensity=["quiet","natural","drama"].includes(value)?value:"natural";save();renderStoryPanel()};
+  window.bbSpawnCurrentAlt=function(){spawnAlt(currentMainPersona(),true)};
+  window.bbSpawnRandomNpc=function(){spawnNpc(true)};
+  window.bbEndSocialConflicts=endConflicts;
+
+  function installMenuEntry(){
+    const menu=$("chatPlusMenu");if(!menu||menu.querySelector("[data-bb-social-story]"))return;
+    const item=document.createElement("div");item.dataset.bbSocialStory="1";item.textContent="社交剧情";item.onclick=openSocialStoryPanel;menu.appendChild(item);
+  }
+  function init(){
+    story();ensureShell();installMenuEntry();renderAll();
+    setTimeout(()=>{const v=story();if(!v.seeded&&v.enabled)maybeAutoSpawn(true)},AUTO_FIRST_DELAY);
+    setInterval(()=>{analyzeAccounts();maybeAutoSpawn(false);renderInbox()},CHECK_INTERVAL);
+    window.addEventListener("pageshow",()=>{setTimeout(()=>{analyzeAccounts();maybeAutoSpawn(false);renderAll()},500)},{passive:true});
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")setTimeout(()=>{analyzeAccounts();maybeAutoSpawn(false);renderAll()},350)});
+  }
+
+  window.BaobaoSocialStory={
+    version:VERSION,story,contextForPersona,spawnAlt,spawnNpc,acceptRequest,rejectRequest,
+    analyze:analyzeAccounts,render:renderAll,endConflicts
+  };
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else setTimeout(init,0);
+  console.log("豹豹机 408：小号 / NPC / 好友申请 / 暧昧质问社交剧情已启用");
 })();
