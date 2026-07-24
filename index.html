@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=404">
+<link rel="manifest" href="./baobao-manifest.json?v=397">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=404",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=397",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -40,14 +40,12 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
 
-<title>豹豹机4.9 · 404 聊天媒体缩略图版</title>
-<style id="bb-startup-v285-style"></style>
+<title>豹豹机4.9 · 395 第二页完整对话壁纸版</title>
 
 
 
 
 
-<style id="bb-chat-horizontal-lock-fix"></style>
 
 
 
@@ -73,55 +71,37 @@
 
 
 
-<style id="final-tabbar-hard-fix"></style>
 
 
-<style id="final-user-correction-fix"></style>
 
 
-<style id="true-final-position-fix-v4"></style>
-
-<style id="desktop-dock-final-position"></style>
 
 
-<style id="dock-and-first-page-icons-v1"></style>
 
 
-<style id="mini-phone-statusbar-style"></style>
 
 
-<style id="baobao-inapp-banner-style"></style>
 
 
-<style id="inner-voice-heart-icon-v1"></style>
 
 
-<style id="baobao-human-chat-batch1-style"></style>
 
 
-<style id="baobao-human-chat-batch2-style"></style>
 
 
-<style id="baobao-human-dna-v1-style"></style>
-
-<style id="subjects-feature-style"></style>
-
-<style id="chat-bg-page-fix-v1"></style>
 
 
-<style id="baobao-bubble-settings-v2-style"></style>
 
 
-<style id="chat-settings-navigation-v1-style"></style>
 
 
-<style id="moments-publisher-v3-style"></style>
 
 
-<style id="baobao-moments-p2-isolated-style"></style>
 
 
-<style id="bb-final-voice-transfer-fix"></style>
+
+
+
 <div class="bb-transfer-detail-mask" id="bbTransferDetailMask">
  <div class="bb-transfer-detail">
   <h3>收到一笔转账</h3>
@@ -149,35 +129,6 @@ body{display:flex;align-items:center;justify-content:center;touch-action:none}
 .mini-phone-statusbar{position:absolute;top:20px;left:24px;right:24px;height:28px;display:flex;align-items:center;justify-content:space-between;color:#252525;z-index:3;pointer-events:none;font-size:13px;font-weight:600;letter-spacing:1.5px}
 .mini-status-right{display:flex;align-items:center;gap:8px}.mini-battery{width:25px;height:12px;border:1.6px solid currentColor;border-radius:3px;position:relative;padding:1.5px}.mini-battery-level{display:block;width:70%;height:100%;background:currentColor;border-radius:1px}
 .passcode-overlay{position:absolute;inset:0;background:rgba(20,20,20,.6);backdrop-filter:blur(8px);z-index:10;display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff}.passcode-overlay.show{display:flex}
-
-/* 聊天图片统一使用轻量缩略图；点击后仍由现有媒体查看器放大。 */
-#chatRoom .bubble.bb-media-thumb{
-  width:136px!important;
-  height:136px!important;
-  max-width:136px!important;
-  min-width:136px!important;
-  padding:0!important;
-  overflow:hidden!important;
-  border-radius:16px!important;
-  border:1px solid rgba(0,0,0,.05)!important;
-  background:#f2f2f4!important;
-  box-shadow:none!important;
-  cursor:pointer!important;
-}
-#chatRoom .bubble.bb-media-thumb>img{
-  display:block!important;
-  width:136px!important;
-  height:136px!important;
-  max-width:none!important;
-  max-height:none!important;
-  object-fit:cover!important;
-  object-position:center!important;
-  border-radius:15px!important;
-  background:#f2f2f4!important;
-}
-#chatRoom .bubble.bb-media-thumb:active{transform:scale(.985)}
-#chatRoom .bubble.bb-media-thumb .msg-time-inline{display:none!important}
-
 </style>
 <style id="bb-page2-hero-widget-v391">
 /* 第二页专属 hero 组件：默认隐藏，仅在桌面第二页（page-two-mode）显示 */
@@ -542,7 +493,7 @@ html body #desktop .dock{
 }
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=404"></script>
+<script defer src="./app.js?v=403"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -783,6 +734,276 @@ html body #desktop .dock>.dock-icon::after{
 #bbTimestampMask,#bbBlacklistMask{z-index:6265!important;pointer-events:auto!important;}
 #innerVoiceOverlay,#msgEditOverlay{z-index:6270!important;pointer-events:auto!important;}
 </style>
+
+<style id="bugfix-hidden-panels-v403">
+/* ===================================================================
+   修复：以下这些功能面板（反侦察 / 记忆总结 / Human DNA / 微信资料编辑 /
+   转账详情 / 工具弹窗 / 消息编辑与右键菜单 / 查手机小程序 等）
+   此前完全没有对应的 CSS，导致默认就以普通文档流显示、常驻占屏，
+   把锁屏、桌面、聊天等界面上的按钮全部遮住、劫持点击。
+   这里统一补上"默认隐藏 + .show 才显示"的规则，且不影响原有逻辑。
+   =================================================================== */
+
+/* ---- 全屏页面型面板：默认隐藏，出现时整屏覆盖 ---- */
+.ar-overlay,
+.ar2-overlay,
+.ar2-settings,
+.ar3-night,
+.ar3-log,
+.memv1-panel,
+.hdna-overlay,
+.wechat-profile-editor,
+.moments-publisher,
+#momentsSubpanel{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6200;
+  background:#fff;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.ar-overlay.show,
+.ar2-overlay.show,
+.ar2-settings.show,
+.ar3-night.show,
+.ar3-log.show,
+.memv1-panel.show,
+.hdna-overlay.show,
+.wechat-profile-editor.show,
+.moments-publisher.show,
+#momentsSubpanel.show{
+  display:block;
+}
+
+/* ---- 居中弹窗型蒙层（转账详情 / 工具弹窗 / 各类结果卡片） ---- */
+.bb-transfer-detail-mask,
+.bb-tool-modal,
+.ar2-result,
+.msg-edit-overlay,
+.inner-voice-overlay,
+#bbStickerPicker{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6210;
+  background:rgba(0,0,0,.5);
+  align-items:center;
+  justify-content:center;
+}
+.bb-transfer-detail-mask.show,
+.bb-tool-modal.show,
+.ar2-result.show,
+.msg-edit-overlay.show,
+.inner-voice-overlay.show,
+#bbStickerPicker.show{
+  display:flex;
+}
+.bb-transfer-detail,
+.ar2-result-card{
+  background:#fff;border-radius:16px;padding:20px;width:80%;max-width:320px;text-align:center;box-sizing:border-box;
+}
+
+/* ---- 底部弹出式蒙层（时间戳/黑名单设置、记忆手动添加、查手机设置） ---- */
+.bb-sheet-mask,
+.memv1-addsheet,
+.bbspa-settings-sheet{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6265;
+  background:rgba(0,0,0,.5);
+  align-items:flex-end;
+  justify-content:center;
+}
+.bb-sheet-mask.show,
+.memv1-addsheet.show,
+.bbspa-settings-sheet.show{
+  display:flex;
+}
+.bb-sheet,
+.memv1-sheet,
+.bbspa-settings-card{
+  background:#fff;border-radius:16px 16px 0 0;padding:16px;width:100%;max-width:420px;box-sizing:border-box;
+}
+
+/* ---- ar-overlay 内部的分阶段全屏子卡片（默认隐藏，show 时铺满父容器） ---- */
+.ar-request,
+.ar-session,
+.ar-result{
+  display:none;
+  position:absolute;
+  inset:0;
+  z-index:2;
+  background:#fff;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  box-sizing:border-box;
+}
+.ar-request.show,
+.ar-session.show,
+.ar-result.show{
+  display:flex;
+}
+.ar-result-card{
+  background:#fff;border-radius:16px;padding:20px;width:100%;max-width:320px;text-align:center;box-sizing:border-box;
+}
+
+/* ---- ar3-night 内部的"解锁成功"浮层 ---- */
+.ar3-shadow{
+  display:none;
+  position:absolute;
+  inset:0;
+  z-index:2;
+  background:rgba(0,0,0,.6);
+  align-items:center;
+  justify-content:center;
+}
+.ar3-shadow.show{display:flex}
+.ar3-shadow-card{
+  background:#fff;border-radius:16px;padding:20px;width:80%;max-width:320px;text-align:center;color:#000;box-sizing:border-box;
+}
+
+/* ---- 顶部悬浮通知条（异常使用记录提醒） ---- */
+.ar3-notice{
+  display:none;
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  top:calc(env(safe-area-inset-top) + 54px);
+  z-index:6300;
+  width:88%;
+  max-width:360px;
+  background:rgba(255,255,255,.97);
+  border-radius:14px;
+  box-shadow:0 6px 24px rgba(0,0,0,.2);
+  padding:12px;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+.ar3-notice.show{display:flex}
+
+/* ---- 抢手机按钮：默认隐藏，危险内容出现时才短暂展示 ---- */
+.ar2-grab,
+.ar-grab{
+  display:none;
+}
+.ar2-grab.show,
+.ar-grab.show{
+  display:inline-block;
+}
+
+/* ---- bbspa 查手机小程序：聊天视图与列表视图二选一显示 ---- */
+.bbspa-chat{
+  display:none;
+  flex-direction:column;
+  height:100%;
+  box-sizing:border-box;
+}
+.bbspa-chat.show{display:flex}
+
+/* ---- Human DNA 内的"开发者层"隐藏区块 ---- */
+.hdna-dev{display:none}
+.hdna-dev.show{display:block}
+
+/* ---- 消息右键菜单 / 引用回复条 / 关闭菜单用的透明背景 ---- */
+.msg-context-backdrop{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6280;
+  background:transparent;
+}
+.msg-context-backdrop.show{display:block}
+.msg-context-menu{
+  display:none;
+  position:fixed;
+  z-index:6290;
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);
+  overflow:hidden;
+}
+.msg-context-menu.show{display:block}
+.msg-quote-bar{
+  display:none;
+  align-items:center;
+  box-sizing:border-box;
+}
+.msg-quote-bar.show{display:flex}
+
+/* ---- 核心设置体系：设置/API配置/聊天背景/人设档案/双头像/开发者页 等
+   这些面板用的是 openPanel()/closePanel() 直接改 inline style.display 来开关，
+   但 .panel 这个类此前完全没有 CSS，默认就以 block 常驻显示。
+   这里补上默认隐藏；inline style 会在打开时覆盖这条默认规则，不影响原有开关逻辑。 ---- */
+.panel{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6200;
+  background:#fff;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  box-sizing:border-box;
+}
+
+/* ---- 工具箱（+号弹出的功能格子）与图片查看器 ---- */
+.bb-tool-backdrop,
+#bbMediaViewerV212{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6240;
+  background:rgba(0,0,0,.5);
+  align-items:center;
+  justify-content:center;
+}
+.bb-tool-backdrop.show,
+#bbMediaViewerV212.show{display:flex}
+.bb-tool-sheet{
+  display:none;
+  position:fixed;
+  left:0;right:0;bottom:0;
+  z-index:6241;
+  background:#fff;
+  border-radius:16px 16px 0 0;
+  box-sizing:border-box;
+  max-height:70vh;
+  overflow-y:auto;
+}
+.bb-tool-sheet.show{display:block}
+
+/* ---- 查手机小程序容器：用 inline style 控制显示（默认隐藏） ---- */
+#bbSubjectAppPanel{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6205;
+  background:#fff;
+}
+
+/* ---- "正在识别表情包含义…" 小提示条 ---- */
+.bb-sticker-recognizing{
+  display:none;
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom) + 90px);
+  z-index:6300;
+  background:rgba(0,0,0,.72);
+  color:#fff;
+  font-size:13px;
+  padding:8px 14px;
+  border-radius:20px;
+  box-sizing:border-box;
+}
+.bb-sticker-recognizing.show{display:block}
+</style>
+
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
@@ -1902,7 +2123,6 @@ API Key<br>
 
 </div>
 
-<template id="bb-restore-bootstrap-v277-script"></template>
 
 
 
@@ -1965,9 +2185,6 @@ API Key<br>
 
 
 
-<template id="memoryAvatarManager"></template>
-
-<style id="universal-back-style"></style>
 
 
 
@@ -1976,35 +2193,23 @@ API Key<br>
 
 
 
-<style id="chat-safe-position-v2"></style>
-
-<style id="desktop-lock-safe-position"></style>
-
-<style id="chat-bottom-bar-final-fix"></style>
-
-<style id="final-layout-correction-v3"></style>
-<template id="remove-duplicate-chat-back-v3"></template>
-
-<style id="runtime-position-fix-v5"></style>
-<template id="runtime-position-fix-script-v5"></template>
 
 
-<template id="baobao-persona-engine-v1"></template>
 
 
-<template id="baobao-inapp-banner-script"></template>
 
 
-<template id="baobao-human-chat-batch1-script"></template>
 
 
-<template id="baobao-human-chat-batch2-script"></template>
 
 
-<template id="baobao-human-chat-engine-v2"></template>
 
 
-<template id="baobao-human-chat-engine-v3"></template>
+
+
+
+
+
 
 
 <div class="hdna-overlay" id="humanDNAOverlay">
@@ -2039,50 +2244,33 @@ API Key<br>
 </div>
 
 
-<template id="baobao-human-dna-v1"></template>
 
 
-<style id="baobao-index56-light-dna-and-typing-fix"></style>
-
-<template id="baobao-index56-runtime-fix"></template>
 
 
-<template id="baobao-persona-guard-v2"></template>
 
 
-<style id="baobao-inner-voice-v2-style"></style>
-
-<template id="baobao-inner-voice-v2"></template>
 
 
-<style id="baobao-inner-voice-3-style"></style>
-
-<template id="baobao-inner-voice-3"></template>
 
 
-<style id="baobao-human-state-engine-ui"></style>
-
-<template id="baobao-human-state-engine-v1"></template>
 
 
-<style id="baobao-combined-upgrade-style"></style>
-
-<template id="baobao-heart4-and-backup"></template>
 
 
-<template id="baobao-persona-lock-and-message-fix-v2"></template>
 
 
-<template id="chat-bg-navigation-fix-v1"></template>
 
 
-<template id="baobao-bubble-settings-v2"></template>
 
 
-<template id="chat-settings-navigation-v1"></template>
 
 
-<template id="baobao-no-reply-length-limit-v1"></template>
+
+
+
+
+
 
 
 <!-- 朋友圈完整发布器：仅新增功能，不改原 Discover 大图 UI -->
@@ -2110,10 +2298,8 @@ API Key<br>
 </div>
 
 
-<template id="moments-publisher-v3-script"></template>
 
 
-<style id="wechat-profile-editor-v1-style"></style>
 
 <div class="wechat-profile-editor" id="wechatProfileEditor">
   <div class="wechat-profile-back" onclick="closeWechatProfileEditor()">‹</div>
@@ -2133,10 +2319,8 @@ API Key<br>
   </div>
 </div>
 
-<template id="wechat-profile-editor-v1-script"></template>
 
 
-<style id="bb-chat-advanced-settings-style"></style>
 <div class="bb-sheet-mask" id="bbTimestampMask" onclick="if(event.target===this)closeTimestampSettings()"><div class="bb-sheet">
  <div class="bb-sheet-head"><div class="bb-sheet-title">时间戳设置</div><div class="bb-sheet-close" onclick="closeTimestampSettings()">×</div></div>
  <div class="bb-sheet-body">
@@ -2156,10 +2340,8 @@ API Key<br>
   <div class="bb-section-title" style="color:#e13c3c">操作</div><div class="bb-danger-card"><b id="bbBlockActionTitle">拉黑此角色</b><div class="bb-muted" id="bbBlockActionDesc">拉黑后微信消息会被拒收，角色可能改用短信联系、解释或挽回。</div><button id="bbBlockBtn" class="bb-danger-btn" onclick="toggleCurrentBlacklist()">拉黑此角色</button></div>
  </div><div class="bb-footer"><button class="bb-cancel" onclick="closeBlacklistSettings()">关闭</button></div>
 </div></div>
-<template id="bb-chat-advanced-settings-script"></template>
 
 
-<style id="bb-chat-tools-v1-style"></style>
 
 <div class="bb-tool-backdrop" id="bbToolBackdrop" onclick="closeBaobaoTools()"></div>
 <div class="bb-tool-sheet" id="bbToolSheet">
@@ -2180,12 +2362,9 @@ API Key<br>
  </div>
 </div>
 
-<template id="bb-chat-tools-v1-script"></template>
 
 
-<template id="baobao-moments-p2-ai-v1-script"></template>
 
-<style id="baobao-anti-recon-style-v1"></style>
 
 <div class="ar-overlay" id="antiReconOverlay">
   <div class="ar-settings" id="antiReconSettings">
@@ -2223,17 +2402,12 @@ API Key<br>
 </div>
 
 
-<style id="baobao-anti-recon-real-data-v4-style"></style>
-
-<template id="baobao-anti-recon-real-data-v4"></template>
 
 
-<template id="baobao-anti-recon-auto-reply-v1"></template>
-
-<template id="baobao-anti-recon-script-v1"></template>
 
 
-<style id="baobao-anti-recon-v2-style"></style>
+
+
 
 <div class="ar2-overlay" id="antiReconV2">
   <div class="ar2-top">
@@ -2276,10 +2450,8 @@ API Key<br>
 
 <div class="ar2-result" id="ar2Result"><div class="ar2-result-card"><div class="ar2-result-icon" id="ar2ResultIcon">✓</div><div class="ar2-result-title" id="ar2ResultTitle"></div><div class="ar2-result-text" id="ar2ResultText"></div><button class="ar2-result-btn" onclick="ar2Finish()">知道了</button></div></div>
 
-<template id="baobao-anti-recon-v2-script"></template>
 
 
-<style id="baobao-anti-recon-v3-style"></style>
 
 <div class="ar3-night" id="antiReconV3Night">
   <div class="ar3-clock"><div class="ar3-time" id="ar3Time">23:47</div><div class="ar3-date" id="ar3Date">豹豹机已锁定</div></div>
@@ -2311,10 +2483,8 @@ API Key<br>
   <div class="ar3-notice-btn">查看</div>
 </div>
 
-<template id="baobao-anti-recon-v3-script"></template>
 
 
-<style id="baobao-memory-engine-v1-style"></style>
 
 <div class="memv1-panel" id="memoryV1Panel">
   <div class="memv1-back" onclick="closeMemoryV1()">‹</div>
@@ -2366,54 +2536,34 @@ API Key<br>
   </div>
 </div>
 
-<template id="baobao-memory-engine-v1-script"></template>
-
-
-<template id="baobao-slang-human-v2"></template>
-
-
-<template id="baobao-anti-recon-no-persona-guard-v1"></template>
 
 
 
-<style id="bb-reentry-transfer-v2-style"></style>
-
-<template id="bb-reentry-transfer-v2-script"></template>
-
-<style id="baobao-network-awareness-v1-style"></style>
-<template id="baobao-network-awareness-v1-script"></template>
 
 
-<style id="bb-ai-toggle-center-v1-style"></style>
-<template id="bb-ai-toggle-center-v1-script"></template>
+
+
+
+
+
+
 
 
 <!-- ===== 豹豹机：聊天流畅修复（最终覆盖） ===== -->
-<style id="bb-smooth-chat-v1-style"></style>
-<template id="bb-smooth-chat-v1-script"></template>
 
 
 
 <!-- ===== 豹豹机：仅修复多条消息卡顿 v2 ===== -->
-<style id="bb-message-jank-only-v2-style"></style>
-<template id="bb-message-jank-only-v2-script"></template>
-<template id="baobao-append-only-message-fix"></template>
-
-<template id="baobao-scroll-settle-fix"></template>
-
-<template id="bb-final-voice-transfer-fix-js"></template>
 
 
 
 
 
-<style id="baobao-msg-quote-render-style"></style>
-<template id="baobao-msg-quote-favorite-v1"></template>
-
-<style id="baobao-favorite-root-fix-v1-style"></style>
 
 
-<template id="baobao-favorite-root-fix-v1"></template>
+
+
+
 <!-- index(178)：修复查手机角色卡片被拉成长条，移除角色手机页右上角灰色圆点 -->
 
 
@@ -2423,73 +2573,49 @@ API Key<br>
 <!-- 图片识别（视觉API）接入：用户发送真实照片后，异步调用视觉模型生成文字描述，
      并在 AI 生成回复时把这段描述临时"顶替"进图片消息里，让模型能读懂图片内容。
      不改动任何已有渲染/存储逻辑，只在请求接口这一步做临时替换，用完立刻还原。 -->
-<template id="baobao-vision-recognition"></template>
 
-<template id="baobao-gemini-final-fix"></template>
 
 <!-- ===== 豹豹机 4.9 中转站最终测试整合层 v153 ===== -->
-<template id="baobao-cn-relay-final-v153"></template>
 
 
-<style id="bb-anti-recon-final-button-style"></style>
-<template id="bb-anti-recon-final-button-fix"></template>
 
 
-<template id="bb-persona-import-anti-recon-guard"></template>
 
 
-<template id="baobao-anti-recon-v1-settings-link-v4"></template>
 
 
-<template id="baobao-memory-leak-final-guard-v1"></template>
 
 
-<style id="baobao-anti-recon-memory-card-v1-style"></style>
-
-<template id="baobao-anti-recon-memory-card-v1"></template>
 
 
-<template id="baobao-current-persona-compat-v1"></template>
 
 
-<template id="baobao-memory-leak-migration-v2"></template>
 
 
-<style id="baobao-anti-recon-click-through-fix-v1-style"></style>
 
-<template id="baobao-anti-recon-click-through-fix-v1"></template>
+
 
 <!-- index(173)：修复反侦察点击穿透，只有正式入口可打开，锁屏数字键与其他按钮不再误触 -->
-<template id="bb-chat-horizontal-lock-runtime"></template>
 
 <!-- index(215)：保留角色表情包转换与历史修复，移除韩系表情包内置入口 -->
-<template id="bb-sticker-v210-script"></template>
 
 
 <!-- index(211)：表情包面板美化、智能推荐与智能跟发表情；聊天图片缩小可点开；强制刷新桌面图标主题 -->
-<style id="bb-sticker-panel-v211-style"></style>
-<template id="bb-sticker-panel-v211-script"></template>
 
 
 <!-- index(212)：真正替换桌面像素图标；角色表情包不再先闪源码；聊天照片缩小并可点开放大 -->
-<style id="bb-v212-style"></style>
 <div id="bbMediaViewerV212" onclick="if(event.target===this)closeBaobaoMediaViewerV212()">
   <button type="button" class="bb-media-close" onclick="closeBaobaoMediaViewerV212()">×</button>
   <img id="bbMediaViewerImageV212" alt="图片预览">
   <div class="bb-media-hint">点空白处关闭</div>
 </div>
-<template id="bb-v212-script"></template>
 
 
 
 <!-- index(265)：数据性能顺滑版。聊天仅渲染最近一段，保存操作合并执行；不删除聊天、人设或导入数据。 -->
-<style id="bb-performance-smooth-v265-style"></style>
-<template id="bb-performance-smooth-v265-script"></template>
 
 
 <!-- index(281)：以用户上传的 index(280) 为底稿制作 GitHub Pages 单文件测试版。 -->
-<style id="bb-github-pages-v281-style"></style>
-<template id="bb-github-pages-v281-script"></template>
 
 <!-- index(315)：人设读取强化；每轮先从完整人物资料提取相关锚点，涉及角色生活、经历、习惯、偏好与关系时必须自然调用具体内容，不再只模仿语气。 -->
 <!-- index(316)：AI 生图新增“读取当前角色人设外貌”，可按角色外貌与气质自动生成头像、自拍、全身图和生活照。 -->
@@ -2881,163 +3007,116 @@ API Key<br>
 
 
 <!-- ===== 豹豹机修复：Me 页表情包管理 / 我的钱包弹窗可点击 ===== -->
-<style id="baobao-me-modal-layer-fix-v1"></style>
-<template id="baobao-me-modal-layer-fix-v1-js"></template>
 
 
 
-<style id="baobao-user-mask-v1-style"></style>
 
-<template id="baobao-user-mask-v1-script"></template>
 <!-- index(179)：新增 User 面具库与微信“我的人设”面具列表，桌面用户 app 改名为 User -->
 
 
 
-<style id="baobao-quote-position-final-v1"></style>
 
-<template id="baobao-quote-position-final-v1-script"></template>
 <!-- index(180)：修复引用条跑到聊天顶部，引用在发送前写入消息，并由最终气泡渲染器直接显示 -->
 
 
 
-<style id="baobao-quote-color-fix-v1"></style>
 
 
-<style id="baobao-hide-edited-label-final"></style>
-<template id="baobao-edit-message-v2-migration"></template>
 <!-- index(181)：修复引用块白字，编辑消息改成完整卡片面板，保存后不再显示已编辑 -->
 
 
 
-<style id="baobao-transfer-p23-v1-style"></style>
 
-<template id="baobao-transfer-p23-v1-script"></template>
 <!-- index(182)：转账卡片改成 P2/P3 风格，去掉气泡内重复收款按钮，改为点开卡片后确认收款 -->
 
 
 
-<template id="baobao-storage-media-v183"></template>
 <!-- index(183)：修复本地存储不足，图片按容量压缩，state 去重保存；朋友圈评论紧扣正文并支持未回复控诉 -->
 
 
-<template id="baobao-transfer-ai-semantic-v1"></template>
 <!-- index(184)：转账对模型显示为真实转账语义，不再是裸数字；首页预览显示金额，转账消息不可撤回 -->
 
 
-<template id="baobao-transfer-status-final-v1"></template>
 <!-- index(185)：修复确认收款后卡片仍显示待处理，状态同步到 chatRecords 并由最终气泡直接显示 -->
 
 
 
-<style id="baobao-message-multiselect-v1-style"></style>
 
-<template id="baobao-message-multiselect-v1-script"></template>
 
-<template id="baobao-anti-recon-message-click-final-v1"></template>
 <!-- index(186)：修复聊天消息点击误进反侦察；长按菜单新增多选，可批量删除消息 -->
 
 
 
-<style id="baobao-anti-recon-physical-gate-v1-style"></style>
 
-<template id="baobao-anti-recon-physical-gate-v1"></template>
 <!-- index(187)：移除冲突的旧全局门禁；反侦察仅接受真实按在入口上的一次性物理点击 -->
 
 
 
-<template id="baobao-anti-recon-master-v188"></template>
 <!-- index(188)：新增反侦察自主触发总开关，默认关闭，开启后最短间隔 2 小时；朋友圈评论按角色去重 -->
 
 
-<template id="baobao-moments-persona-grounding-v189"></template>
 <!-- index(189)：朋友圈评论改为真实 API 人设生成，读取完整人设、用户面具、最近聊天与未回复关系；接口失败才使用本地兜底 -->
 <!-- index(216)：朋友圈评论增加单图视觉内容缓存，禁止万能短评，兜底句按动态正文、图片语境、关系和人设生成 -->
 
 
-<style id="baobao-sms-app-v190-style"></style>
 
-<template id="baobao-sms-app-v190-script"></template>
 <!-- index(190)：桌面“人设”改为短信 App；微信拉黑后角色可按人设通过短信解释、挽回或求复合 -->
 
 
 
-<style id="baobao-offline-mode-v191-style"></style>
 
-<template id="baobao-offline-mode-v191-script"></template>
 <!-- index(191)：新增线下模式基础框架；独立日记卡片页，深色正文、浅灰斜体心理描写、历史/场景设置/新场景/续写入口 -->
 
 
 
-<style id="baobao-offline-v192-style"></style>
 
-<template id="baobao-offline-v192-script"></template>
 <!-- index(192)：线下模式进一步美化；修复优先读取微信/面具/线上头像；保留历史与续写功能 -->
 
 
-<style id="baobao-offline-v193-style"></style>
 
-<template id="baobao-offline-v193-script"></template>
 <!-- index(193)：线下模式继续往 iCity 风格靠拢；顶栏改为“角色名 · 日记”，去掉右上角三个按钮，底部按钮改为收藏+发送图标风格 -->
 
 
-<style id="baobao-offline-v194-style"></style>
 
-<template id="baobao-offline-v194-script"></template>
 <!-- index(194)：线下模式背景进一步调成更白更灰；每张日记卡片底部新增喜欢/小纸条/存为图片/更多 操作排 -->
 
 
-<style id="baobao-offline-v195-style"></style>
 
-<template id="baobao-offline-v195-script"></template>
 <!-- index(195)：线下模式继续优化：背景更白、正文与标题字体缩小、强制补回底部日记操作排、用户副标题改为面具备注、线下生成篇幅目标改为约700~750字且不突然截断 -->
 
 
-<style id="baobao-offline-v196-style"></style>
 
-<template id="baobao-offline-v196-script"></template>
 <!-- index(196)：修复线下模式 sendChatCompletion 只传 temperature 导致实际一直走 fallback 的问题；补强 700~750 字提示；放大日记卡片底部操作栏与发送区按钮 -->
 
 
-<style id="baobao-offline-v197-style"></style>
-<template id="baobao-offline-v197-script"></template>
 <!-- index(197)：线下日记底部操作排重新排版，给“存为图片”留出更宽空间并改成转发/分享风格图标；同时把工具箱里的“线下”入口改为同步即时注入，修复首次打开时先空白后闪现的问题 -->
 
 
 
-<style id="baobao-offline-controls-v199-style"></style>
 
-<template id="baobao-offline-controls-v199-script"></template>
 <!-- index(199)：修复 index(198) 线下小纸条/更多看似点不动。根因是通用 modal 层级 90 被线下页 235 压住；现改为 320，并用捕获点击直接接管、关闭后留在线下页。 -->
 
 
 
-<template id="baobao-offline-long-output-v200"></template>
 <!-- index(200)：修复线下剧情字数短且半句截断。线下请求改用专用高额度输出，读取真实字数设置；遇到 finish_reason=length、篇幅明显不足或句子未结束时自动续写并拼接，等待时间由15秒提高到60秒。 -->
 
 
-<template id="baobao-offline-interleave-v201"></template>
 <!-- index(201)：线下心理描写改为穿插结构。约700~750字时通常生成3段独立心理描写，分别夹在动作/对白/场景正文之间；检测到心理集中或连续时自动按原剧情重排。 -->
 
 
-<style id="baobao-offline-longpress-v202-style"></style>
 
-<template id="baobao-offline-longpress-v202-script"></template>
 <!-- index(202)：线下日记卡片支持长按操作：编辑当前层、删除当前层、重回当前层并清除后续剧情。编辑角色卡时支持保留[正文]/[心里]结构。 -->
 
 
-<template id="baobao-offline-unified-api-v203"></template>
 <!-- index(203)：修复线下生成失败。线下不再自己直连或提交超大 max_tokens，而是完全复用线上微信的同一 sendChatCompletion/API 配置；需要长文时用同一接口续写拼接。 -->
 
 
 
-<style id="baobao-separated-api-v205-style"></style>
-<template id="baobao-separated-api-v205-script"></template>
 <!-- index(205)：对话、视觉识别、生图拆成三套独立 API；视觉拥有独立地址/Key/模型/预设/模型列表/照片与表情包测试，图片理解不再读取生图配置 -->
 
 
 
 
-<style id="baobao-sticker-tool-v206-style"></style>
 
 <div id="bbStickerPicker" onclick="if(event.target===this)closeBaobaoStickerPicker()">
   <div class="bb-sticker-picker-card">
@@ -3056,200 +3135,137 @@ API Key<br>
 <input id="bbStickerQuickInput" type="file" accept="image/*" multiple hidden>
 <div class="bb-sticker-recognizing" id="bbStickerRecognizing">正在识别表情包含义…</div>
 
-<template id="baobao-sticker-tool-v206-script"></template>
 <!-- index(206)：聊天工具箱新增真正的表情包入口；支持表情包库、相册/GIF导入、点击发送、视觉识别后交给同一聊天 API 回复 -->
 
 
-<style id="bb-sticker-and-image-final-v209-style"></style>
-<template id="bb-sticker-and-image-final-v209-script"></template>
 <!-- index(209)：修复表情包选择器被压成条状；识图结果只写隐藏字段，退出重进仍显示原图；角色可从用户表情包库中按人设主动发送表情包 -->
 
 <!-- index(214)：真正性能瘦身；固定图片资源压缩、移除全页观察器、取消表情包批量识图、降低兼容轮询、心声改按需刷新、token 修复仅扫描当前聊天 -->
 
 
 <!-- index(219)：在 Claude 修好的 index(218) 上重新装入聊天滚动稳定修复；不改其他功能 -->
-<style id="bb-chat-bottom-anchor-v219-style"></style>
-<template id="bb-chat-bottom-anchor-v219-script"></template>
 
 
 
 <!-- index(220)：新增夏以昼专属“男鬼窥屏”事件；仅感知豹豹机内部其他角色聊天，不接入语音 -->
-<style id="bb-xia-ghost-peek-v220-style"></style>
 
-<template id="bb-xia-ghost-peek-v220-script"></template>
 
 
 <!-- index(221)：加强男鬼窥屏连续闪屏；开场多次强闪，侵入后保留偶发轻微故障闪烁 -->
-<style id="bb-xia-ghost-flicker-v221-style"></style>
 
 
 <!-- index(222)：修复窥屏只闪两秒；输入过程中可触发，闪屏后保持到用户主动选择 -->
-<style id="bb-xia-ghost-stay-v222-style"></style>
 
-<template id="bb-xia-ghost-typing-trigger-v222-script"></template>
 
 
 <!-- index(223)：修复点击窥屏任意位置误退出；隐藏阶段按钮不可点击，空白区域完全拦截点击穿透 -->
-<style id="bb-xia-ghost-click-shield-v223-style"></style>
 
-<template id="bb-xia-ghost-click-shield-v223-script"></template>
 
 
 <!-- index(224)：解除窥屏旧状态锁死；测试按钮强制重启，自动清理不可见的遗留事件 -->
-<style id="bb-xia-ghost-unlock-v224-style"></style>
 
-<template id="bb-xia-ghost-unlock-v224-script"></template>
 
 
 <!-- index(225)：移除窥屏层属性循环观察，修复页面反复重算卡死；保留空白点击不退出 -->
-<template id="bb-xia-ghost-performance-unlock-v225-script"></template>
 
 
 <!-- index(226)：修复角色聊天串线；切换前保存来源记录，目标记录独立加载，并清理旧版复制进夏以昼的整段聊天 -->
-<template id="bb-chat-record-isolation-v226-script"></template>
 
 
 <!-- index(227)：重做转账方向与钱包账单；自己发出的卡片不可收款，角色自动决定收/退；缩小比例；修复表情包标记掉格式 -->
-<style id="bb-transfer-wallet-v227-style"></style>
 
-<template id="bb-transfer-wallet-v227-script"></template>
 
 
 <!-- index(228)：私聊每轮完整读取当前用户面具；不再只知道用户名，不增加额外 API 请求 -->
-<template id="bb-private-chat-user-mask-v228-script"></template>
 
 
 <!-- index(229)：彻底隔离角色聊天与异步回复；表情包仅聊天页可开，并从 IndexedDB/历史消息恢复 -->
-<style id="bb-chat-sticker-stability-v229-style"></style>
 
-<template id="bb-chat-sticker-stability-v229-script"></template>
 
 
 <!-- index(230)：重做世界书管理页；支持全局/当前角色、常驻/关键词触发、优先级，并接入私聊提示词 -->
-<style id="bb-worldbook-v230-style"></style>
 
-<template id="bb-worldbook-v230-script"></template>
 
 
 <!-- index(230)：世界书仅保留桌面独立 App，移除聊天设置旧入口 -->
-<style id="bb-worldbook-desktop-only-v230-style"></style>
-<template id="bb-worldbook-desktop-only-v230-script"></template>
 
 
 <!-- index(231)：从底层接管桌面世界书点击，彻底绕过旧“开发中”占位页 -->
-<template id="bb-worldbook-direct-route-v231-script"></template>
 
 
 <!-- index(232)：世界书支持选择所有角色绑定；顶部改为柔和米杏色 -->
-<style id="bb-worldbook-all-personas-v232-style"></style>
 
 
 <!-- index(233)：网易云音乐 App 前端；二维码绑定、搜歌、歌单和播放器，支持演示模式与未来真实后端 -->
-<style id="bb-music-app-v233-style"></style>
 
-<template id="bb-music-app-v233-script"></template>
 
 
 <!-- index(234)：统一世界书与音乐 App 为豹豹机黑白灰风格；不改功能，只校正视觉 -->
-<style id="bb-monochrome-ui-v234-style"></style>
 
 
 <!-- index(237)：链接看图理解 + 手动回复控制 + 表情包格式与破图修复 -->
-<style id="bb-link-share-v235-style"></style>
 
-<template id="bb-link-share-v235-script"></template>
 
 
 <!-- index(237)：手动回复控制、破图隐藏、表情包标记强力修复 -->
-<style id="bb-manual-reply-sticker-fix-v237-style"></style>
 
-<template id="bb-manual-reply-sticker-fix-v237-script"></template>
 
 
 <!-- index(238)：链接卡片不压头像、封面后端代理、表情包即时可点、发送性能优化 -->
-<style id="bb-chat-link-sticker-speed-v238-style"></style>
 
-<template id="bb-chat-link-sticker-speed-v238-script"></template>
 
 
 <!-- index(241)：音乐播放器强制可点 + 可见错误状态 + 失败后重新播放 -->
-<style id="bb-music-complete-v239-style"></style>
 
-<template id="bb-music-complete-v239-script"></template>
 
 
 <!-- index(240)：网易云 HTTPS 流式播放 + 豹豹机灵动岛音乐控制 -->
-<style id="bb-music-island-v240-style"></style>
 
-<template id="bb-music-island-v240-script"></template>
 
 
 <!-- index(241)：修复音乐播放器整页点不动、错误提示被遮挡、失败后无法重试 -->
-<style id="bb-music-player-touch-fix-v241-style"></style>
 
-<template id="bb-music-player-touch-fix-v241-script"></template>
 
 
 <!-- index(243)：MiniMax 真实语音消息第一阶段 -->
-<style id="bb-minimax-voice-v243-style"></style>
 
-<template id="bb-minimax-voice-v243-script"></template>
 
 
 <!-- index(244)：MiniMax 音色改为每个私聊角色单独设置 -->
-<style id="bb-minimax-chat-voice-v244-style"></style>
 
-<template id="bb-minimax-chat-voice-v244-script"></template>
 
 
 <!-- index(245)：iPhone Web Push 后台回复与系统通知 -->
-<style id="bb-background-push-v245-style"></style>
 
-<template id="bb-background-push-v245-script"></template>
 
 <!-- index(246)：后台消息通知移动到主设置，全局作用于所有角色 -->
-<template id="bb-background-push-global-v246-script"></template>
 
 
 <!-- index(247)：修复历史假语音占位符 -->
-<template id="bb-real-voice-marker-repair-v247-script"></template>
 
 <!-- index(247)：手动点回复才生成；切走后可靠通知；假语音转真实语音气泡 -->
 
 
 <!-- index(248)：本轮确认修改——紧凑语音、静默后台、转账状态、短信重做 -->
-<style id="bb-confirmed-batch-v248-style"></style>
 
-<template id="bb-confirmed-batch-v248-script"></template>
 
 
 <!-- index(251)：修复后台通知控制器被丝滑回复覆盖 -->
-<style id="bb-natural-chat-final-v250-style"></style>
 
-<template id="bb-natural-chat-final-v250-script"></template>
 
 
 <!-- index(264)：线下模式点击修复。删除 261/262 的循环扫描与重复套壳，只做一次性打开/关闭，不再占满主线程。 -->
-<style id="bb-offline-clean-open-v264-style"></style>
-<template id="bb-offline-clean-open-v264-script"></template>
 
 <!-- index(266)：国内直连测试版。给对话 API 增加 DeepSeek / 通义千问一键线路，聊天、短信、朋友圈、线下等文字功能共用。 -->
-<style id="bb-cn-direct-v266-style"></style>
-<template id="bb-cn-direct-v266-script"></template>
 
 
 <!-- index(267)：国内多线路完整版。在 266 基础上加入 MiniMax、Kimi、智谱 GLM 与自定义线路，并修正不同平台的请求兼容。 -->
-<style id="bb-cn-direct-v267-style"></style>
-<template id="bb-cn-direct-v267-script"></template>
 
 
 <!-- index(268)：恢复真人聊天最终层。回复键静止透明；多条消息逐条到达；明确要求语音时直接生成语音。 -->
-<style id="bb-chat-final-polish-v268-style"></style>
-<template id="bb-voice-request-final-v268-script"></template>
 
 
 <!-- index(269)：从259恢复完整查手机App，同时保留268国内线路与聊天顺滑修复 -->
-<style id="bb-subject-phone-apps-v259-style"></style>
 
 <div id="bbSubjectAppPanel">
   <div class="bbspa-head">
@@ -3273,28 +3289,18 @@ API Key<br>
   </div>
 </div>
 
-<template id="bb-subject-phone-apps-v259-script"></template>
 
 <!-- index(274)：从可正常启动的 269 恢复；不带 270/271 的高频观察补丁。修复工具箱透明遮罩和旧 inline pointer-events。 -->
-<style id="bb-stable-recovery-v274-style"></style>
-<template id="bb-stable-recovery-v274-script"></template>
 
 
 <!-- index(275)：只修两件事：备份导入在刷新时被旧页面回写覆盖；iPhone 隐藏聊天后遗留表情包合成黑块。 -->
-<style id="bb-import-sticker-recovery-v275-style"></style>
-<template id="bb-import-sticker-recovery-v275-script"></template>
 
 <!-- index(277)：修复导入后被 pagehide 自动保存重新覆盖。导入时冻结旧页面写入，并在主状态读取前二次落盘，确保人设、聊天、头像与壁纸真正载入。 -->
-<style id="bb-restore-and-sticker-layer-v277-style"></style>
-<template id="bb-restore-and-sticker-layer-v277-script"></template>
 
 <!-- index(278)：角色可自行判断是否把用户发来的图片设为自己的头像，而不是机械抓取"最新一条消息" -->
-<template id="bb-ai-set-avatar-v278"></template>
 
 
 <!-- index(284)：锁屏解锁兜底。即使主初始化中途报错，锁屏仍可上划或点击进入密码页。 -->
-<style id="bb-lock-unlock-v284-style"></style>
-<template id="bb-lock-unlock-v284-script"></template>
 
 <!-- index(310)：修复角色朋友圈归属、隐藏反侦察大卡片，并移除每次点击扫描造成的卡顿。 -->
 <!-- index(311)：生图中转站直连、角色按聊天要求自动发照片、Chat 首页表情包显示名称。 -->
