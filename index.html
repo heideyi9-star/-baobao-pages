@@ -1004,6 +1004,285 @@ html body #desktop .dock>.dock-icon::after{
 .bb-sticker-recognizing.show{display:block}
 </style>
 
+
+<style id="bugfix-hidden-panels-v403">
+/* ===================================================================
+   修复：以下这些功能面板（反侦察 / 记忆总结 / Human DNA / 微信资料编辑 /
+   转账详情 / 工具弹窗 / 消息编辑与右键菜单 / 查手机小程序 等）
+   此前完全没有对应的 CSS，导致默认就以普通文档流显示、常驻占屏，
+   把锁屏、桌面、聊天等界面上的按钮全部遮住、劫持点击。
+   这里统一补上"默认隐藏 + .show 才显示"的规则，且不影响原有逻辑。
+   =================================================================== */
+
+/* ---- 全屏页面型面板：默认隐藏，出现时整屏覆盖 ---- */
+.ar-overlay,
+.ar2-overlay,
+.ar2-settings,
+.ar3-night,
+.ar3-log,
+.memv1-panel,
+.hdna-overlay,
+.wechat-profile-editor,
+.moments-publisher,
+#momentsSubpanel{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6200;
+  background:#fff;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.ar-overlay.show,
+.ar2-overlay.show,
+.ar2-settings.show,
+.ar3-night.show,
+.ar3-log.show,
+.memv1-panel.show,
+.hdna-overlay.show,
+.wechat-profile-editor.show,
+.moments-publisher.show,
+#momentsSubpanel.show{
+  display:block;
+}
+
+/* ---- 居中弹窗型蒙层（转账详情 / 工具弹窗 / 各类结果卡片） ---- */
+.bb-transfer-detail-mask,
+.bb-tool-modal,
+.ar2-result,
+.msg-edit-overlay,
+.inner-voice-overlay,
+#bbStickerPicker{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6210;
+  background:rgba(0,0,0,.5);
+  align-items:center;
+  justify-content:center;
+}
+.bb-transfer-detail-mask.show,
+.bb-tool-modal.show,
+.ar2-result.show,
+.msg-edit-overlay.show,
+.inner-voice-overlay.show,
+#bbStickerPicker.show{
+  display:flex;
+}
+.bb-transfer-detail,
+.ar2-result-card{
+  background:#fff;border-radius:16px;padding:20px;width:80%;max-width:320px;text-align:center;box-sizing:border-box;
+}
+
+/* ---- 底部弹出式蒙层（时间戳/黑名单设置、记忆手动添加、查手机设置） ---- */
+.bb-sheet-mask,
+.memv1-addsheet,
+.bbspa-settings-sheet{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6265;
+  background:rgba(0,0,0,.5);
+  align-items:flex-end;
+  justify-content:center;
+}
+.bb-sheet-mask.show,
+.memv1-addsheet.show,
+.bbspa-settings-sheet.show{
+  display:flex;
+}
+.bb-sheet,
+.memv1-sheet,
+.bbspa-settings-card{
+  background:#fff;border-radius:16px 16px 0 0;padding:16px;width:100%;max-width:420px;box-sizing:border-box;
+}
+
+/* ---- ar-overlay 内部的分阶段全屏子卡片（默认隐藏，show 时铺满父容器） ---- */
+.ar-request,
+.ar-session,
+.ar-result{
+  display:none;
+  position:absolute;
+  inset:0;
+  z-index:2;
+  background:#fff;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  box-sizing:border-box;
+}
+.ar-request.show,
+.ar-session.show,
+.ar-result.show{
+  display:flex;
+}
+.ar-result-card{
+  background:#fff;border-radius:16px;padding:20px;width:100%;max-width:320px;text-align:center;box-sizing:border-box;
+}
+
+/* ---- ar3-night 内部的"解锁成功"浮层 ---- */
+.ar3-shadow{
+  display:none;
+  position:absolute;
+  inset:0;
+  z-index:2;
+  background:rgba(0,0,0,.6);
+  align-items:center;
+  justify-content:center;
+}
+.ar3-shadow.show{display:flex}
+.ar3-shadow-card{
+  background:#fff;border-radius:16px;padding:20px;width:80%;max-width:320px;text-align:center;color:#000;box-sizing:border-box;
+}
+
+/* ---- 顶部悬浮通知条（异常使用记录提醒） ---- */
+.ar3-notice{
+  display:none;
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  top:calc(env(safe-area-inset-top) + 54px);
+  z-index:6300;
+  width:88%;
+  max-width:360px;
+  background:rgba(255,255,255,.97);
+  border-radius:14px;
+  box-shadow:0 6px 24px rgba(0,0,0,.2);
+  padding:12px;
+  align-items:center;
+  gap:10px;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+.ar3-notice.show{display:flex}
+
+/* ---- 抢手机按钮：默认隐藏，危险内容出现时才短暂展示 ---- */
+.ar2-grab,
+.ar-grab{
+  display:none;
+}
+.ar2-grab.show,
+.ar-grab.show{
+  display:inline-block;
+}
+
+/* ---- bbspa 查手机小程序：聊天视图与列表视图二选一显示 ---- */
+.bbspa-chat{
+  display:none;
+  flex-direction:column;
+  height:100%;
+  box-sizing:border-box;
+}
+.bbspa-chat.show{display:flex}
+
+/* ---- Human DNA 内的"开发者层"隐藏区块 ---- */
+.hdna-dev{display:none}
+.hdna-dev.show{display:block}
+
+/* ---- 消息右键菜单 / 引用回复条 / 关闭菜单用的透明背景 ---- */
+.msg-context-backdrop{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6280;
+  background:transparent;
+}
+.msg-context-backdrop.show{display:block}
+.msg-context-menu{
+  display:none;
+  position:fixed;
+  z-index:6290;
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 6px 20px rgba(0,0,0,.25);
+  overflow:hidden;
+}
+.msg-context-menu.show{display:block}
+.msg-quote-bar{
+  display:none;
+  align-items:center;
+  box-sizing:border-box;
+}
+.msg-quote-bar.show{display:flex}
+
+/* ---- 核心设置体系：设置/API配置/聊天背景/人设档案/双头像/开发者页 等
+   这些面板用的是 openPanel()/closePanel() 直接改 inline style.display 来开关，
+   但 .panel 这个类此前完全没有 CSS，默认就以 block 常驻显示。
+   这里补上默认隐藏；inline style 会在打开时覆盖这条默认规则，不影响原有开关逻辑。 ---- */
+.panel{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6200;
+  background:#fff;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  box-sizing:border-box;
+}
+
+/* ---- 工具箱（+号弹出的功能格子）与图片查看器 ---- */
+.bb-tool-backdrop,
+#bbMediaViewerV212{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6240;
+  background:rgba(0,0,0,.5);
+  align-items:center;
+  justify-content:center;
+}
+.bb-tool-backdrop.show,
+#bbMediaViewerV212.show{display:flex}
+.bb-tool-sheet{
+  display:none;
+  position:fixed;
+  left:0;right:0;bottom:0;
+  z-index:6241;
+  background:#fff;
+  border-radius:16px 16px 0 0;
+  box-sizing:border-box;
+  max-height:70vh;
+  overflow-y:auto;
+}
+.bb-tool-sheet.show{display:block}
+
+/* ---- 查手机小程序容器：用 inline style 控制显示（默认隐藏） ---- */
+#bbSubjectAppPanel{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:6205;
+  background:#fff;
+}
+
+/* ---- "正在识别表情包含义…" 小提示条 ---- */
+.bb-sticker-recognizing{
+  display:none;
+  position:fixed;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:calc(env(safe-area-inset-bottom) + 90px);
+  z-index:6300;
+  background:rgba(0,0,0,.72);
+  color:#fff;
+  font-size:13px;
+  padding:8px 14px;
+  border-radius:20px;
+  box-sizing:border-box;
+}
+.bb-sticker-recognizing.show{display:block}
+
+/* ---- 聊天室"新建聊天"欢迎页(chatDemo)与聊天室本体(chatRoom)：
+   这两个屏幕通过 element.style.display 直接控制显示/隐藏，
+   但默认(未设置 inline style 时)缺少隐藏规则，导致内容常驻显示、
+   漏到桌面等其他屏幕上方。这里补上默认隐藏；
+   已有的 openXxx/closeXxx 函数通过 inline style 控制显示，
+   会自动覆盖这条默认规则，不影响原有逻辑。 ---- */
+#chatDemo{display:none}
+#chatRoom{display:none}
+</style>
+
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
