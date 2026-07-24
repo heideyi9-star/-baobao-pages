@@ -183,7 +183,8 @@ const state = {
     { id:"calendar", icon:"", label:"抖音", action:"placeholder" },
     { id:"anniv", icon:"", label:"小红书", action:"placeholder" },
     { id:"couple", icon:"", label:"情侣空间", action:"placeholder" },
-    { id:"phonecheck", icon:"", label:"查手机", action:"subjects" }
+    { id:"phonecheck", icon:"", label:"查手机", action:"subjects" },
+    { id:"album", icon:"", label:"相册", action:"album" }
   ],
   page2ProfileText: "自定义文字",
   page2ProfileHandle: "@collapse_official.com",
@@ -196,6 +197,8 @@ const state = {
   page2MiniProfileAction2: "message",
   page2MiniSongPhoto: null,
   page2MiniSongText: "our song",
+  albumEventEdits: {},
+  albumFilter: "all",
   page1PolaroidPhoto: null,
   page1PolaroidBackPhoto: null,
   timeAware: true,       // 时间感知：把真实时间/时间差告诉AI
@@ -224,6 +227,8 @@ const state = {
 window.state = state;
 
 if(savedState){Object.assign(state,savedState);}
+if(!state.albumEventEdits || typeof state.albumEventEdits !== "object") state.albumEventEdits = {};
+if(!["all","chat","generated"].includes(state.albumFilter)) state.albumFilter = "all";
 
 // 还原保存时使用的轻量引用标记，避免同一张大图在 state 中重复占用多份空间。
 if(state.avatar==="__BB_CHAR_AVATAR__") state.avatar=state.charAvatar||null;
@@ -512,7 +517,8 @@ const minimalPage1Icons = {
   settings: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M19 13.5v-3l-2-.5a6 6 0 0 0-.7-1.6l1.1-1.8-2.1-2.1-1.8 1.1a6 6 0 0 0-1.6-.7L11.5 3h-3L8 5a6 6 0 0 0-1.6.7L4.6 4.6 2.5 6.7l1.1 1.8a6 6 0 0 0-.7 1.6L1 10.5v3l2 .5c.2.6.4 1.1.7 1.6l-1.1 1.8 2.1 2.1 1.8-1.1c.5.3 1 .5 1.6.7l.5 2h3l.5-2c.6-.2 1.1-.4 1.6-.7l1.8 1.1 2.1-2.1-1.1-1.8c.3-.5.5-1 .7-1.6l1.8-.5Z"/></svg>`,
   phonecheck: `<svg viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M10 5h4M11 18.5h2"/><circle cx="17.8" cy="7.2" r="3.2"/><path d="m20.2 9.6 2 2"/></svg>`,
   music: `<svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>`,
-  beautify: `<svg viewBox="0 0 24 24"><path d="M12 3c-5 0-9 3.6-9 8.1 0 3.5 2.8 6.4 6.2 6.4H11a1.5 1.5 0 0 1 0 3h-.3"/><circle cx="7.5" cy="10" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="14.5" cy="7.5" r="1"/><circle cx="17" cy="11" r="1"/></svg>`
+  beautify: `<svg viewBox="0 0 24 24"><path d="M12 3c-5 0-9 3.6-9 8.1 0 3.5 2.8 6.4 6.2 6.4H11a1.5 1.5 0 0 1 0 3h-.3"/><circle cx="7.5" cy="10" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="14.5" cy="7.5" r="1"/><circle cx="17" cy="11" r="1"/></svg>`,
+  album: `<svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="3"/><circle cx="9" cy="9" r="1.7"/><path d="m5.5 17 4.5-4.5 3.1 3.1 2.2-2.2 3.2 3.6"/></svg>`
 };
 if(!Array.isArray(state.page1Apps)) state.page1Apps=[];
 
@@ -673,7 +679,8 @@ function bbAestheticThemeMap(){
       calendar: bbAestheticPhotoIcon('alarm'),
       anniv: bbAestheticPhotoIcon('clap'),
       couple: bbAestheticPhotoIcon('floppy'),
-      phonecheck: bbAestheticPhotoIcon('door')
+      phonecheck: bbAestheticPhotoIcon('door'),
+      album: bbAestheticPhotoIcon('clap')
     }
   };
 }
@@ -705,7 +712,7 @@ const PAGE1_POLAROID_BACK_MASK = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA
 
 function normalizeDesktopAppSets(){
   const page1Order = ["chat","world","music","beautify"];
-  const page2Order = ["mail","shop","delivery","calendar","anniv","couple","phonecheck"];
+  const page2Order = ["mail","shop","delivery","calendar","anniv","couple","phonecheck","album"];
   const defaults = {
     chat: { id:"chat", icon:minimalPage1Icons.chat, label:"Chat", action:"chat" },
     world: { id:"world", icon:minimalPage1Icons.world, label:"世界书", action:"worldbook" },
@@ -720,7 +727,8 @@ function normalizeDesktopAppSets(){
     delivery: { id:"delivery", icon:"", label:"外卖", action:"placeholder" },
     calendar: { id:"calendar", icon:"", label:"抖音", action:"placeholder" },
     anniv: { id:"anniv", icon:"", label:"小红书", action:"placeholder" },
-    couple: { id:"couple", icon:"", label:"情侣空间", action:"placeholder" }
+    couple: { id:"couple", icon:"", label:"情侣空间", action:"placeholder" },
+    album: { id:"album", icon:minimalPage1Icons.album, label:"相册", action:"album" }
   };
   const seen = new Map();
   (Array.isArray(state.page1Apps)?state.page1Apps:[]).forEach(app=>{ if(app&&app.id&&!seen.has(app.id)) seen.set(app.id, app); });
@@ -1868,8 +1876,331 @@ function handleAppActionP2(app){
     openSubjectsPanel();
     return;
   }
+  if(app.action === "album" || app.id === "album" || app.label === "相册"){
+    openBaobaoAlbumApp();
+    return;
+  }
   openAppModal(app.label);
 }
+
+// ===== 相册：按日期整理聊天照片与生图，并生成可编辑的事件总结 =====
+function bbAlbumImageSource(msg){
+  if(!msg) return "";
+  const values=[msg.originalMedia,msg.mediaSource,msg.url,msg.imageUrl,msg.image,msg.content];
+  for(const value of values){
+    const source=String(value||"");
+    if(/^data:image\//i.test(source)||/^https?:\/\//i.test(source)) return source;
+  }
+  return "";
+}
+function bbAlbumMessageTime(msg){
+  const direct=Number(msg&&(msg.time||msg.createdAt||msg.timestamp));
+  if(Number.isFinite(direct)&&direct>0) return direct;
+  const match=String(msg&&msg.id||"").match(/(1[5-9]\d{11}|2\d{12})/);
+  return match?Number(match[1]):0;
+}
+function bbAlbumDateKey(ts){
+  if(!ts) return "unknown";
+  const d=new Date(ts);
+  return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-");
+}
+function bbAlbumDateText(ts){
+  if(!ts) return "日期未记录";
+  const d=new Date(ts);
+  const week=["星期日","星期一","星期二","星期三","星期四","星期五","星期六"][d.getDay()];
+  return `${d.getMonth()+1}月${d.getDate()}日 · ${week}`;
+}
+function bbAlbumShortDate(ts){
+  if(!ts) return "未记录";
+  const d=new Date(ts);
+  return `${d.getMonth()+1}月${d.getDate()}日`;
+}
+function bbAlbumCleanText(value,max){
+  let text=String(value||"")
+    .replace(/\[\[(?:STICKER|IMAGE)[\s\S]*?\]\]/gi,"")
+    .replace(/[\\／]+$/g,"")
+    .replace(/\s+/g," ")
+    .trim();
+  if(!text||/^\[(?:图片|表情包|语音)\]$/.test(text)) return "";
+  if(max&&text.length>max) text=text.slice(0,max)+"…";
+  return text;
+}
+function bbAlbumPersonaMap(){
+  const map={};
+  (state.personas||[]).forEach(person=>{if(person&&person.id!=null)map[String(person.id)]=person;});
+  return map;
+}
+function bbAlbumEventTitle(event){
+  const joined=(event.contextText+" "+event.descriptions).toLowerCase();
+  if(/狗|小狗|狗狗|puppy/.test(joined)) return "小狗风波";
+  if(/猫|小猫|猫猫|kitten/.test(joined)) return "猫猫回忆";
+  if(/生日|蛋糕|蜡烛/.test(joined)) return "生日这一天";
+  if(/礼物|转账|红包|项链|戒指|花束/.test(joined)) return "收到的心意";
+  if(/吃饭|外卖|奶茶|火锅|烧烤|甜品|美食/.test(joined)) return "一起吃点什么";
+  if(/自拍|好看|漂亮|帅|壁纸|再发点/.test(joined)) return "今天的照片";
+  if(/旅行|海边|街头|公园|学校|教室|演出|排练/.test(joined)) return "那天经过的地方";
+  if(event.generatedOnly) return "豹豹机生成的画面";
+  return `${event.personaName||"聊天"}的回忆`;
+}
+function bbAlbumEventSummary(event){
+  const snippets=event.contextSnippets.slice(0,2);
+  let first=event.images.length>1
+    ? `这段聊天里一共留下了${event.images.length}张照片。`
+    : `这张照片被留在了你和${event.personaName||"对方"}的聊天里。`;
+  if(event.generatedOnly) first=event.images.length>1
+    ? `这一天一共生成了${event.images.length}张画面，并保存在豹豹机相册里。`
+    : `这张由豹豹机生成的画面被保存进了当天的回忆。`;
+  if(snippets.length===1) return first+`前后聊到“${snippets[0]}”，相册把它整理成了一件小事。`;
+  if(snippets.length>1) return first+`前后聊到“${snippets[0]}”和“${snippets[1]}”，这些话和照片被放在了一起。`;
+  const desc=bbAlbumCleanText(event.descriptions,48);
+  if(desc) return first+`照片里记录的是${desc.replace(/[。；]+$/g,"")}。`;
+  return first+"这是当天真实留下的一段照片回忆。";
+}
+function collectBaobaoAlbumEvents(){
+  const personaMap=bbAlbumPersonaMap();
+  const records=[];
+  const seenArrays=new Set();
+  const addRecord=(personaId,messages)=>{
+    if(!Array.isArray(messages)||seenArrays.has(messages)) return;
+    seenArrays.add(messages);
+    records.push({personaId:String(personaId||"unknown"),messages});
+  };
+  Object.entries(state.chatRecords||{}).forEach(([id,messages])=>addRecord(id,messages));
+  if(Array.isArray(state.chatMessages)) addRecord(state.activeChatId||window.currentChatPersona?.id||"active",state.chatMessages);
+
+  const events=[];
+  records.forEach(record=>{
+    const persona=personaMap[record.personaId]||((window.currentChatPersona&&String(window.currentChatPersona.id)===record.personaId)?window.currentChatPersona:null)||{};
+    const personaName=persona.name||"对方";
+    const images=[];
+    record.messages.forEach((msg,index)=>{
+      const type=String(msg&&msg.type||"").toLowerCase();
+      if(type!=="image"&&type!=="textphoto") return;
+      const source=bbAlbumImageSource(msg);
+      if(!source) return;
+      const time=bbAlbumMessageTime(msg);
+      images.push({msg,index,source,time,dateKey:bbAlbumDateKey(time),generated:!!(msg.generated||msg.generatedPrompt||msg.handsomeBoostV317)});
+    });
+    images.sort((a,b)=>(a.time||0)-(b.time||0));
+    let current=null;
+    images.forEach(image=>{
+      const split=!current||current.dateKey!==image.dateKey||((image.time&&current.lastTime)&&(image.time-current.lastTime)>3*60*60*1000);
+      if(split){
+        current={
+          personaId:record.personaId,
+          personaName,
+          personaPhoto:persona.photo||persona.avatar||"",
+          dateKey:image.dateKey,
+          startTime:image.time,
+          lastTime:image.time,
+          images:[],
+          sourceMessages:record.messages,
+          startIndex:image.index,
+          endIndex:image.index
+        };
+        events.push(current);
+      }
+      current.images.push(image);
+      current.lastTime=image.time||current.lastTime;
+      current.startIndex=Math.min(current.startIndex,image.index);
+      current.endIndex=Math.max(current.endIndex,image.index);
+    });
+  });
+
+  const dedupEvents=[];
+  const imageSeen=new Set();
+  events.forEach(event=>{
+    event.images=event.images.filter(image=>{
+      const msg=image.msg||{};
+      const key=String(msg.id||"")||`${image.source.length}:${image.source.slice(0,42)}:${image.source.slice(-24)}`;
+      if(imageSeen.has(key)) return false;
+      imageSeen.add(key);
+      return true;
+    });
+    if(!event.images.length) return;
+    const from=Math.max(0,event.startIndex-4),to=Math.min(event.sourceMessages.length,event.endIndex+5);
+    const snippets=[];
+    const descriptions=[];
+    for(let i=from;i<to;i++){
+      const msg=event.sourceMessages[i];
+      if(!msg||msg.hiddenSystem) continue;
+      const type=String(msg.type||"").toLowerCase();
+      if(type==="image"||type==="textphoto"){
+        const desc=bbAlbumCleanText(msg.visionDesc||msg.imageDescription||msg.caption||msg.generatedRequest||msg.generatedPrompt,120);
+        if(desc) descriptions.push(desc);
+      }else if(type==="text"||!type){
+        const text=bbAlbumCleanText(msg.content,38);
+        if(text&&!snippets.includes(text)) snippets.push(text);
+      }
+    }
+    event.contextSnippets=snippets;
+    event.contextText=snippets.join(" ");
+    event.descriptions=descriptions.join("；");
+    event.generatedOnly=event.images.every(image=>image.generated);
+    const anchor=event.images[0].msg.id||event.images[0].time||`${event.personaId}_${event.startIndex}`;
+    event.id=`album_${event.personaId}_${String(anchor).replace(/[^a-zA-Z0-9_-]/g,"_")}`;
+    const edit=state.albumEventEdits[event.id]||{};
+    event.title=bbAlbumCleanText(edit.title,40)||bbAlbumEventTitle(event);
+    event.summary=bbAlbumCleanText(edit.summary,220)||bbAlbumEventSummary(event);
+    dedupEvents.push(event);
+  });
+  return dedupEvents.sort((a,b)=>(b.startTime||0)-(a.startTime||0));
+}
+function ensureBaobaoAlbumApp(){
+  let app=document.getElementById("bbAlbumApp");
+  if(app) return app;
+  const style=document.createElement("style");
+  style.id="bb-album-app-v411-style";
+  style.textContent=`
+    #bbAlbumApp{position:fixed;inset:0;z-index:2147482500;background:#f4f4f6;color:#171719;display:none;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","PingFang SC",sans-serif}
+    #bbAlbumApp.show{display:flex;flex-direction:column}
+    .bb-album-head{flex:0 0 auto;padding:calc(env(safe-area-inset-top,0px) + 14px) 18px 12px;background:rgba(250,250,251,.94);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);border-bottom:1px solid rgba(0,0,0,.06)}
+    .bb-album-topline{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .bb-album-back,.bb-album-more{width:42px;height:42px;border:0;border-radius:50%;background:#fff;font-size:25px;display:grid;place-items:center;box-shadow:0 5px 18px rgba(0,0,0,.06);color:#222}
+    .bb-album-titlebox{text-align:center;min-width:0;flex:1}.bb-album-title{font-size:23px;font-weight:900;letter-spacing:-.5px}.bb-album-count{font-size:12px;color:#929298;margin-top:2px}
+    .bb-album-tabs{display:flex;gap:7px;margin-top:13px;background:#e9e9ec;border-radius:14px;padding:4px}
+    .bb-album-tab{flex:1;border:0;border-radius:11px;padding:9px 5px;background:transparent;color:#77777d;font-size:13px;font-weight:800}
+    .bb-album-tab.active{background:#fff;color:#18181a;box-shadow:0 2px 9px rgba(0,0,0,.06)}
+    .bb-album-scroll{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:16px 14px calc(30px + env(safe-area-inset-bottom,0px))}
+    .bb-album-event{background:#fff;border-radius:25px;padding:17px;margin-bottom:15px;box-shadow:0 9px 26px rgba(0,0,0,.055)}
+    .bb-album-date{font-size:12px;font-weight:800;color:#9a9aa0;letter-spacing:.4px}.bb-album-event-title{font-size:21px;font-weight:900;margin:5px 0 6px;line-height:1.2}.bb-album-event-summary{font-size:14px;line-height:1.65;color:#5f5f65;margin:0 0 13px;white-space:pre-wrap}
+    .bb-album-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.bb-album-thumb{position:relative;border:0;padding:0;background:#ededf0;border-radius:15px;overflow:hidden;aspect-ratio:1/1}.bb-album-thumb img{width:100%;height:100%;object-fit:cover;display:block}.bb-album-thumb-date{position:absolute;left:6px;bottom:6px;padding:4px 7px;border-radius:999px;background:rgba(0,0,0,.54);color:#fff;font-size:10px;font-weight:800;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+    .bb-album-event-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:13px}.bb-album-person{display:flex;align-items:center;min-width:0;color:#8a8a90;font-size:12px;font-weight:700}.bb-album-person img{width:25px;height:25px;border-radius:50%;object-fit:cover;margin-right:7px;background:#eee}.bb-album-actions{display:flex;gap:7px}.bb-album-action{border:0;border-radius:999px;background:#f0f0f2;padding:8px 11px;color:#39393d;font-size:12px;font-weight:800}.bb-album-action.primary{background:#222;color:#fff}
+    .bb-album-empty{margin:70px 18px;text-align:center;color:#999}.bb-album-empty-icon{font-size:55px;opacity:.3}.bb-album-empty b{display:block;color:#555;font-size:18px;margin:10px 0 6px}.bb-album-empty p{font-size:13px;line-height:1.6;margin:0}
+    .bb-album-edit-mask{position:absolute;inset:0;background:rgba(0,0,0,.26);display:none;align-items:flex-end;z-index:5}.bb-album-edit-mask.show{display:flex}.bb-album-edit-sheet{width:100%;border-radius:28px 28px 0 0;background:#fff;padding:20px 18px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -14px 40px rgba(0,0,0,.14)}
+    .bb-album-edit-sheet h3{font-size:19px;margin:0 0 13px}.bb-album-edit-sheet label{display:block;font-size:12px;color:#888;font-weight:800;margin:10px 3px 6px}.bb-album-edit-sheet input,.bb-album-edit-sheet textarea{width:100%;box-sizing:border-box;border:0;outline:0;border-radius:15px;background:#f2f2f4;padding:12px 13px;font-size:15px;color:#222}.bb-album-edit-sheet textarea{min-height:112px;resize:none;line-height:1.55}.bb-album-edit-buttons{display:flex;gap:9px;margin-top:13px}.bb-album-edit-buttons button{flex:1;border:0;border-radius:14px;padding:13px;font-weight:900;font-size:14px}.bb-album-cancel{background:#eee;color:#444}.bb-album-save{background:#222;color:#fff}
+    @media(max-width:380px){.bb-album-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  `;
+  document.head.appendChild(style);
+  app=document.createElement("section");
+  app.id="bbAlbumApp";
+  app.innerHTML=`
+    <header class="bb-album-head">
+      <div class="bb-album-topline"><button type="button" class="bb-album-back" aria-label="返回">‹</button><div class="bb-album-titlebox"><div class="bb-album-title">回忆相册</div><div class="bb-album-count">0 张照片</div></div><button type="button" class="bb-album-more" aria-label="刷新">↻</button></div>
+      <div class="bb-album-tabs"><button class="bb-album-tab" data-filter="all">全部</button><button class="bb-album-tab" data-filter="chat">聊天照片</button><button class="bb-album-tab" data-filter="generated">AI 生图</button></div>
+    </header>
+    <main class="bb-album-scroll"></main>
+    <div class="bb-album-edit-mask"><div class="bb-album-edit-sheet"><h3>修改事件总结</h3><label>事件标题</label><input id="bbAlbumEditTitle" maxlength="40"><label>事件总结</label><textarea id="bbAlbumEditSummary" maxlength="220"></textarea><div class="bb-album-edit-buttons"><button type="button" class="bb-album-cancel">取消</button><button type="button" class="bb-album-save">保存</button></div></div></div>`;
+  document.body.appendChild(app);
+  app.querySelector(".bb-album-back").addEventListener("click",closeBaobaoAlbumApp);
+  app.querySelector(".bb-album-more").addEventListener("click",renderBaobaoAlbumApp);
+  app.querySelectorAll(".bb-album-tab").forEach(button=>button.addEventListener("click",()=>{
+    state.albumFilter=button.dataset.filter||"all";
+    saveLocal();
+    renderBaobaoAlbumApp();
+  }));
+  app.querySelector(".bb-album-scroll").addEventListener("click",event=>{
+    const thumb=event.target.closest(".bb-album-thumb");
+    if(thumb){
+      const eventIndex=Number(thumb.dataset.eventIndex);
+      const imageIndex=Number(thumb.dataset.imageIndex);
+      const source=bbAlbumRenderedEvents[eventIndex]&&bbAlbumRenderedEvents[eventIndex].images[imageIndex]&&bbAlbumRenderedEvents[eventIndex].images[imageIndex].source;
+      if(source&&typeof window.openBaobaoMediaViewerV212==="function") window.openBaobaoMediaViewerV212(source);
+      return;
+    }
+    const edit=event.target.closest("[data-album-edit]");
+    if(edit){openBaobaoAlbumEditor(edit.dataset.albumEdit);return;}
+    const ai=event.target.closest("[data-album-ai]");
+    if(ai){generateBaobaoAlbumSummary(ai.dataset.albumAi,ai);return;}
+  });
+  const mask=app.querySelector(".bb-album-edit-mask");
+  app.querySelector(".bb-album-cancel").addEventListener("click",()=>mask.classList.remove("show"));
+  mask.addEventListener("click",event=>{if(event.target===mask)mask.classList.remove("show");});
+  app.querySelector(".bb-album-save").addEventListener("click",saveBaobaoAlbumEditor);
+  return app;
+}
+let bbAlbumEditingEventId="";
+let bbAlbumRenderedEvents=[];
+function renderBaobaoAlbumApp(){
+  const app=ensureBaobaoAlbumApp();
+  const all=collectBaobaoAlbumEvents();
+  const filter=state.albumFilter||"all";
+  const events=all.filter(event=>filter==="all"||(filter==="generated"?event.generatedOnly:!event.generatedOnly));
+  bbAlbumRenderedEvents=events;
+  const photoCount=events.reduce((sum,event)=>sum+event.images.length,0);
+  app.querySelector(".bb-album-count").textContent=`${photoCount} 张照片 · ${events.length} 件回忆`;
+  app.querySelectorAll(".bb-album-tab").forEach(button=>button.classList.toggle("active",button.dataset.filter===filter));
+  const scroll=app.querySelector(".bb-album-scroll");
+  if(!events.length){
+    scroll.innerHTML=`<div class="bb-album-empty"><div class="bb-album-empty-icon">▧</div><b>这里还没有照片回忆</b><p>在 Chat 里发送、收到或生成照片后，豹豹机会按日期和聊天事件自动整理到这里。</p></div>`;
+    return;
+  }
+  scroll.innerHTML=events.map(event=>{
+    const eventIndex=events.indexOf(event);
+    const thumbs=event.images.map((image,imageIndex)=>`<button type="button" class="bb-album-thumb" data-event-index="${eventIndex}" data-image-index="${imageIndex}"><img src="${image.source}" loading="lazy" alt="相册照片"><span class="bb-album-thumb-date">${bbAlbumShortDate(image.time)}</span></button>`).join("");
+    const avatar=event.personaPhoto?`<img src="${event.personaPhoto}" alt="">`:"";
+    return `<article class="bb-album-event" data-event-id="${event.id}"><div class="bb-album-date">${bbAlbumDateText(event.startTime)}</div><h2 class="bb-album-event-title">${escapeHtml(event.title)}</h2><p class="bb-album-event-summary">${escapeHtml(event.summary)}</p><div class="bb-album-grid">${thumbs}</div><div class="bb-album-event-foot"><div class="bb-album-person">${avatar}<span>${escapeHtml(event.personaName)} · ${event.images.length}张</span></div><div class="bb-album-actions"><button type="button" class="bb-album-action" data-album-edit="${event.id}">修改</button><button type="button" class="bb-album-action primary" data-album-ai="${event.id}">AI总结</button></div></div></article>`;
+  }).join("");
+}
+function openBaobaoAlbumApp(){
+  const app=ensureBaobaoAlbumApp();
+  renderBaobaoAlbumApp();
+  app.classList.add("show");
+  document.body.style.overflow="hidden";
+}
+function closeBaobaoAlbumApp(){
+  const app=document.getElementById("bbAlbumApp");
+  if(app) app.classList.remove("show");
+  document.body.style.overflow="";
+}
+function openBaobaoAlbumEditor(eventId){
+  const event=collectBaobaoAlbumEvents().find(item=>item.id===eventId);
+  if(!event) return;
+  const app=ensureBaobaoAlbumApp();
+  bbAlbumEditingEventId=eventId;
+  app.querySelector("#bbAlbumEditTitle").value=event.title||"";
+  app.querySelector("#bbAlbumEditSummary").value=event.summary||"";
+  app.querySelector(".bb-album-edit-mask").classList.add("show");
+}
+function saveBaobaoAlbumEditor(){
+  if(!bbAlbumEditingEventId) return;
+  const app=ensureBaobaoAlbumApp();
+  const title=bbAlbumCleanText(app.querySelector("#bbAlbumEditTitle").value,40);
+  const summary=bbAlbumCleanText(app.querySelector("#bbAlbumEditSummary").value,220);
+  if(!state.albumEventEdits||typeof state.albumEventEdits!=="object") state.albumEventEdits={};
+  state.albumEventEdits[bbAlbumEditingEventId]={title,summary,updatedAt:Date.now()};
+  saveLocal();
+  app.querySelector(".bb-album-edit-mask").classList.remove("show");
+  renderBaobaoAlbumApp();
+  showToast("事件总结已保存");
+}
+async function generateBaobaoAlbumSummary(eventId,button){
+  const event=collectBaobaoAlbumEvents().find(item=>item.id===eventId);
+  if(!event) return;
+  const original=button&&button.textContent;
+  if(button){button.disabled=true;button.textContent="总结中…";}
+  try{
+    const send=(typeof window.sendChatCompletion==="function"?window.sendChatCompletion:(typeof sendChatCompletion==="function"?sendChatCompletion:null));
+    if(!send) throw new Error("聊天 API 还没有加载好");
+    const sourceText=[
+      `日期：${bbAlbumDateText(event.startTime)}`,
+      `人物：${event.personaName}`,
+      `照片数量：${event.images.length}`,
+      event.descriptions?`真实照片描述：${event.descriptions}`:"",
+      event.contextSnippets.length?`照片前后的真实聊天：\n${event.contextSnippets.map((line,index)=>`${index+1}. ${line}`).join("\n")}`:""
+    ].filter(Boolean).join("\n");
+    const reply=await send([
+      {role:"system",content:"你是豹豹机的相册整理器。只能依据用户提供的真实日期、照片描述和聊天内容总结，禁止编造没发生的情节。输出两行：第一行“标题：”后接不超过12个字的事件标题；第二行“总结：”后接50到100字的自然中文总结。不要Markdown，不要评价用户。"},
+      {role:"user",content:sourceText}
+    ]);
+    const clean=String(reply||"").replace(/```[a-z]*|```/gi,"").trim();
+    const titleMatch=clean.match(/标题\s*[:：]\s*([^\n]+)/);
+    const summaryMatch=clean.match(/总结\s*[:：]\s*([\s\S]+)/);
+    const title=bbAlbumCleanText(titleMatch&&titleMatch[1],40)||event.title;
+    const summary=bbAlbumCleanText(summaryMatch&&summaryMatch[1],220)||bbAlbumCleanText(clean.replace(/^标题[^\n]*\n?/,""),220)||event.summary;
+    if(!state.albumEventEdits||typeof state.albumEventEdits!=="object") state.albumEventEdits={};
+    state.albumEventEdits[eventId]={title,summary,updatedAt:Date.now(),ai:true};
+    saveLocal();
+    renderBaobaoAlbumApp();
+    showToast("事件总结已更新");
+  }catch(error){
+    showToast("总结失败："+String(error&&error.message||error||"未知错误"),true);
+  }finally{
+    if(button){button.disabled=false;button.textContent=original||"AI总结";}
+  }
+}
+window.openBaobaoAlbumApp=openBaobaoAlbumApp;
+window.closeBaobaoAlbumApp=closeBaobaoAlbumApp;
 
 // ===== 通用 App 占位弹窗 =====
 function openAppModal(label){
