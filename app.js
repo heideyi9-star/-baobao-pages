@@ -240,6 +240,223 @@ if(state.activeChatId&&state.chatRecords&&Array.isArray(state.chatRecords[state.
 }
 if(!Array.isArray(state.chatMessages)) state.chatMessages=[];
 
+/* bb-durable-chat-store-v405-script */
+(function(){
+  "use strict";
+  if(window.__bbDurableChatStoreV405)return;
+  window.__bbDurableChatStoreV405=true;
+
+  const DB_NAME="baobao_chat_history_v405";
+  const STORE_NAME="snapshots";
+  const SNAPSHOT_KEY="chat_records";
+  const FORCE_SEED_KEY="bb_force_seed_chat_v405";
+  let dbPromise=null;
+  let saveTimer=0;
+  let writeChain=Promise.resolve();
+  let lastSignature="";
+
+  function openDB(){
+    if(dbPromise)return dbPromise;
+    dbPromise=new Promise((resolve,reject)=>{
+      if(!window.indexedDB){resolve(null);return;}
+      const req=indexedDB.open(DB_NAME,1);
+      req.onupgradeneeded=()=>{
+        const db=req.result;
+        if(!db.objectStoreNames.contains(STORE_NAME))db.createObjectStore(STORE_NAME);
+      };
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error||new Error("IndexedDB 打开失败"));
+    }).catch(error=>{
+      console.warn("聊天备份数据库不可用：",error);
+      dbPromise=null;
+      return null;
+    });
+    return dbPromise;
+  }
+
+  function cloneValue(value){
+    try{if(typeof structuredClone==="function")return structuredClone(value);}catch(error){}
+    try{return JSON.parse(JSON.stringify(value));}catch(error){return value;}
+  }
+
+  function currentRecords(){
+    const source=state.chatRecords&&typeof state.chatRecords==="object"?state.chatRecords:{};
+    const records={};
+    Object.keys(source).forEach(id=>{
+      if(Array.isArray(source[id]))records[String(id)]=cloneValue(source[id]);
+    });
+    const active=String(state.activeChatId||"");
+    if(active&&Array.isArray(state.chatMessages))records[active]=cloneValue(state.chatMessages);
+    return records;
+  }
+
+  function makeSnapshot(){
+    const updatedAt=Date.now();
+    state.__chatHistoryUpdatedAt=updatedAt;
+    return {
+      version:405,
+      updatedAt,
+      activeChatId:state.activeChatId||null,
+      chatOrder:Array.isArray(state.chatOrder)?state.chatOrder.slice():[],
+      chatRecords:currentRecords()
+    };
+  }
+
+  async function putSnapshot(snapshot){
+    const db=await openDB();
+    if(!db)return false;
+    return new Promise(resolve=>{
+      try{
+        const tx=db.transaction(STORE_NAME,"readwrite");
+        tx.objectStore(STORE_NAME).put(snapshot,SNAPSHOT_KEY);
+        tx.oncomplete=()=>resolve(true);
+        tx.onerror=()=>resolve(false);
+        tx.onabort=()=>resolve(false);
+      }catch(error){resolve(false);}
+    });
+  }
+
+  function persistNow(){
+    clearTimeout(saveTimer);
+    saveTimer=0;
+    const snapshot=makeSnapshot();
+    try{
+      const counts={};
+      Object.keys(snapshot.chatRecords).forEach(id=>counts[id]=snapshot.chatRecords[id].length);
+      localStorage.setItem("bb_chat_index_v405",JSON.stringify({updatedAt:snapshot.updatedAt,activeChatId:snapshot.activeChatId,counts}));
+    }catch(error){}
+    writeChain=writeChain.then(()=>putSnapshot(snapshot)).catch(()=>false);
+    return writeChain;
+  }
+
+  function schedule(force){
+    clearTimeout(saveTimer);
+    if(force===true)return persistNow();
+    saveTimer=setTimeout(persistNow,60);
+    return true;
+  }
+
+  async function readSnapshot(){
+    const db=await openDB();
+    if(!db)return null;
+    return new Promise(resolve=>{
+      try{
+        const tx=db.transaction(STORE_NAME,"readonly");
+        const req=tx.objectStore(STORE_NAME).get(SNAPSHOT_KEY);
+        req.onsuccess=()=>resolve(req.result||null);
+        req.onerror=()=>resolve(null);
+      }catch(error){resolve(null);}
+    });
+  }
+
+  function messageKey(message,index){
+    if(message&&message.id)return "id:"+String(message.id);
+    const content=String(message&&(message.content||message.url||message.mediaSource||message.text||"")||"").slice(0,220);
+    const stamp=String(Number(message&&message.time)||0);
+    const base=["fallback",String(message&&message.role||""),String(message&&message.type||""),stamp,content].join("|");
+    return stamp!=="0"||content?base:base+"|"+String(index||0);
+  }
+
+  function mergeMessages(localList,dbList){
+    const map=new Map();
+    const order=[];
+    [...(Array.isArray(localList)?localList:[]),...(Array.isArray(dbList)?dbList:[])].forEach((message,index)=>{
+      if(!message||typeof message!=="object")return;
+      const key=messageKey(message,index);
+      if(!map.has(key))order.push(key);
+      const old=map.get(key);
+      if(!old){map.set(key,message);return;}
+      const oldScore=Object.keys(old).length+String(old.content||old.url||"").length/100;
+      const newScore=Object.keys(message).length+String(message.content||message.url||"").length/100;
+      map.set(key,newScore>=oldScore?{...old,...message}:{...message,...old});
+    });
+    const merged=order.map((key,index)=>({message:map.get(key),index}));
+    merged.sort((a,b)=>{
+      const at=Number(a.message&&a.message.time)||0;
+      const bt=Number(b.message&&b.message.time)||0;
+      if(at&&bt&&at!==bt)return at-bt;
+      return a.index-b.index;
+    });
+    return merged.map(item=>item.message);
+  }
+
+  function applySnapshot(snapshot){
+    if(!snapshot||!snapshot.chatRecords||typeof snapshot.chatRecords!=="object")return false;
+    const local=currentRecords();
+    const ids=new Set([...Object.keys(local),...Object.keys(snapshot.chatRecords)]);
+    const merged={};
+    ids.forEach(id=>merged[id]=mergeMessages(local[id],snapshot.chatRecords[id]));
+    state.chatRecords=merged;
+    const active=String(state.activeChatId||snapshot.activeChatId||"");
+    if(active&&Array.isArray(merged[active])){
+      state.activeChatId=active;
+      state.chatMessages=merged[active];
+    }
+    const order=[];
+    const seen=new Set();
+    [...(Array.isArray(state.chatOrder)?state.chatOrder:[]),...(Array.isArray(snapshot.chatOrder)?snapshot.chatOrder:[])].forEach(id=>{
+      const key=String(id||"");
+      if(key&&!seen.has(key)){seen.add(key);order.push(id);}
+    });
+    state.chatOrder=order;
+    state.__chatHistoryUpdatedAt=Math.max(Number(state.__chatHistoryUpdatedAt)||0,Number(snapshot.updatedAt)||0);
+    return true;
+  }
+
+  async function restore(){
+    let forceSeed=false;
+    try{
+      forceSeed=sessionStorage.getItem(FORCE_SEED_KEY)==="1";
+      if(forceSeed)sessionStorage.removeItem(FORCE_SEED_KEY);
+    }catch(error){}
+    const saved=await readSnapshot();
+    if(forceSeed||!saved){await persistNow();return false;}
+    const changed=applySnapshot(saved);
+    if(changed){
+      const refresh=()=>{
+        try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();}catch(error){}
+        try{if(typeof window.renderChatList==="function")window.renderChatList();}catch(error){}
+        try{if(typeof window.renderWeChatApp==="function")window.renderWeChatApp();}catch(error){}
+      };
+      if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>setTimeout(refresh,0),{once:true});
+      else setTimeout(refresh,0);
+      schedule(false);
+    }
+    return changed;
+  }
+
+  async function clearStore(){
+    clearTimeout(saveTimer);
+    const db=await openDB();
+    if(!db)return true;
+    return new Promise(resolve=>{
+      try{
+        const tx=db.transaction(STORE_NAME,"readwrite");
+        tx.objectStore(STORE_NAME).clear();
+        tx.oncomplete=()=>resolve(true);
+        tx.onerror=()=>resolve(false);
+        tx.onabort=()=>resolve(false);
+      }catch(error){resolve(false);}
+    });
+  }
+
+  function signature(){
+    const list=Array.isArray(state.chatMessages)?state.chatMessages:[];
+    const last=list[list.length-1]||{};
+    return [String(state.activeChatId||""),list.length,String(last.id||""),String(last.time||""),String(last.content||last.url||"").slice(-80)].join("|");
+  }
+
+  window.BaobaoChatStoreV405={schedule,persistNow,restore,clear:clearStore,exportRecords:currentRecords};
+  window.baobaoQueueDurableChatSave=schedule;
+  restore();
+  setInterval(()=>{
+    const next=signature();
+    if(next!==lastSignature){lastSignature=next;schedule(false);}
+  },900);
+  window.addEventListener("pagehide",()=>schedule(true),{capture:true});
+  document.addEventListener("visibilitychange",()=>{if(document.hidden)schedule(true);});
+})();
+
 if(typeof state.page2ProfileText !== "string" || !state.page2ProfileText.trim()){
   state.page2ProfileText = Array.isArray(state.page2DialogueLines) && state.page2DialogueLines[0]
     ? String(state.page2DialogueLines[0]).trim()
@@ -824,196 +1041,35 @@ function baobaoCleanupTemporaryStorage(){
   }catch(e){}
 }
 
-
-// ===== 聊天媒体存储：缩略图留在聊天记录，较清晰原图放 IndexedDB =====
-const BB_CHAT_MEDIA_DB_V405 = "baobao_chat_media_v405";
-const BB_CHAT_MEDIA_STORE_V405 = "media";
-let bbChatMediaDbPromiseV405 = null;
-let bbChatMediaMigrationRunningV405 = false;
-
-function bbOpenChatMediaDbV405(){
-  if(bbChatMediaDbPromiseV405) return bbChatMediaDbPromiseV405;
-  bbChatMediaDbPromiseV405 = new Promise((resolve,reject)=>{
-    if(!window.indexedDB){ reject(new Error("当前浏览器不支持图片仓库")); return; }
-    const req = indexedDB.open(BB_CHAT_MEDIA_DB_V405,1);
-    req.onupgradeneeded = ()=>{
-      const db=req.result;
-      if(!db.objectStoreNames.contains(BB_CHAT_MEDIA_STORE_V405)){
-        db.createObjectStore(BB_CHAT_MEDIA_STORE_V405,{keyPath:"id"});
-      }
-    };
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error||new Error("图片仓库打开失败"));
-  });
-  return bbChatMediaDbPromiseV405;
-}
-
-async function bbPutChatMediaV405(dataUrl,id){
-  const db=await bbOpenChatMediaDbV405();
-  const key=id||("media_"+Date.now()+"_"+Math.random().toString(36).slice(2,10));
-  await new Promise((resolve,reject)=>{
-    const tx=db.transaction(BB_CHAT_MEDIA_STORE_V405,"readwrite");
-    tx.objectStore(BB_CHAT_MEDIA_STORE_V405).put({id:key,data:String(dataUrl||""),updatedAt:Date.now()});
-    tx.oncomplete=()=>resolve();
-    tx.onerror=()=>reject(tx.error||new Error("图片保存失败"));
-    tx.onabort=()=>reject(tx.error||new Error("图片保存中断"));
-  });
-  return key;
-}
-
-async function bbGetChatMediaV405(id){
-  if(!id) return "";
-  const db=await bbOpenChatMediaDbV405();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction(BB_CHAT_MEDIA_STORE_V405,"readonly");
-    const req=tx.objectStore(BB_CHAT_MEDIA_STORE_V405).get(String(id));
-    req.onsuccess=()=>resolve(req.result&&req.result.data?String(req.result.data):"");
-    req.onerror=()=>reject(req.error||new Error("图片读取失败"));
-  });
-}
-
-function bbReadFileDataUrlV405(file){
-  return new Promise((resolve,reject)=>{
-    const reader=new FileReader();
-    reader.onload=()=>resolve(String(reader.result||""));
-    reader.onerror=()=>reject(new Error("图片读取失败"));
-    reader.readAsDataURL(file);
-  });
-}
-
-function bbLoadImageV405(src){
-  return new Promise((resolve,reject)=>{
-    const img=new Image();
-    img.onload=()=>resolve(img);
-    img.onerror=()=>reject(new Error("图片解析失败"));
-    img.src=String(src||"");
-  });
-}
-
-async function bbCompressChatImageV405(source,options){
-  const opt=Object.assign({maxDim:1080,maxChars:320000,quality:.78,minQuality:.48,minDim:360},options||{});
-  const src=source instanceof File?await bbReadFileDataUrlV405(source):String(source||"");
-  if(!/^data:image\//i.test(src)) return src;
-  if(/^data:image\/(?:gif|svg\+xml)/i.test(src)) return src;
-  const img=await bbLoadImageV405(src);
-  let width=img.naturalWidth||img.width||1;
-  let height=img.naturalHeight||img.height||1;
-  const scale=Math.min(1,opt.maxDim/Math.max(width,height));
-  width=Math.max(1,Math.round(width*scale));
-  height=Math.max(1,Math.round(height*scale));
-  const canvas=document.createElement("canvas");
-  const ctx=canvas.getContext("2d",{alpha:false});
-  let quality=opt.quality;
-  let result=src;
-  for(let attempt=0;attempt<12;attempt++){
-    canvas.width=width; canvas.height=height;
-    ctx.fillStyle="#fff"; ctx.fillRect(0,0,width,height);
-    ctx.drawImage(img,0,0,width,height);
-    result=canvas.toDataURL("image/webp",quality);
-    if(!/^data:image\/webp/i.test(result)) result=canvas.toDataURL("image/jpeg",quality);
-    if(result.length<=opt.maxChars) return result;
-    if(quality>opt.minQuality+.04) quality=Math.max(opt.minQuality,quality-.08);
-    else{
-      width=Math.max(opt.minDim,Math.round(width*.84));
-      height=Math.max(opt.minDim,Math.round(height*.84));
-      quality=Math.min(.68,opt.quality);
-    }
-    if(width<=opt.minDim&&height<=opt.minDim&&quality<=opt.minQuality) break;
-    await new Promise(resolve=>requestAnimationFrame(resolve));
-  }
-  return result;
-}
-
-async function bbPrepareChatMediaV405(fileOrSource){
-  const source=fileOrSource instanceof File?await bbReadFileDataUrlV405(fileOrSource):String(fileOrSource||"");
-  const full=await bbCompressChatImageV405(source,{maxDim:1080,maxChars:300000,quality:.76,minQuality:.46,minDim:420});
-  const thumb=await bbCompressChatImageV405(source,{maxDim:300,maxChars:30000,quality:.68,minQuality:.42,minDim:180});
-  const key=await bbPutChatMediaV405(full);
-  return {thumb,fullMediaKey:key};
-}
-window.bbPrepareChatMediaV405=bbPrepareChatMediaV405;
-window.bbGetChatMediaV405=bbGetChatMediaV405;
-
-function bbEmergencyStoragePayloadV405(){
-  return JSON.stringify(baobaoStorageSnapshot(),(key,value)=>{
-    if(typeof value==="string"&&/^data:image\//i.test(value)&&value.length>45000) return null;
-    return value;
-  });
-}
-
-async function bbMigrateChatMediaV405(force){
-  if(bbChatMediaMigrationRunningV405) return false;
-  if(!force&&localStorage.getItem("bb_chat_media_migrated_v405")==="1") return true;
-  bbChatMediaMigrationRunningV405=true;
-  let changed=0;
-  try{
-    const arrays=[];
-    const seenArrays=new Set();
-    const addArray=arr=>{ if(Array.isArray(arr)&&!seenArrays.has(arr)){seenArrays.add(arr);arrays.push(arr);} };
-    addArray(state.chatMessages);
-    if(state.chatRecords&&typeof state.chatRecords==="object") Object.values(state.chatRecords).forEach(addArray);
-    for(const arr of arrays){
-      for(const message of arr){
-        if(!message||String(message.type||"").toLowerCase()!=="image") continue;
-        const src=[message.originalMedia,message.mediaSource,message.url,message.content].find(v=>typeof v==="string"&&/^data:image\//i.test(v));
-        if(!src) continue;
-        if(message.fullMediaKey&&String(message.content||"").length<=40000){
-          delete message.originalMedia; delete message.mediaSource;
-          if(message.url===message.content) delete message.url;
-          continue;
-        }
-        try{
-          const prepared=await bbPrepareChatMediaV405(src);
-          message.content=prepared.thumb;
-          message.fullMediaKey=prepared.fullMediaKey;
-          delete message.originalMedia;
-          delete message.mediaSource;
-          delete message.url;
-          changed++;
-        }catch(error){ console.warn("旧聊天图片整理失败",error); }
-        if(changed&&changed%3===0) await new Promise(resolve=>setTimeout(resolve,0));
-      }
-    }
-    localStorage.setItem("bb_chat_media_migrated_v405","1");
-    if(changed){
-      saveLocal();
-      if(typeof window.renderChatMessages==="function") window.renderChatMessages();
-    }
-    return true;
-  }finally{
-    bbChatMediaMigrationRunningV405=false;
-  }
-}
-window.bbMigrateChatMediaV405=bbMigrateChatMediaV405;
-
-function bbScheduleChatMediaMigrationV405(force){
-  const run=()=>bbMigrateChatMediaV405(!!force).catch(error=>console.warn("聊天图片整理未完成",error));
-  if(typeof requestIdleCallback==="function") requestIdleCallback(run,{timeout:2500});
-  else setTimeout(run,900);
-}
-if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",()=>bbScheduleChatMediaMigrationV405(false),{once:true});
-else bbScheduleChatMediaMigrationV405(false);
-
 function saveLocal(){
-  const payload=JSON.stringify(baobaoStorageSnapshot());
+  try{if(window.BaobaoChatStoreV405)window.BaobaoChatStoreV405.schedule(false);}catch(error){}
+  const snapshot=baobaoStorageSnapshot();
+  let payload="";
+  try{payload=JSON.stringify(snapshot);}catch(error){payload="";}
   try{
     localStorage.setItem("baobao_state",payload);
     return true;
   }catch(e){
-    console.warn("首次保存超出空间，正在整理临时缓存：",e);
+    console.warn("整包保存超出空间，正在整理临时缓存：",e);
     baobaoCleanupTemporaryStorage();
     try{
       localStorage.setItem("baobao_state",payload);
       return true;
     }catch(err){
-      console.error("完整数据保存失败，先保存不含大图的文字记录：",err);
       try{
-        localStorage.setItem("baobao_state",bbEmergencyStoragePayloadV405());
-        bbScheduleChatMediaMigrationV405(true);
-        if(typeof showToast==="function") showToast("图片正在压缩整理，聊天文字已先保存",true);
+        const light={...snapshot};
+        light.chatRecords={};
+        light.chatMessages=[];
+        light.__chatStoredInIndexedDBV405=true;
+        light.__chatHistoryUpdatedAt=Date.now();
+        localStorage.setItem("baobao_state",JSON.stringify(light));
+        console.warn("已改用轻量状态保存，聊天记录由 IndexedDB 保管。");
         return true;
       }catch(finalError){
-        console.error("紧急保存也失败：",finalError);
+        console.error("保存失败：",finalError);
+        setTimeout(()=>{
+          try{if(typeof window.showToast==="function")window.showToast("普通设置存储已满，但聊天记录已单独保存",true);}catch(error){}
+        },0);
         return false;
       }
     }
@@ -3157,7 +3213,7 @@ function renderChatMessages(){
 
     let bubbleHtml;
     if(m.type === "image"){
-      bubbleHtml = `<div class="${cls} bb-chat-photo-bubble" data-msg-index="${i}"><img class="bb-chat-photo-thumb" loading="lazy" decoding="async" src="${m.content||""}" alt="图片"></div>`;
+      bubbleHtml = `<div class="${cls}" data-msg-index="${i}"><img src="${m.content}"></div>`;
     }else{
       const speakBtn = m.role === "assistant"
         ? `<span class="bubble-speak" onclick="event.stopPropagation();speakMessage(${i})"></span>` : "";
@@ -4430,6 +4486,12 @@ function renderWeChatApp(){
       let k=localStorage.key(i);
       data[k]=localStorage.getItem(k);
     }
+    try{
+      const live=baobaoStorageSnapshot();
+      if(window.BaobaoChatStoreV405)live.chatRecords=window.BaobaoChatStoreV405.exportRecords();
+      live.chatMessages=[];
+      data.baobao_state=JSON.stringify(live);
+    }catch(error){}
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
     const a=document.createElement("a");
     a.href=URL.createObjectURL(blob);
@@ -4446,6 +4508,7 @@ function renderWeChatApp(){
     r.onload=()=>{
       if(confirm("导入会覆盖当前数据，确定继续吗？")){
         const d=JSON.parse(r.result);
+        try{sessionStorage.setItem("bb_force_seed_chat_v405","1");}catch(error){}
         localStorage.clear();
         Object.keys(d).forEach(k=>localStorage.setItem(k,d[k]));
         location.reload();
@@ -4458,7 +4521,8 @@ function renderWeChatApp(){
     if(confirm(" 将删除聊天记录、设置、API配置、壁纸等全部本地数据，此操作不可恢复。")){
       if(confirm("再次确认：真的清除全部数据吗？")){
         localStorage.clear();
-        location.reload();
+        const done=window.BaobaoChatStoreV405?window.BaobaoChatStoreV405.clear():Promise.resolve(true);
+        Promise.resolve(done).finally(()=>location.reload());
       }
     }
   };
@@ -4473,6 +4537,12 @@ function exportBaobaoData(){
     let k=localStorage.key(i);
     data[k]=localStorage.getItem(k);
   }
+  try{
+    const live=baobaoStorageSnapshot();
+    if(window.BaobaoChatStoreV405)live.chatRecords=window.BaobaoChatStoreV405.exportRecords();
+    live.chatMessages=[];
+    data.baobao_state=JSON.stringify(live);
+  }catch(error){}
   let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   let a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
@@ -4486,6 +4556,7 @@ function importBaobaoData(input){
   r.onload=function(){
     if(confirm("导入会覆盖当前数据，确定继续？")){
       let data=JSON.parse(r.result);
+      try{sessionStorage.setItem("bb_force_seed_chat_v405","1");}catch(error){}
       localStorage.clear();
       Object.keys(data).forEach(k=>localStorage.setItem(k,data[k]));
       location.reload();
@@ -4497,7 +4568,8 @@ function clearBaobaoData(){
   if(confirm(" 将清除聊天、设置、API、人设等全部数据，无法恢复。继续？")){
     if(confirm("再次确认：真的清除全部数据吗？")){
       localStorage.clear();
-      location.reload();
+      const done=window.BaobaoChatStoreV405?window.BaobaoChatStoreV405.clear():Promise.resolve(true);
+      Promise.resolve(done).finally(()=>location.reload());
     }
   }
 }
@@ -9086,14 +9158,11 @@ ${clean(reply)}
    const rejected=blocked();
    state.chatMessages=state.chatMessages||[];
    const msg=Object.assign({role:'user',type,content,time:Date.now(),id:'msg_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),delivery:rejected?'rejected':'sent',rejected},extra||{});
-   if(type==='sticker'){
+   if(type==='image'||type==='textphoto'||type==='sticker'){
      const src=String((extra&&extra.url)||content||'');
      msg.url=msg.url||src;
-   }else if(type==='image'||type==='textphoto'){
-     // 图片正文只保存一份缩略图；清晰图由 fullMediaKey 指向 IndexedDB。
-     delete msg.url;
-     delete msg.mediaSource;
-     delete msg.originalMedia;
+     msg.mediaSource=msg.mediaSource||src;
+     msg.originalMedia=msg.originalMedia||src;
    }
    state.chatMessages.push(msg);
    persist();
@@ -9122,24 +9191,13 @@ ${clean(reply)}
  window.chooseBaobaoAlbum=function(){closeBaobaoToolModal();$id('bbAlbumInput').click()}
  window.openBaobaoTextPhoto=function(){$id('bbToolModalContent').innerHTML='<div class="bb-tool-title">文字照片</div><div class="bb-tool-sub">输入文字，会生成一张简洁的照片卡片。</div><textarea class="bb-tool-textarea" id="bbTextPhotoText" maxlength="120" placeholder="写下想放在图片里的文字…"></textarea><div class="bb-tool-actions"><button class="bb-tool-cancel" onclick="openBaobaoImageChoice()">返回</button><button class="bb-tool-send" onclick="sendBaobaoTextPhoto()">生成并发送</button></div>';setTimeout(()=>$id('bbTextPhotoText').focus(),60)}
  window.sendBaobaoTextPhoto=function(){const t=($id('bbTextPhotoText').value||'').trim();if(!t)return showToast('请输入文字',true);const c=document.createElement('canvas');c.width=900;c.height=900;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,900,900);g.addColorStop(0,'#f5efe8');g.addColorStop(1,'#dfe6ea');x.fillStyle=g;x.fillRect(0,0,900,900);x.fillStyle='rgba(255,255,255,.72)';x.roundRect(90,110,720,680,42);x.fill();x.fillStyle='#333';x.textAlign='center';x.textBaseline='middle';x.font='600 46px -apple-system,BlinkMacSystemFont,sans-serif';const chars=[...t],lines=[];let line='';for(const ch of chars){if(x.measureText(line+ch).width>610){lines.push(line);line=ch}else line+=ch}if(line)lines.push(line);const lh=70,start=450-(lines.length-1)*lh/2;lines.slice(0,7).forEach((l,i)=>x.fillText(l,450,start+i*lh));x.font='24px -apple-system';x.fillStyle='rgba(0,0,0,.38)';x.fillText('BAOBAO MEMORY',450,735);pushToolMessage('textphoto',c.toDataURL('image/jpeg',.88),{text:t});closeBaobaoToolModal()}
- async function readImage(file){
-   if(!file)return;
-   if(file.size>25*1024*1024)return showToast('图片太大，请选择小于25MB的图片',true);
-   try{
-     if(typeof showToast==='function')showToast('正在压缩图片…');
-     const prepared=await window.bbPrepareChatMediaV405(file);
-     pushToolMessage('image',prepared.thumb,{caption:'[图片]',fullMediaKey:prepared.fullMediaKey});
-   }catch(error){
-     console.warn('聊天图片处理失败',error);
-     showToast('图片处理失败，请换一张试试',true);
-   }
- }
+ function readImage(file){if(!file)return; if(file.size>12*1024*1024)return showToast('图片太大，请选择小于12MB的图片',true);const r=new FileReader();r.onload=()=>pushToolMessage('image',r.result,{caption:'[图片]'});r.readAsDataURL(file)}
  document.addEventListener('DOMContentLoaded',()=>{$id('bbCameraInput').addEventListener('change',e=>{readImage(e.target.files[0]);e.target.value=''});$id('bbAlbumInput').addEventListener('change',e=>{readImage(e.target.files[0]);e.target.value=''})});
  function customBubble(m){
    let body="";
 
    if(m.type==='image'||m.type==='textphoto'){
-     body=m.content?'<img class="bb-chat-photo-thumb" loading="lazy" decoding="async" src="'+m.content+'" alt="图片">':'<div class="bb-chat-photo-missing">图片已清理</div>';
+     body='<img src="'+m.content+'" alt="图片">';
    }else if(m.type==='sticker'){
      const stickerSrc=String(m.url||m.imageUrl||m.content||'');
      const stickerName=String(m.name||m.stickerName||'表情包');
@@ -13829,15 +13887,8 @@ window.baobaoAI = {
       const m=window.state&&Array.isArray(state.chatMessages)?state.chatMessages[idx]:null;
       const type=String(m&&m.type||'').toLowerCase();
       if(type!=='image'&&type!=='textphoto')return;
-      e.preventDefault();e.stopPropagation();
-      if(m&&m.fullMediaKey&&typeof window.bbGetChatMediaV405==="function"){
-        window.bbGetChatMediaV405(m.fullMediaKey).then(function(full){
-          window.openBaobaoMediaViewerV212(full||sourceOf(m)||img.src);
-        }).catch(function(){window.openBaobaoMediaViewerV212(sourceOf(m)||img.src);});
-        return;
-      }
       const src=sourceOf(m)||img.src;
-      if(src)window.openBaobaoMediaViewerV212(src);
+      if(src){e.preventDefault();e.stopPropagation();window.openBaobaoMediaViewerV212(src)}
     },true);
   }
   document.addEventListener('DOMContentLoaded',bindMediaZoom);
@@ -13901,6 +13952,7 @@ window.baobaoAI = {
 
   function smoothSave(force){
     savePending=true;
+    try{if(window.BaobaoChatStoreV405)window.BaobaoChatStoreV405.schedule(force===true);}catch(error){}
     if(force===true)return flushSave();
     scheduleSave(420);
     return true;
@@ -42955,7 +43007,7 @@ window.updateArchiveChatStyleHintV324=function(){
 
 ;/* ===== 豹豹机 380：图片自动压缩 + 存储缓存整理 ===== */
 (function(){
-  const OPTIMIZE_MARK='mediaStorageOptimizedV405';
+  const OPTIMIZE_MARK='mediaStorageOptimizedV380';
   const CHAT_TRIM_TRIGGER=2000;
   const CHAT_KEEP_RECENT=1800;
   let optimizing=false;
@@ -43055,7 +43107,7 @@ window.updateArchiveChatStyleHintV324=function(){
     if(/avatar|portrait|persona.*photo|user.*photo/.test(p))return {maxDim:420,maxChars:78000,quality:.74,minDim:240};
     if(/icon/.test(p))return {maxDim:260,maxChars:52000,quality:.74,minDim:140,preserveAlpha:true};
     if(/sticker|emoji/.test(p))return {maxDim:420,maxChars:90000,quality:.70,minDim:220,preserveAlpha:true};
-    if(/landingphoto|memoryboard|moment|message|image|photo/.test(p))return {maxDim:720,maxChars:80000,quality:.62,minDim:300};
+    if(/landingphoto|memoryboard|moment|message|image|photo/.test(p))return {maxDim:760,maxChars:115000,quality:.66,minDim:340};
     return {maxDim:760,maxChars:135000,quality:.68,minDim:320};
   }
   async function bb380CompactTree(root){
@@ -43340,11 +43392,15 @@ window.updateArchiveChatStyleHintV324=function(){
   window.bbHandleChatLandingPhoto=landingImport;
 
   function bb380Start(){
-    /* 空闲时整理一次旧图片；不阻塞聊天操作。 */
-    if(state[OPTIMIZE_MARK])return;
-    const run=()=>bb380RunStorageCleanup(false);
-    if(typeof requestIdleCallback==='function')requestIdleCallback(run,{timeout:4500});
-    else setTimeout(run,1500);
+    /* 新图片仍会在导入时自动压缩；旧数据整理不再在正在操作页面时强制运行。 */
+    const runWhenHidden=function(){
+      if(!document.hidden || state[OPTIMIZE_MARK])return;
+      document.removeEventListener('visibilitychange',runWhenHidden);
+      const run=()=>bb380RunStorageCleanup(false);
+      if(typeof requestIdleCallback==='function')requestIdleCallback(run,{timeout:5000});
+      else setTimeout(run,800);
+    };
+    document.addEventListener('visibilitychange',runWhenHidden);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bb380Start,{once:true});
   else bb380Start();
