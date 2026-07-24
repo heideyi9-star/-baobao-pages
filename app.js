@@ -3171,20 +3171,41 @@ function testChatAPI(){
     .catch((e) => showToast(" " + e.message, true));
 }
 
-// ===== 时间感知：把真实时间/间隔告诉AI =====
+// ===== 时间感知：把真实时间、消息时间戳与“旧事件已结束”规则告诉 AI =====
 function buildTimeSystemMessage(){
   const now = new Date();
-  const nowStr = now.toLocaleString("zh-CN", { hour12:false });
-  let gapText = "";
-  if(state.lastMsgTime){
-    const gapMin = Math.round((Date.now() - state.lastMsgTime) / 60000);
-    if(gapMin >= 1){
-      gapText = gapMin < 60
-        ? `，距离上一条消息过去了约 ${gapMin} 分钟`
-        : `，距离上一条消息过去了约 ${(gapMin/60).toFixed(1)} 小时`;
+  const nowMs = now.getTime();
+  const pad = (n) => String(n).padStart(2,"0");
+  const exact = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const weekday = "日一二三四五六"[now.getDay()];
+  const hour = now.getHours();
+  const daypart = hour < 6 ? "凌晨" : hour < 9 ? "早上" : hour < 12 ? "上午" : hour < 14 ? "中午" : hour < 18 ? "下午" : hour < 23 ? "晚上" : "深夜";
+
+  const list = Array.isArray(state.chatMessages) ? state.chatMessages : [];
+  const latestUser = list.slice().reverse().find(m => m && m.role === "user" && !m.hiddenSystem);
+  let latestInfo = "没有可用的最新用户消息时间";
+  if(latestUser){
+    const ts = Number(latestUser.time || latestUser.timestamp || latestUser.createdAt || 0);
+    if(ts > 0){
+      const d = new Date(ts);
+      const diffMin = Math.max(0, Math.round((nowMs - ts) / 60000));
+      const sameDay = d.toDateString() === now.toDateString();
+      const age = diffMin < 1 ? "刚刚" : diffMin < 60 ? `${diffMin}分钟前` : diffMin < 1440 ? `${Math.floor(diffMin/60)}小时${diffMin%60}分钟前` : `${Math.floor(diffMin/1440)}天前`;
+      latestInfo = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}（${age}${sameDay ? "，今天" : "，不是今天"}）`;
     }
   }
-  return `[系统提示：当前真实时间是 ${nowStr}${gapText}，请让对话自然地体现时间流逝感，不要直接复述这条提示本身。]`;
+
+  return `【强时间锚点｜必须严格遵守】
+当前真实时间：${exact}，星期${weekday}，现在属于${daypart}。
+最新用户消息时间：${latestInfo}。
+
+【时间连续性规则】
+1. 只把“最新一轮尚未回复的消息”当作正在发生。更早的聊天只是历史背景，不能假装仍在现场。
+2. 历史消息里出现的洗澡、吃饭、睡觉、起床、上课、下楼、出门、回家、到家、忙工作等动作，只要已过去约60分钟，或已经跨日，默认早已结束。除非用户本轮重新提起，否则禁止继续问“洗完了吗”“吃完了吗”“睡醒了吗”“到了吗”“还在忙吗”。
+3. 如果用户问“现在几点”“今天几号”“现在是上午还是下午”，必须直接依据上面的真实时间回答，绝不能从旧聊天猜。
+4. 可以自然说“刚才、上午、昨晚、昨天”，但必须与每条消息的时间戳一致。跨日的事必须用过去式。
+5. 不要主动报时，也不要因为知道时间就劝用户喝水、吃饭、睡觉或安排生活。
+6. 若旧话题与本轮没有明确联系，优先回应用户刚刚说的话，不要把旧动作硬续上。`;
 }
 
 async function requestChatReply(){
@@ -11708,6 +11729,21 @@ document.addEventListener("DOMContentLoaded",()=>{installRow();importAntiRecon()
         String(m.replyTo.text||"")+"]\\n"+content;
     }
 
+    const ts=Number(m.time||m.timestamp||m.createdAt||0);
+    if(ts>0){
+      const now=Date.now();
+      const d=new Date(ts);
+      const pad=n=>String(n).padStart(2,"0");
+      const diffMin=Math.max(0,Math.round((now-ts)/60000));
+      const sameDay=d.toDateString()===new Date(now).toDateString();
+      let age="刚刚";
+      if(diffMin>=1440)age=Math.floor(diffMin/1440)+"天前";
+      else if(diffMin>=60)age=Math.floor(diffMin/60)+"小时"+(diffMin%60)+"分钟前";
+      else if(diffMin>=1)age=diffMin+"分钟前";
+      const freshness=(diffMin>60||!sameDay)?"历史消息，事情通常已经结束":"近期消息";
+      content=`[消息时间 ${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}；${age}；${freshness}] ${content}`;
+    }
+
     return clean(content);
   }
 
@@ -11862,6 +11898,33 @@ document.addEventListener("DOMContentLoaded",()=>{installRow();importAntiRecon()
     }catch(e){}
   }
 
+  function latestUserPlainText(){
+    const arr=(state.chatMessages||[]);
+    const m=arr.slice().reverse().find(x=>x&&x.role==="user"&&!x.hiddenSystem);
+    return m?String(m.content||m.text||m.transcript||"").trim():"";
+  }
+
+  function staleActionInReply(reply,latestText){
+    const answer=String(reply||"");
+    const current=String(latestText||"");
+    const actionWords=/(洗澡|洗完|洗好|吃饭|吃完|睡觉|睡醒|起床|到家|到了|下楼|出门|回家|上课|下课|忙完|还在忙|工作完)/;
+    if(actionWords.test(current))return false;
+    const staleQuestion=/(洗完了(?:吗|没)|洗好了吗|澡洗完了吗|吃完了(?:吗|没)|睡醒了(?:吗|没)|起床了(?:吗|没)|到家了(?:吗|没)|到了(?:吗|没)|下课了(?:吗|没)|忙完了(?:吗|没)|还在(?:洗|吃|睡|上课|路上|忙))/;
+    if(!staleQuestion.test(answer))return false;
+
+    const now=Date.now();
+    const arr=(state.chatMessages||[]).slice().reverse();
+    const oldSource=arr.find(m=>{
+      if(!m||m.role!=="user"||m.hiddenSystem)return false;
+      const text=String(m.content||m.text||"");
+      if(!actionWords.test(text))return false;
+      const ts=Number(m.time||m.timestamp||m.createdAt||0);
+      if(!ts)return true;
+      return now-ts>60*60*1000 || new Date(ts).toDateString()!==new Date(now).toDateString();
+    });
+    return !!oldSource;
+  }
+
   window.requestChatReply=async function(){
     hideOldMemoryLeaks();
 
@@ -11939,6 +12002,17 @@ document.addEventListener("DOMContentLoaded",()=>{installRow();importAntiRecon()
       }
 
       reply=stripMemoryLeak(reply);
+
+      if(staleActionInReply(reply,latestUserPlainText())){
+        reply=await window.sendChatCompletion([
+          ...messages,
+          {
+            role:"system",
+            content:"你刚才把一条很久以前的动作当成了现在正在发生，时间线错了。请完全重写，只回应用户最新一轮消息。旧的洗澡、吃饭、睡觉、到家、上课等事情若已超过一小时或跨日，一律视为已经结束；不得再问是否洗完、吃完、睡醒或到家。只输出角色真正会发的自然私聊。"
+          }
+        ]);
+        reply=stripMemoryLeak(reply);
+      }
 
       if(!reply){
         reply=await window.sendChatCompletion([
@@ -40581,6 +40655,13 @@ ${continuation?`【本轮是爱心续聊】
       .replace(/^```(?:text|markdown|json)?\s*/i,"")
       .replace(/```$/g,"")
       .replace(/^(?:角色|回复|assistant|助手)\s*[:：]\s*/i,"");
+
+    // 模型有时会把反斜杠当作“分消息符”。它属于内部格式，不能显示在气泡里。
+    // 内部斜杠拆成换行；行尾斜杠会被一并清掉。
+    text=text
+      .replace(/\\n/g,"\n")
+      .replace(/\s*[\\／﹨]+\s*/g,"\n")
+      .replace(/\n{3,}/g,"\n\n");
 
     // Normalize valid or almost-valid sticker commands first.
     text=text.replace(/(?:\[\[|［［)\s*STICKER\s*[:：]\s*([^\]］\n]{1,100})\s*(?:\]\]|］］)?/gi,(all,name)=>{
