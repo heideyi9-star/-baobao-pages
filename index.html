@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=397">
+<link rel="manifest" href="./baobao-manifest.json?v=412">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=397",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=412",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -39,8 +39,10 @@
 <meta name="theme-color" content="#f7f7f7">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>豹豹机4.9 · 395 第二页完整对话壁纸版</title>
+<title>豹豹机4.9 · 412 账号隔离发图修复版</title>
 
 
 
@@ -493,7 +495,7 @@ html body #desktop .dock{
 }
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=410-time-aware"></script>
+<script defer src="./app.js?v=412-account-isolation-photo-pwa"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -1283,6 +1285,13 @@ html body #desktop .dock>.dock-icon::after{
 #chatRoom{display:none}
 </style>
 
+
+<style id="bb-pwa-swipe-guard-v412">
+html,body{overscroll-behavior-x:none!important;-webkit-overflow-scrolling:touch;}
+html.bb-standalone-v412,html.bb-standalone-v412 body{width:100%!important;max-width:100vw!important;overflow:hidden!important;background:#000!important;}
+html.bb-standalone-v412 .phone,html.bb-standalone-v412 .screen,html.bb-standalone-v412 #desktop{max-width:100vw!important;overflow-x:hidden!important;overscroll-behavior-x:none!important;}
+html.bb-standalone-v412 #desktop,html.bb-standalone-v412 #desktop .pages-viewport,html.bb-standalone-v412 #desktop .pages-container{touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;}
+</style>
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
@@ -3259,6 +3268,66 @@ API Key<br>
 })();
 </script>
 
+<style id="bugfix-page2-widgets-baseline-v411">
+/* ===================================================================
+   修复：第二页底部的两个小组件（资料卡"new here" / 歌曲卡"our song"）
+   的全部尺寸/定位样式，此前只写在 "#desktop.page-two-mode ..." 这个
+   前缀选择器下面——但这两个组件的 DOM 其实一直存在（不管当前在第几页），
+   一旦 page-two-mode 这个 class 因为任何原因（加载时机、页面切换过程中
+   的瞬间状态等）没有及时挂上，这些组件就会完全没有样式：卡片里的图片用
+   原始像素尺寸（1015×830）撑开，导致卡片高度暴涨到 900 多像素，被父容器
+   overflow:hidden 从中间硬生生切开，就是你截图里看到的"压扁的两条"。
+   这里补一版不依赖 page-two-mode 前缀的兜底样式，保证不管什么状态下，
+   这两个组件都不会失控地撑开高度。真正激活时（page-two-mode 存在），
+   原有那份 !important 的样式选择器优先级更高，会继续生效，不受影响。 ---- */
+.p2-bottom-widgets{
+  position:absolute;
+  left:14px;right:14px;
+  top:398px;
+  height:354px;
+  display:flex;
+  align-items:flex-start;
+  overflow:hidden;
+  box-sizing:border-box;
+}
+.p2-mini-profile-card,
+.p2-mini-song-card{
+  position:relative;
+  overflow:hidden;
+  height:auto;
+  box-sizing:border-box;
+}
+.p2-mini-profile-card{width:54%;aspect-ratio:1015/830}
+.p2-mini-song-card{width:43%;aspect-ratio:830/930}
+.p2-mini-frame{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:fill;
+  display:block;
+}
+</style>
+<script>
+/* 修复：.pages-viewport / .pages-container 的 overflow 属性被多个历史补丁
+   反复用 !important 设置成互相矛盾的 visible / hidden，最终生效哪一个
+   取决于这些 <style> 标签被插入 DOM 的先后顺序，属于不稳定的竞态问题。
+   这里在所有脚本执行完毕后，再追加一条样式，确保 overflow:hidden 一定
+   是最后生效的规则，避免任何超尺寸的内容意外露到可见区域之外。 */
+(function(){
+  function applyFinalOverflowFix(){
+    var s = document.createElement('style');
+    s.id = 'bugfix-pages-overflow-final-v411';
+    s.textContent = '.pages-viewport,.pages-container{overflow:hidden!important}';
+    document.head.appendChild(s);
+  }
+  if(document.readyState === 'complete'){
+    applyFinalOverflowFix();
+  }else{
+    window.addEventListener('load', applyFinalOverflowFix);
+  }
+})();
+</script>
 </body>
 </html>
 

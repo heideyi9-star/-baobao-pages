@@ -44551,3 +44551,338 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else setTimeout(init,0);
   console.log("豹豹机 408：小号 / NPC / 好友申请 / 暧昧质问社交剧情已启用");
 })();
+
+
+/* ===================================================================
+   豹豹机 412：账号隔离 / NPC 承诺发图 / 主屏幕防跳网页版
+   1. AI 回复与生图锁定“发起回复时的聊天”，切换账号后不会串号。
+   2. 角色已经答应拍照、用户回复“可以/好/发吧”时，真正调用生图接口。
+   3. 匿名小号只能使用小号当前会话立场，不得把大号恋爱身份和质问语气带进来。
+   4. iOS 主屏幕横向翻页时拦截浏览器前进/后退手势与滑动后的误点击。
+=================================================================== */
+(function(){
+  "use strict";
+  if(window.__bbAccountPhotoPwaFixV412)return;
+  window.__bbAccountPhotoPwaFixV412=true;
+
+  const clean=value=>String(value==null?"":value).trim();
+  const now=()=>Date.now();
+  const $=id=>document.getElementById(id);
+
+  function appState(){
+    try{return window.state||state||{}}catch(_){return window.state||{}}
+  }
+  function personas(){
+    const s=appState();
+    if(!Array.isArray(s.personas))s.personas=[];
+    return s.personas;
+  }
+  function personaById(id){
+    return personas().find(person=>person&&String(person.id||"")===String(id||""))||null;
+  }
+  function activeChatId(){
+    const s=appState();
+    return String(s.activeChatId||(window.currentChatPersona&&window.currentChatPersona.id)||"");
+  }
+  function ensureRecords(){
+    const s=appState();
+    if(!s.chatRecords||typeof s.chatRecords!=="object"||Array.isArray(s.chatRecords))s.chatRecords={};
+    return s.chatRecords;
+  }
+  function recordFor(chatId){
+    const s=appState();
+    const records=ensureRecords();
+    const id=String(chatId||"");
+    if(!Array.isArray(records[id])){
+      records[id]=(String(s.activeChatId||"")===id&&Array.isArray(s.chatMessages))?s.chatMessages:[];
+    }
+    return records[id];
+  }
+  function saveState(){
+    try{if(typeof window.saveLocal==="function")window.saveLocal();else if(typeof saveLocal==="function")saveLocal()}catch(error){console.warn("412 保存失败",error)}
+  }
+  function renderFor(chatId){
+    const s=appState();
+    const id=String(chatId||"");
+    if(String(s.activeChatId||"")===id){
+      s.chatMessages=recordFor(id);
+      try{if(typeof window.renderChatMessages==="function")window.renderChatMessages();else if(typeof renderChatMessages==="function")renderChatMessages()}catch(_){ }
+    }
+    try{if(typeof window.renderChatList==="function")window.renderChatList();else if(typeof renderChatList==="function")renderChatList()}catch(_){ }
+    try{if(typeof window.renderWeChatApp==="function")window.renderWeChatApp()}catch(_){ }
+  }
+  function appendToChat(chatId,message){
+    const id=String(chatId||"");
+    if(!id)return null;
+    const record=recordFor(id);
+    record.push(message);
+    saveState();
+    renderFor(id);
+    return message;
+  }
+  function setTypingFor(chatId,active){
+    if(String(activeChatId())!==String(chatId||""))return;
+    try{if(typeof window.bbTypingBubbleV292==="function")window.bbTypingBubbleV292(!!active)}catch(_){ }
+    try{if(typeof window.bbSetNaturalTypingV250==="function")window.bbSetNaturalTypingV250(!!active)}catch(_){ }
+  }
+  function toast(message,isError){
+    try{if(typeof window.showToast==="function")window.showToast(message,!!isError);else if(typeof showToast==="function")showToast(message,!!isError)}catch(_){ }
+  }
+
+  /* ---------- 小号 / 大号身份硬隔离 ---------- */
+  const ALT_ISOLATION_BLOCK=`【小号账号隔离硬规则 412】
+你现在发送的每一条消息都属于这个匿名小号，不属于大号聊天窗口。
+即使你和大号是同一个人，也只能使用“这个小号当前会话里已经发生的内容”来回应。
+禁止继承大号在恋爱关系中的身份、称呼、占有立场或争吵进度；禁止以正牌对象口吻质问“你跟别人说那些话时想过我吗”；禁止把大号聊天里看到的内容伪装成小号亲历。
+共享事实只用于保持同一个人的生活经历和细小习惯，不等于共享聊天身份。没有在小号会话里铺垫出的事情，不能突然拿来追问用户。
+若吃醋或试探，只能以陌生账号能合理拥有的信息和当前小号关系程度表达，不能替大号发言。`;
+
+  function patchAltPersonas(){
+    let changed=false;
+    personas().forEach(person=>{
+      if(!person||!person.socialMeta||person.socialMeta.type!=="alt"||person.bbAltIsolationV412)return;
+      person.persona=clean(person.persona)+"\n\n"+ALT_ISOLATION_BLOCK;
+      person.personality=clean(person.personality)+"\n匿名账号发言必须与大号窗口严格分开，只承认本账号内发生过的聊天。";
+      person.brief=clean(person.brief)+"\n账号隔离：共享人物事实，不共享对话身份与当前立场。";
+      person.bbAltIsolationV412=true;
+      changed=true;
+    });
+    if(changed)saveState();
+  }
+  function patchSocialContext(){
+    const api=window.BaobaoSocialStory;
+    if(!api||typeof api.contextForPersona!=="function"||api.contextForPersona.__bbAltIsolationV412)return;
+    const original=api.contextForPersona;
+    const wrapped=function(person,history){
+      const base=clean(original.call(this,person,history));
+      if(person&&person.socialMeta&&person.socialMeta.type==="alt")return [base,ALT_ISOLATION_BLOCK].filter(Boolean).join("\n\n");
+      return base;
+    };
+    wrapped.__bbAltIsolationV412=true;
+    wrapped.__bbPrevious=original;
+    api.contextForPersona=wrapped;
+  }
+
+  /* ---------- 把异步回复锁回发起时的聊天 ---------- */
+  function messageKey(message){
+    if(!message)return "";
+    return clean(message.id)||[message.role,message.type,message.time,message.content].map(clean).join("|");
+  }
+  function snapshotMessages(){
+    const refs=new Set(),keys=new Set();
+    const s=appState();
+    const arrays=[];
+    Object.values(ensureRecords()).forEach(list=>{if(Array.isArray(list))arrays.push(list)});
+    if(Array.isArray(s.chatMessages))arrays.push(s.chatMessages);
+    arrays.forEach(list=>list.forEach(message=>{if(!message)return;refs.add(message);const key=messageKey(message);if(key)keys.add(key)}));
+    return {refs,keys};
+  }
+  function isReplyCandidate(message,snapshot,startAt){
+    if(!message||message.role!=="assistant")return false;
+    if(snapshot.refs.has(message))return false;
+    const key=messageKey(message);if(key&&snapshot.keys.has(key))return false;
+    const time=Number(message.time||message.createdAt||0);
+    if(time&&time<startAt-1500)return false;
+    if(message.socialStory||message.socialConflictId||message.backgroundJobId||message.intrusionReply||message.hiddenSystem||message.systemEvent)return false;
+    return true;
+  }
+  function repairReplyRoute(originId,snapshot,startAt){
+    const s=appState();
+    const records=ensureRecords();
+    const origin=recordFor(originId);
+    let moved=0;
+    const seenArrays=new Set();
+    const entries=Object.entries(records);
+    if(Array.isArray(s.chatMessages))entries.push([String(s.activeChatId||"__active__"),s.chatMessages]);
+    entries.forEach(([chatId,list])=>{
+      if(!Array.isArray(list)||seenArrays.has(list)||String(chatId)===String(originId))return;
+      seenArrays.add(list);
+      const keep=[];
+      list.forEach(message=>{
+        if(isReplyCandidate(message,snapshot,startAt)){
+          if(!origin.includes(message)&&!origin.some(item=>messageKey(item)&&messageKey(item)===messageKey(message)))origin.push(message);
+          moved++;
+        }else keep.push(message);
+      });
+      if(keep.length!==list.length){list.splice(0,list.length,...keep)}
+    });
+    if(moved){
+      records[String(originId)]=origin;
+      saveState();
+      renderFor(originId);
+      console.warn("豹豹机 412：已阻止异步回复串号，移回",originId,moved,"条");
+    }
+    return moved;
+  }
+
+  /* ---------- 角色承诺拍照 + 用户同意后真正生图 ---------- */
+  const DIRECT_PHOTO_RE=/(?:给我|发我|让我|想看|看看|来一张|来张|拍一张|拍张|发一张|发张|传一张|传张).{0,16}(?:照片|自拍|相片|图片|你现在的样子|你长什么样)|(?:照片|自拍|相片).{0,16}(?:发我|给我|来一张|来张|拍一张|拍张)|(?:让我看看你|想看看你|给我看看你|看看你现在)/i;
+  const PHOTO_PROMISE_RE=/(?:等会|等一下|一会|待会|马上|现在).{0,12}(?:拍|发).{0,8}(?:照片|自拍|给你看)?|(?:我去|我先|我得|让我).{0,10}(?:整理|弄|洗|换).{0,10}(?:头发|衣服|一下).{0,18}(?:拍|发|给你看)|(?:拍丑了|拍好看点|给你拍|拍给你|发给你|给你看|自拍给你|拍一张给你)/i;
+  const APPROVAL_RE=/^(?:可以|好|好啊|行|行啊|嗯|嗯嗯|拍吧|发吧|给我看|来吧|那你拍|快拍|快发|等你|ok|okay|好呀|可以啊)[。.!！~～…]*$/i;
+  const NEGATIVE_PHOTO_RE=/(?:不要|别|不用|不想).{0,8}(?:拍|发|照片|自拍|图片)/i;
+
+  function visibleMessages(chatId){return recordFor(chatId).filter(message=>message&&!message.hiddenSystem&&!message.recalled)}
+  function textOf(message){
+    if(!message)return "";
+    if(clean(message.type).toLowerCase()!=="text"&&message.type)return "";
+    return clean(message.content||message.text);
+  }
+  function pendingPhotoRequest(chatId){
+    const list=visibleMessages(chatId);
+    let userIndex=-1;
+    for(let index=list.length-1;index>=0;index--){if(list[index]&&list[index].role==="user"){userIndex=index;break}}
+    if(userIndex<0)return null;
+    const user=list[userIndex],userText=textOf(user);
+    if(!userText||user.bbPhotoHandledV412||NEGATIVE_PHOTO_RE.test(userText))return null;
+    if(DIRECT_PHOTO_RE.test(userText))return {message:user,request:userText,reason:"direct"};
+    if(!APPROVAL_RE.test(userText))return null;
+    let promise="",promiseAt=0;
+    for(let index=Math.max(0,userIndex-8);index<Math.min(list.length,userIndex+4);index++){
+      const message=list[index];
+      if(!message||message.role!=="assistant")continue;
+      const text=textOf(message);
+      if(PHOTO_PROMISE_RE.test(text)){promise=text;promiseAt=Number(message.time||0)}
+    }
+    if(!promise)return null;
+    if(promiseAt&&now()-promiseAt>30*60*1000)return null;
+    const alreadySent=list.slice(userIndex+1).some(message=>message&&message.role==="assistant"&&message.type==="image");
+    if(alreadySent)return null;
+    return {message:user,request:`角色刚才承诺：${promise}\n用户现在同意：${userText}`,reason:"promise",promise};
+  }
+  function personaVisual(person){
+    if(!person)return "";
+    return [
+      clean(person.name)&&`角色名：${clean(person.name)}`,
+      clean(person.persona)&&`完整人设与外貌：${clean(person.persona).slice(0,3200)}`,
+      clean(person.personality)&&`气质：${clean(person.personality).slice(0,1200)}`,
+      clean(person.brief)&&`补充：${clean(person.brief).slice(0,900)}`,
+      Array.isArray(person.tags)&&person.tags.length?`标签：${person.tags.join("、")}`:""
+    ].filter(Boolean).join("\n");
+  }
+  function socialPhotoRule(person){
+    const meta=person&&person.socialMeta;
+    if(!meta)return "";
+    if(meta.type==="alt")return "这是匿名小号本人发出的照片。保持与大号是同一个人的外貌，但为了不立刻暴露身份，优先用侧脸、头发遮挡、手机轻微遮脸或自然模糊的镜自拍；不能变成完全不同的人。";
+    return "这是独立 NPC 本人刚刚拍的照片。保持与此 NPC 的职业、气质和社交账号一致，不要生成主角大号。";
+  }
+  async function compressImageSource(source){
+    if(!/^data:image\//i.test(clean(source)))return source;
+    return new Promise(resolve=>{
+      const image=new Image();
+      image.onload=()=>{
+        try{
+          const max=1280,scale=Math.min(1,max/Math.max(image.naturalWidth||image.width||1,image.naturalHeight||image.height||1));
+          const width=Math.max(1,Math.round((image.naturalWidth||image.width||1)*scale));
+          const height=Math.max(1,Math.round((image.naturalHeight||image.height||1)*scale));
+          const canvas=document.createElement("canvas");canvas.width=width;canvas.height=height;
+          const context=canvas.getContext("2d",{alpha:false});context.fillStyle="#fff";context.fillRect(0,0,width,height);context.drawImage(image,0,0,width,height);
+          resolve(canvas.toDataURL("image/jpeg",.82));
+        }catch(_){resolve(source)}
+      };
+      image.onerror=()=>resolve(source);image.src=source;
+    });
+  }
+  async function generatePromisedPhoto(chatId,request){
+    const person=personaById(chatId)||window.currentChatPersona||{};
+    const generator=(window.BaobaoImageGenerationV311&&window.BaobaoImageGenerationV311.generate)||(window.BaobaoImageGenerationV308&&window.BaobaoImageGenerationV308.generate);
+    if(typeof generator!=="function"){toast("生图功能还没加载好",true);return true}
+    request.message.bbPhotoHandledV412=true;
+    saveState();
+    setTypingFor(chatId,true);
+    try{
+      const prompt=[
+        "生成一张角色本人刚刚用 iPhone 拍下并发到私人聊天里的真实照片。",
+        personaVisual(person)||"没有明确外貌时，生成一位自然、好看、有真实网感且前后一致的人物，不要使用紫色默认头像造型。",
+        socialPhotoRule(person),
+        `本轮要求：${request.request}`,
+        "结合刚才‘整理头发再拍’的语境，优先生成整理好头发后的自然自拍或镜自拍。画面像刚拍完直接发来，不要棚拍，不要聊天界面、文字、水印或边框。人物高颜值但真实自然，五官稳定，手指正常，避免油腻、土气、脸崩和过度磨皮。"
+      ].filter(Boolean).join("\n\n");
+      const outputs=await generator(prompt,{size:"1024x1024"});
+      const first=Array.isArray(outputs)?outputs[0]:outputs;
+      if(!first)throw new Error("接口没有返回图片");
+      const source=await compressImageSource(first);
+      appendToChat(chatId,{
+        id:"bb412_photo_"+now()+"_"+Math.random().toString(36).slice(2,7),role:"assistant",type:"image",content:source,
+        generated:true,generatedPrompt:prompt,autoPhotoV412:true,targetChatIdV412:String(chatId),time:now(),delivery:"received"
+      });
+      try{if(typeof window.baobaoNotifyIncomingReply==="function")window.baobaoNotifyIncomingReply("[照片]")}catch(_){ }
+      return true;
+    }catch(error){
+      request.message.bbPhotoHandledV412=false;
+      saveState();
+      toast("照片生成失败："+clean(error&&error.message||error),true);
+      return true;
+    }finally{setTypingFor(chatId,false)}
+  }
+
+  function installReplyGuard(){
+    const current=window.triggerAIReply;
+    if(typeof current!=="function"||current.__bbRoutePhotoV412)return;
+    const wrapped=async function(){
+      const depth=Number(window.__bbRoutePhotoDepthV412||0);
+      window.__bbRoutePhotoDepthV412=depth+1;
+      const outer=depth===0;
+      if(!outer){
+        try{return await current.apply(this,arguments)}finally{window.__bbRoutePhotoDepthV412=Math.max(0,Number(window.__bbRoutePhotoDepthV412||1)-1)}
+      }
+      const originId=activeChatId();
+      const originPerson=personaById(originId)||window.currentChatPersona||null;
+      const snapshot=snapshotMessages();
+      const startAt=now();
+      window.__bbReplyOriginV412={chatId:originId,personaId:originPerson&&originPerson.id,startAt};
+      try{
+        const photo=pendingPhotoRequest(originId);
+        if(photo)return await generatePromisedPhoto(originId,photo);
+        return await current.apply(this,arguments);
+      }finally{
+        [0,180,650,1600,4200].forEach(delay=>setTimeout(()=>repairReplyRoute(originId,snapshot,startAt),delay));
+        window.__bbRoutePhotoDepthV412=Math.max(0,Number(window.__bbRoutePhotoDepthV412||1)-1);
+      }
+    };
+    wrapped.__bbRoutePhotoV412=true;
+    wrapped.__bbPrevious=current;
+    window.triggerAIReply=wrapped;
+    try{triggerAIReply=wrapped}catch(_){ }
+  }
+
+  /* ---------- iOS 主屏幕翻页不再滑进网页 ---------- */
+  function isStandalone(){
+    return !!(window.matchMedia&&window.matchMedia("(display-mode: standalone)").matches)||navigator.standalone===true;
+  }
+  function installPwaSwipeGuard(){
+    if(window.__bbPwaSwipeGuardInstalledV412)return;
+    window.__bbPwaSwipeGuardInstalledV412=true;
+    if(isStandalone())document.documentElement.classList.add("bb-standalone-v412");
+    let startX=0,startY=0,tracking=false,horizontal=false,swipeUntil=0;
+    document.addEventListener("touchstart",event=>{
+      const touch=event.touches&&event.touches[0];
+      const target=event.target&&event.target.closest?event.target.closest("#desktop"):null;
+      const editable=event.target&&event.target.closest?event.target.closest("input,textarea,select,[contenteditable='true']"):null;
+      tracking=!!(touch&&target&&!editable);horizontal=false;
+      if(tracking){startX=touch.clientX;startY=touch.clientY}
+    },{capture:true,passive:true});
+    document.addEventListener("touchmove",event=>{
+      if(!tracking)return;
+      const touch=event.touches&&event.touches[0];if(!touch)return;
+      const dx=touch.clientX-startX,dy=touch.clientY-startY;
+      if(!horizontal&&Math.abs(dx)>2&&Math.abs(dx)>Math.abs(dy)*.75)horizontal=true;
+      if(horizontal){event.preventDefault();swipeUntil=now()+650}
+    },{capture:true,passive:false});
+    const finish=()=>{if(horizontal)swipeUntil=now()+650;tracking=false;horizontal=false};
+    document.addEventListener("touchend",finish,{capture:true,passive:true});
+    document.addEventListener("touchcancel",finish,{capture:true,passive:true});
+    document.addEventListener("click",event=>{
+      if(now()>swipeUntil)return;
+      event.preventDefault();event.stopPropagation();if(typeof event.stopImmediatePropagation==="function")event.stopImmediatePropagation();
+    },true);
+    document.addEventListener("dragstart",event=>{if(event.target&&event.target.closest&&event.target.closest("#desktop"))event.preventDefault()},true);
+  }
+
+  function boot(){
+    patchAltPersonas();patchSocialContext();installReplyGuard();installPwaSwipeGuard();
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+  [120,400,900,1800,3500,7000].forEach(delay=>setTimeout(boot,delay));
+  console.log("豹豹机 412：账号隔离、承诺发图与主屏幕翻页防跳转已启用");
+})();
