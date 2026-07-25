@@ -1292,6 +1292,34 @@ html.bb-standalone-v412,html.bb-standalone-v412 body{width:100%!important;max-wi
 html.bb-standalone-v412 .phone,html.bb-standalone-v412 .screen,html.bb-standalone-v412 #desktop{max-width:100vw!important;overflow-x:hidden!important;overscroll-behavior-x:none!important;}
 html.bb-standalone-v412 #desktop,html.bb-standalone-v412 #desktop .pages-viewport,html.bb-standalone-v412 #desktop .pages-container{touch-action:none!important;-webkit-user-select:none!important;user-select:none!important;}
 </style>
+
+<style id="bb-page2-bottom-widgets-visible-final-v412">
+/* 第二页底部两个组件完整显示：覆盖旧的 overflow:hidden 裁切规则 */
+html body #desktop.page-two-mode .desk-scroll{
+  overflow:visible!important;
+}
+html body #desktop.page-two-mode .pages-viewport,
+html body #desktop.page-two-mode .pages-container,
+html body #desktop.page-two-mode .apps-page.page2-only{
+  overflow:visible!important;
+}
+html body #desktop.page-two-mode .p2-bottom-widgets{
+  z-index:500!important;
+  overflow:visible!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-card,
+html body #desktop.page-two-mode .p2-mini-song-card{
+  z-index:501!important;
+  overflow:visible!important;
+  opacity:1!important;
+  visibility:visible!important;
+}
+html body #desktop.page-two-mode .dock{
+  z-index:700!important;
+}
+</style>
 </head>
 <body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
