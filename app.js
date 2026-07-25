@@ -45136,3 +45136,287 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
   if(window.visualViewport)window.visualViewport.addEventListener("resize",apply,{passive:true});
   [120,500,1200,2600].forEach(delay=>setTimeout(boot,delay));
 })();
+
+/* ===== 豹豹机：iPhone 稳定导出 / IndexedDB 完整备份修复 ===== */
+(function(){
+  "use strict";
+  if(window.__bbRobustBackupExportV3)return;
+  window.__bbRobustBackupExportV3=true;
+
+  const LARGE_DB="baobao_edge_large_store_v2";
+  const LARGE_STORE="kv";
+  const LARGE_STATE_KEY="full_state";
+  const CHAT_DB="baobao_chat_history_v405";
+  const CHAT_STORE="snapshots";
+  const CHAT_KEY="chat_records";
+  let pendingImportMode="replace";
+
+  function toast(message,isError){
+    try{
+      if(typeof window.showToast==="function")window.showToast(message,!!isError);
+      else if(isError)alert(message);
+    }catch(_){ }
+  }
+
+  function safeClone(value){
+    try{if(typeof structuredClone==="function")return structuredClone(value);}catch(_){ }
+    const seen=new WeakSet();
+    try{
+      return JSON.parse(JSON.stringify(value,function(key,item){
+        if(typeof item==="bigint")return String(item);
+        if(typeof item==="function"||typeof item==="undefined")return undefined;
+        if(item&&typeof item==="object"){
+          if(seen.has(item))return undefined;
+          seen.add(item);
+        }
+        return item;
+      }));
+    }catch(_){return null;}
+  }
+
+  function currentChatRecords(){
+    try{
+      if(window.BaobaoChatStoreV405&&typeof window.BaobaoChatStoreV405.exportRecords==="function"){
+        return safeClone(window.BaobaoChatStoreV405.exportRecords())||{};
+      }
+    }catch(_){ }
+    const s=window.state||{};
+    return safeClone(s.chatRecords)||{};
+  }
+
+  function buildFullState(){
+    const full=safeClone(window.state||{})||{};
+    full.chatRecords=currentChatRecords();
+    full.chatMessages=[];
+    full.__backupCreatedAt=Date.now();
+    return full;
+  }
+
+  function buildStorage(full){
+    const storage={};
+    try{
+      for(let i=0;i<localStorage.length;i++){
+        const key=localStorage.key(i);
+        if(key==null)continue;
+        storage[key]=localStorage.getItem(key);
+      }
+    }catch(_){ }
+    /* 保留旧备份兼容入口，但只放轻量标记；完整内容放 fullState，避免重复一份导致文件暴涨。 */
+    try{
+      const light={...full,chatRecords:{},chatMessages:[],__largeStore:true,__backupHasFullState:true};
+      ["wallpaper","lockWallpaper","coverImage","avatar","charAvatar","page1PolaroidPhoto","page1PolaroidBackPhoto","page2ProfileAvatar","page2MiniProfileAvatar","page2MiniSongPhoto"].forEach(key=>{
+        if(typeof light[key]==="string"&&light[key].startsWith("data:image/"))light[key]="";
+      });
+      if(light.chatBackground&&light.chatBackground.type==="image")light.chatBackground={type:"default",value:""};
+      storage.baobao_state=JSON.stringify(light);
+    }catch(_){ }
+    return storage;
+  }
+
+  function makeBackup(){
+    const fullState=buildFullState();
+    return {
+      app:"豹豹机",
+      format:"baobao-backup",
+      version:"3.0",
+      exportedAt:new Date().toISOString(),
+      storage:buildStorage(fullState),
+      fullState,
+      chatHistory:{
+        version:405,
+        updatedAt:Date.now(),
+        activeChatId:fullState.activeChatId||null,
+        chatOrder:Array.isArray(fullState.chatOrder)?fullState.chatOrder.slice():[],
+        chatRecords:fullState.chatRecords||{}
+      }
+    };
+  }
+
+  function fileName(){
+    const d=new Date(),pad=n=>String(n).padStart(2,"0");
+    return `豹豹机完整备份-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+  }
+
+  function browserDownload(blob,name){
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=name;
+    a.rel="noopener";
+    a.style.display="none";
+    document.body.appendChild(a);
+    try{
+      a.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
+    }catch(_){a.click();}
+    setTimeout(()=>{try{a.remove();URL.revokeObjectURL(url);}catch(_){ }},5000);
+    toast("备份文件已生成");
+  }
+
+  async function robustExport(){
+    try{
+      toast("正在整理完整备份…");
+      try{window.BaobaoLargeStoreV2&&window.BaobaoLargeStoreV2.save&&window.BaobaoLargeStoreV2.save();}catch(_){ }
+      try{window.BaobaoChatStoreV405&&window.BaobaoChatStoreV405.schedule&&window.BaobaoChatStoreV405.schedule(true);}catch(_){ }
+
+      const backup=makeBackup();
+      const json=JSON.stringify(backup,null,2);
+      if(!json||json.length<20)throw new Error("没有生成有效备份内容");
+      const name=fileName();
+      const blob=new Blob([json],{type:"application/json;charset=utf-8"});
+      const file=typeof File==="function"?new File([blob],name,{type:blob.type,lastModified:Date.now()}):null;
+
+      /* iPhone Safari / 主屏幕模式优先用系统分享面板，可直接选择“存储到文件”。 */
+      if(file&&navigator.share&&navigator.canShare){
+        let can=false;
+        try{can=navigator.canShare({files:[file]});}catch(_){can=false;}
+        if(can){
+          try{
+            await navigator.share({files:[file],title:"豹豹机完整备份"});
+            toast("备份已交给系统保存");
+            return true;
+          }catch(error){
+            if(error&&error.name==="AbortError")return false;
+            /* 分享组件异常时自动退回浏览器下载。 */
+          }
+        }
+      }
+      browserDownload(blob,name);
+      return true;
+    }catch(error){
+      console.error("豹豹机导出失败",error);
+      toast("导出失败："+(error&&error.message?error.message:"未知错误"),true);
+      return false;
+    }
+  }
+
+  function openDatabase(name,version,onUpgrade){
+    return new Promise(resolve=>{
+      if(!window.indexedDB){resolve(null);return;}
+      try{
+        const request=indexedDB.open(name,version);
+        request.onupgradeneeded=()=>{try{onUpgrade&&onUpgrade(request.result);}catch(_){ }};
+        request.onsuccess=()=>resolve(request.result);
+        request.onerror=()=>resolve(null);
+      }catch(_){resolve(null);}
+    });
+  }
+
+  async function putLargeState(fullState){
+    try{
+      if(window.BaobaoLargeStoreV2&&typeof window.BaobaoLargeStoreV2.put==="function"){
+        return await window.BaobaoLargeStoreV2.put(LARGE_STATE_KEY,fullState);
+      }
+    }catch(_){ }
+    const db=await openDatabase(LARGE_DB,1,db=>{
+      if(!db.objectStoreNames.contains(LARGE_STORE))db.createObjectStore(LARGE_STORE);
+    });
+    if(!db)return false;
+    return new Promise(resolve=>{
+      try{
+        const tx=db.transaction(LARGE_STORE,"readwrite");
+        tx.objectStore(LARGE_STORE).put(fullState,LARGE_STATE_KEY);
+        tx.oncomplete=()=>resolve(true);tx.onerror=tx.onabort=()=>resolve(false);
+      }catch(_){resolve(false);}
+    });
+  }
+
+  async function putChatHistory(fullState,backupHistory){
+    const records=safeClone((backupHistory&&backupHistory.chatRecords)||fullState.chatRecords)||{};
+    const snapshot={
+      version:405,
+      updatedAt:Date.now(),
+      activeChatId:fullState.activeChatId||(backupHistory&&backupHistory.activeChatId)||null,
+      chatOrder:Array.isArray(fullState.chatOrder)?fullState.chatOrder.slice():[],
+      chatRecords:records
+    };
+    const db=await openDatabase(CHAT_DB,1,db=>{
+      if(!db.objectStoreNames.contains(CHAT_STORE))db.createObjectStore(CHAT_STORE);
+    });
+    if(!db)return false;
+    return new Promise(resolve=>{
+      try{
+        const tx=db.transaction(CHAT_STORE,"readwrite");
+        tx.objectStore(CHAT_STORE).put(snapshot,CHAT_KEY);
+        tx.oncomplete=()=>resolve(true);tx.onerror=tx.onabort=()=>resolve(false);
+      }catch(_){resolve(false);}
+    });
+  }
+
+  function makeLightState(full){
+    const light={...full,chatRecords:{},chatMessages:[],__largeStore:true,__largeStoreAt:Date.now()};
+    ["wallpaper","lockWallpaper","coverImage","avatar","charAvatar","page1PolaroidPhoto","page1PolaroidBackPhoto","page2ProfileAvatar","page2MiniProfileAvatar","page2MiniSongPhoto"].forEach(key=>{
+      if(typeof light[key]==="string"&&light[key].startsWith("data:image/"))light[key]="";
+    });
+    if(light.chatBackground&&light.chatBackground.type==="image")light.chatBackground={type:"default",value:""};
+    return light;
+  }
+
+  async function robustImport(file,mode){
+    try{
+      if(!file)return;
+      const raw=JSON.parse(await file.text());
+      const storage=raw&&raw.storage&&typeof raw.storage==="object"?raw.storage:raw;
+      if(!storage||typeof storage!=="object")throw new Error("备份文件格式不正确");
+      let fullState=raw.fullState||null;
+      if(!fullState&&storage.baobao_state){
+        try{fullState=JSON.parse(storage.baobao_state);}catch(_){ }
+      }
+      if(!fullState||typeof fullState!=="object")throw new Error("备份中没有完整状态");
+      if(!confirm(`确定${mode==="merge"?"合并":"覆盖"}导入这个豹豹机备份吗？`))return;
+
+      if(mode!=="merge")localStorage.clear();
+      let skipped=0;
+      Object.entries(storage).forEach(([key,value])=>{
+        if(key==="baobao_state")return;
+        try{localStorage.setItem(key,String(value));}catch(_){skipped++;}
+      });
+
+      await putLargeState(fullState);
+      await putChatHistory(fullState,raw.chatHistory);
+      try{localStorage.setItem("baobao_state",JSON.stringify(makeLightState(fullState)));}catch(_){ }
+      try{sessionStorage.setItem("bb_force_seed_chat_v405","0");}catch(_){ }
+      alert("导入成功"+(skipped?`，${skipped} 项旧缓存因容量过大未写入，但完整状态和聊天已恢复。`:"，页面将刷新。"));
+      location.reload();
+    }catch(error){
+      console.error("豹豹机导入失败",error);
+      alert("导入失败："+(error&&error.message?error.message:"未知错误"));
+    }
+  }
+
+  /* 覆盖所有旧入口。 */
+  window.exportBaobaoData=robustExport;
+  window.baobaoRobustExport=robustExport;
+  if(window.BaobaoDataBackup)window.BaobaoDataBackup.exportAll=robustExport;
+
+  document.addEventListener("click",event=>{
+    const target=event.target&&event.target.closest?event.target.closest("button,[role='button'],a"):null;
+    if(!target)return;
+    if(target.id==="bbImportMerge")pendingImportMode="merge";
+    if(target.id==="bbImportReplace")pendingImportMode="replace";
+    const inline=String(target.getAttribute("onclick")||"");
+    if(target.id==="bbExportAll"||target.id==="exportData"||/exportBaobaoData\s*\(/.test(inline)){
+      event.preventDefault();
+      event.stopPropagation();
+      if(typeof event.stopImmediatePropagation==="function")event.stopImmediatePropagation();
+      robustExport();
+    }
+  },true);
+
+  document.addEventListener("change",event=>{
+    const input=event.target;
+    if(!(input instanceof HTMLInputElement)||input.type!=="file")return;
+    if(input.id!=="bbImportFile"&&input.id!=="fileInput")return;
+    const file=input.files&&input.files[0];
+    if(!file)return;
+    event.preventDefault();
+    event.stopPropagation();
+    if(typeof event.stopImmediatePropagation==="function")event.stopImmediatePropagation();
+    robustImport(file,input.id==="bbImportFile"?pendingImportMode:"replace");
+  },true);
+
+  /* 数据中心晚创建时继续替换公开方法。 */
+  const refresh=()=>{if(window.BaobaoDataBackup)window.BaobaoDataBackup.exportAll=robustExport;};
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",refresh,{once:true});else refresh();
+  [300,1000,2500].forEach(ms=>setTimeout(refresh,ms));
+  window.BaobaoBackupV3={export:robustExport,import:robustImport,makeBackup};
+})();
