@@ -1612,7 +1612,7 @@ function ensurePage2BottomWidgetsStyle(){
     html body #desktop.page-two-mode .p2-mini-profile-card{
       width:54%!important;
       height:auto!important;
-      aspect-ratio:1015 / 830!important;
+      aspect-ratio:1015 / 906!important;
       margin:0!important;
     }
     html body #desktop.page-two-mode .p2-mini-song-card{
@@ -1646,18 +1646,18 @@ function ensurePage2BottomWidgetsStyle(){
     html body #desktop.page-two-mode .p2-mini-avatar-placeholder,
     html body #desktop.page-two-mode .p2-mini-song-placeholder{width:100%!important;height:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;color:#aaa!important;font-size:28px!important;font-weight:600!important;}
     html body #desktop.page-two-mode .p2-mini-profile-copy{
-      position:absolute!important;left:46%!important;right:7%!important;top:19%!important;height:48%!important;z-index:5!important;
-      display:flex!important;flex-direction:column!important;justify-content:center!important;
-      padding:4px 2px!important;background:rgba(255,255,255,.94)!important;border-radius:10px!important;
+      position:absolute!important;left:46%!important;right:7%!important;top:17%!important;height:52%!important;z-index:5!important;
+      display:flex!important;flex-direction:column!important;justify-content:center!important;gap:1px!important;
+      padding:4px 2px!important;background:rgba(255,255,255,.94)!important;border-radius:10px!important;box-sizing:border-box!important;overflow:hidden!important;
     }
     html body #desktop.page-two-mode .p2-mini-edit{
-      width:100%!important;border:0!important;outline:0!important;background:transparent!important;color:#8f8f8f!important;text-align:left!important;padding:0 4px!important;line-height:1.15!important;
+      display:block!important;flex:0 0 auto!important;width:100%!important;min-width:0!important;min-height:0!important;border:0!important;outline:0!important;background:transparent!important;color:#8f8f8f!important;text-align:left!important;padding:0 4px!important;margin:0!important;box-sizing:border-box!important;
       white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-family:Arial,sans-serif!important;-webkit-appearance:none!important;appearance:none!important;
     }
     html body #desktop.page-two-mode .p2-mini-edit[readonly]{cursor:pointer!important;}
     html body #desktop.page-two-mode .p2-mini-edit.is-editing{background:rgba(255,255,255,.98)!important;box-shadow:0 0 0 1px rgba(0,0,0,.08)!important;border-radius:6px!important;}
-    html body #desktop.page-two-mode .p2-mini-title{font-size:17px!important;font-weight:700!important;color:#111!important;margin-bottom:4px!important;}
-    html body #desktop.page-two-mode .p2-mini-line{font-size:12px!important;font-weight:500!important;margin-top:2px!important;}
+    html body #desktop.page-two-mode .p2-mini-title{height:24px!important;line-height:24px!important;font-size:17px!important;font-weight:700!important;color:#111!important;margin:0 0 1px!important;}
+    html body #desktop.page-two-mode .p2-mini-line{height:17px!important;line-height:17px!important;font-size:12px!important;font-weight:500!important;margin:0!important;}
     html body #desktop.page-two-mode .p2-mini-actions{position:absolute!important;left:7%!important;right:22%!important;bottom:9%!important;height:18%!important;z-index:5!important;display:grid!important;grid-template-columns:1fr 1fr!important;gap:7%!important;}
     html body #desktop.page-two-mode .p2-mini-action-input{
       border:0!important;outline:0!important;border-radius:999px!important;text-align:center!important;font-size:12px!important;font-weight:600!important;color:#777!important;background:rgba(245,245,245,.94)!important;

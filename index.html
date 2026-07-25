@@ -3681,6 +3681,50 @@ body.bb-page2-real-scroll #desktop{
 })();
 </script>
 
+<style id="bb-page2-left-widget-text-fix-v415">
+/* 左侧资料组件与右侧歌曲组件等高，并固定三行文字的独立行盒，防止 iOS 输入框文字互相覆盖。 */
+html body #desktop.page-two-mode .p2-mini-profile-card{
+  width:54%!important;
+  height:auto!important;
+  aspect-ratio:1015 / 906!important;
+  overflow:visible!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy{
+  top:17%!important;
+  height:52%!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  gap:1px!important;
+  padding:4px 2px!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-edit{
+  display:block!important;
+  flex:0 0 auto!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  padding:0 4px!important;
+  margin:0!important;
+  box-sizing:border-box!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-title{
+  height:24px!important;
+  line-height:24px!important;
+  margin:0 0 1px!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-line{
+  height:17px!important;
+  line-height:17px!important;
+  margin:0!important;
+}
+</style>
+
 </body>
 </html>
 
