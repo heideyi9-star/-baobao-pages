@@ -3328,6 +3328,48 @@ API Key<br>
   }
 })();
 </script>
+<script>
+/* 修复：私聊页顶部导航栏和底部输入栏与真实屏幕边缘之间总是留着一截
+   空白（不是安全区，是额外叠加的 padding/margin），这块空白会正好挡住
+   最上面和最下面的消息，看起来像消息被裁掉了。
+   历史补丁里给 #chatRoom 加了好几层 "padding-top: 92px+安全区" 这类
+   叠加值，这里同样在所有脚本执行完之后，追加一条最终生效的样式，
+   让顶部导航栏和底部输入栏真正贴住屏幕边缘（只保留系统安全区，不再有
+   额外空白），中间消息区域精确填满剩下的空间。 */
+(function(){
+  function applyChatEdgeFix(){
+    var s = document.createElement('style');
+    s.id = 'bugfix-chatroom-edge-flush-v411';
+    s.textContent = [
+      '#chatRoom{padding:0!important}',
+      '#chatRoom .chat-head{',
+        'position:absolute!important;top:0!important;left:0!important;right:0!important;',
+        'padding-top:env(safe-area-inset-top)!important;',
+        'height:calc(56px + env(safe-area-inset-top))!important;',
+        'box-sizing:border-box!important;',
+      '}',
+      '#chatRoom .chat-input-bar{',
+        'position:absolute!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;',
+        'padding-bottom:calc(10px + env(safe-area-inset-bottom))!important;',
+        'padding-top:10px!important;',
+        'box-sizing:border-box!important;',
+      '}',
+      '#chatRoom .chat-msgs{',
+        'position:absolute!important;left:0!important;right:0!important;',
+        'top:calc(56px + env(safe-area-inset-top))!important;',
+        'bottom:calc(64px + env(safe-area-inset-bottom))!important;',
+        'box-sizing:border-box!important;',
+      '}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+  if(document.readyState === 'complete'){
+    applyChatEdgeFix();
+  }else{
+    window.addEventListener('load', applyChatEdgeFix);
+  }
+})();
+</script>
 </body>
 </html>
 

@@ -11820,7 +11820,33 @@ function loadDB(){
   }
   return out;
 }
-function saveDB(db){localStorage.setItem(DBKEY,JSON.stringify(db))}
+function trimDbForSpace(db){
+  // 按角色，各自砍掉一半"未固定、重要度最低"的记忆，优先保留 pinned 和高重要度的
+  Object.keys(db.personas||{}).forEach(id=>{
+    const box=db.personas[id];
+    if(!box||!Array.isArray(box.memories)||box.memories.length<=30)return;
+    const removable=box.memories.filter(m=>!m.pinned).sort((a,b)=>Number(a.importance||5)-Number(b.importance||5));
+    const dropCount=Math.ceil(removable.length*0.4);
+    const dropIds=new Set(removable.slice(0,dropCount).map(m=>m.id));
+    box.memories=box.memories.filter(m=>!dropIds.has(m.id));
+  });
+  if(Array.isArray(db.quarantine)&&db.quarantine.length>50)db.quarantine=db.quarantine.slice(-50);
+  return db;
+}
+function saveDB(db){
+  try{
+    localStorage.setItem(DBKEY,JSON.stringify(db));
+  }catch(e){
+    try{
+      trimDbForSpace(db);
+      localStorage.setItem(DBKEY,JSON.stringify(db));
+      if(typeof showToast==='function')showToast('长期记忆较多，已自动清理部分低重要度旧记忆以腾出空间',true);
+    }catch(e2){
+      console.warn('记忆保存失败，存储空间已满',e2);
+      if(typeof showToast==='function')showToast('存储空间不足，本次记忆未保存，建议清理设置里的本地数据',true);
+    }
+  }
+}
 function ensurePersonaBox(db,id){id=String(id||"default");db.personas[id]=normalizeBox(db.personas[id]);return db.personas[id]}
 function ensureBox(){const db=loadDB(),box=ensurePersonaBox(db,pid());saveDB(db);return {db,box,shared:db.shared}}
 function targetBox(db,data){
@@ -11956,7 +11982,7 @@ async function summarizeWithAI(manual){
   }catch(e){console.warn("记忆总结失败",e);if(manual&&typeof showToast==="function")showToast("记忆总结失败："+e.message,true)}finally{if(btn)btn.classList.remove("memv1-loading")}
 }
 window.memoryV1SummarizeNow=()=>summarizeWithAI(true);
-function maybeAutoSummarize(){const {box}=ensureBox(),count=(state.chatMessages||[]).filter(m=>!m.hiddenSystem).length;if(count>=8&&count-(box.lastAutoSummaryCount||0)>=10)setTimeout(()=>summarizeWithAI(false),1800)}
+function maybeAutoSummarize(){const {box}=ensureBox(),count=(state.chatMessages||[]).filter(m=>!m.hiddenSystem).length;if(count>=8&&count-(box.lastAutoSummaryCount||0)>=14)setTimeout(()=>summarizeWithAI(false),1800)}
 window.openMemoryV1=function(){importAntiRecon();document.getElementById("memoryV1Panel").classList.add("show");renderMemoryV1()}
 window.closeMemoryV1=function(){document.getElementById("memoryV1Panel").classList.remove("show")}
 window.memoryV1SetTab=function(el){document.querySelectorAll(".memv1-tab").forEach(x=>x.classList.remove("active"));el.classList.add("active");currentTab=el.dataset.tab;renderMemoryV1()}
