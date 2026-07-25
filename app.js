@@ -45959,3 +45959,131 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
 
 /* ===== 豹豹机 420：快速启动完成标记 ===== */
 window.__bbFastBootV420=true;
+
+/* ===== 豹豹机 v421：快速启动手势恢复（锁屏上划 + 桌面左右滑动） ===== */
+(function(){
+  "use strict";
+  if(window.__bbGestureRestoreV421)return;
+  window.__bbGestureRestoreV421=true;
+
+  function safeCall(fn){
+    try{ if(typeof fn==="function") return fn(); }catch(error){ console.warn("豹豹机手势初始化跳过",error); }
+  }
+
+  function openPasscode(){
+    var overlay=document.getElementById("passcodeOverlay");
+    if(overlay&&overlay.classList.contains("show"))return;
+    if(typeof window.showPasscodePad==="function"){
+      window.showPasscodePad();
+    }else if(typeof window.unlock==="function"){
+      window.unlock();
+    }else if(typeof window.unlockReal==="function"){
+      window.unlockReal();
+    }
+  }
+
+  function installLockGesture(){
+    var lock=document.getElementById("lock");
+    if(!lock||lock.dataset.bbGestureV421==="1")return;
+    lock.dataset.bbGestureV421="1";
+    lock.style.setProperty("pointer-events","auto","important");
+    lock.style.setProperty("touch-action","none","important");
+    lock.style.setProperty("-webkit-user-select","none","important");
+    lock.style.setProperty("user-select","none","important");
+
+    var startX=0,startY=0,lastY=0,dragging=false,opened=false;
+
+    function begin(x,y){
+      startX=x;startY=y;lastY=y;dragging=true;opened=false;
+      lock.style.transition="none";
+    }
+    function move(x,y,event){
+      if(!dragging)return;
+      lastY=y;
+      var dy=Math.max(0,startY-y);
+      var dx=Math.abs(x-startX);
+      if(dy>4&&dy>dx*.45){
+        if(event&&event.cancelable)event.preventDefault();
+        var shift=Math.min(46,dy*.34);
+        lock.style.transform="translate3d(0,"+(-shift)+"px,0)";
+        lock.style.opacity=String(Math.max(.88,1-dy/650));
+      }
+    }
+    function finish(x,y){
+      if(!dragging)return;
+      dragging=false;
+      var dy=startY-y;
+      var dx=Math.abs(x-startX);
+      lock.style.transition="transform .18s ease,opacity .18s ease";
+      lock.style.transform="translate3d(0,0,0)";
+      lock.style.opacity="1";
+      if(!opened&&dy>30&&dy>dx*.55){
+        opened=true;
+        openPasscode();
+      }
+    }
+    function cancel(){
+      dragging=false;
+      lock.style.transition="transform .18s ease,opacity .18s ease";
+      lock.style.transform="translate3d(0,0,0)";
+      lock.style.opacity="1";
+    }
+
+    lock.addEventListener("touchstart",function(event){
+      var t=event.touches&&event.touches[0];if(!t)return;
+      if(event.target&&event.target.closest&&event.target.closest("#passcodeOverlay"))return;
+      begin(t.clientX,t.clientY);
+    },{capture:true,passive:true});
+    lock.addEventListener("touchmove",function(event){
+      var t=event.touches&&event.touches[0];if(!t)return;
+      move(t.clientX,t.clientY,event);
+    },{capture:true,passive:false});
+    lock.addEventListener("touchend",function(event){
+      var t=event.changedTouches&&event.changedTouches[0];
+      finish(t?t.clientX:startX,t?t.clientY:lastY);
+    },{capture:true,passive:true});
+    lock.addEventListener("touchcancel",cancel,{capture:true,passive:true});
+
+    lock.addEventListener("pointerdown",function(event){
+      if(event.pointerType==="touch")return;
+      begin(event.clientX,event.clientY);
+    },true);
+    lock.addEventListener("pointermove",function(event){
+      if(event.pointerType==="touch")return;
+      move(event.clientX,event.clientY,event);
+    },true);
+    lock.addEventListener("pointerup",function(event){
+      if(event.pointerType==="touch")return;
+      finish(event.clientX,event.clientY);
+    },true);
+    lock.addEventListener("pointercancel",cancel,true);
+
+    var tip=lock.querySelector(".unlock");
+    if(tip){
+      tip.style.setProperty("pointer-events","auto","important");
+      tip.addEventListener("click",function(event){event.stopPropagation();openPasscode();},true);
+    }
+  }
+
+  function startNow(){
+    // defer 脚本执行时 DOM 已完成解析，不再等待被排队的 DOMContentLoaded。
+    safeCall(window.init);
+    installLockGesture();
+    // 旧 init 已经执行过但监听丢失时，单独补装；函数内部只绑定一次启动流程。
+    if(!window.__bbDesktopSwipeDirectV421){
+      window.__bbDesktopSwipeDirectV421=true;
+      try{
+        var desktop=document.getElementById("desktop");
+        if(desktop&&!desktop.dataset.bbBaseSwipeBoundV421&&typeof window.initSwipe==="function"){
+          desktop.dataset.bbBaseSwipeBoundV421="1";
+          window.initSwipe();
+        }
+      }catch(error){console.warn("桌面滑动补装失败",error);}
+    }
+  }
+
+  setTimeout(startNow,0);
+  setTimeout(installLockGesture,120);
+  setTimeout(installLockGesture,700);
+  window.addEventListener("pageshow",function(){setTimeout(startNow,0);});
+})();
