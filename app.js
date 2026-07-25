@@ -44987,3 +44987,152 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
   window.addEventListener("pagehide",saveLarge);
   window.BaobaoLargeStoreV2={save:saveLarge,restore,put,get};
 })();
+
+/* ===== 豹豹机：聊天底部真正贴边 + 气泡上标完整显示 ===== */
+(function(){
+  "use strict";
+  if(window.__bbChatBottomAndReactionFixV1)return;
+  window.__bbChatBottomAndReactionFixV1=true;
+
+  function installStyle(){
+    let style=document.getElementById("bbChatBottomAndReactionFixV1Style");
+    if(!style){
+      style=document.createElement("style");
+      style.id="bbChatBottomAndReactionFixV1Style";
+    }
+    style.textContent=`
+      html,body{
+        width:100%!important;
+        height:100%!important;
+        min-height:100%!important;
+      }
+      html body > #chatRoom{
+        position:fixed!important;
+        inset:0!important;
+        top:0!important;
+        right:0!important;
+        bottom:0!important;
+        left:0!important;
+        width:100%!important;
+        height:100dvh!important;
+        min-height:100dvh!important;
+        max-height:100dvh!important;
+        margin:0!important;
+        padding:0!important;
+        border:0!important;
+        border-radius:0!important;
+        transform:none!important;
+        box-sizing:border-box!important;
+        overflow:hidden!important;
+        z-index:99999!important;
+      }
+      html body > #chatRoom .chat-input-bar{
+        position:absolute!important;
+        left:0!important;
+        right:0!important;
+        bottom:0!important;
+        top:auto!important;
+        width:100%!important;
+        height:calc(64px + env(safe-area-inset-bottom,0px))!important;
+        min-height:calc(64px + env(safe-area-inset-bottom,0px))!important;
+        max-height:calc(64px + env(safe-area-inset-bottom,0px))!important;
+        margin:0!important;
+        padding:8px 18px calc(8px + env(safe-area-inset-bottom,0px))!important;
+        box-sizing:border-box!important;
+        transform:none!important;
+        border-radius:0!important;
+        z-index:100!important;
+        background:#fff!important;
+      }
+      html body > #chatRoom .chat-msgs,
+      html body > #chatRoom #chatMsgs{
+        bottom:calc(64px + env(safe-area-inset-bottom,0px))!important;
+        padding-bottom:12px!important;
+        box-sizing:border-box!important;
+      }
+
+      /* 上标表情的每一层父容器都允许超出，避免只露出一半。 */
+      html body > #chatRoom #chatMsgs .msg-row,
+      html body > #chatRoom #chatMsgs .msg-content-wrap,
+      html body > #chatRoom #chatMsgs .bubble.me.bb-has-char-reaction-v322{
+        overflow:visible!important;
+        clip-path:none!important;
+        contain:none!important;
+      }
+      html body > #chatRoom #chatMsgs .msg-row.me{
+        position:relative!important;
+        z-index:2!important;
+      }
+      html body > #chatRoom #chatMsgs .msg-row.me:has(.bb-char-reaction-v322){
+        z-index:12!important;
+      }
+      html body > #chatRoom .bb-char-reaction-v322{
+        top:-11px!important;
+        left:-10px!important;
+        z-index:999!important;
+        overflow:visible!important;
+        clip-path:none!important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function moveChatToViewport(){
+    const room=document.getElementById("chatRoom");
+    if(!room)return;
+    /* position:fixed 在带 transform/overflow 的手机壳内仍会被壳体截断，
+       移到 body 后才是真正以可视屏幕为边界。 */
+    if(room.parentElement!==document.body)document.body.appendChild(room);
+    room.style.setProperty("position","fixed","important");
+    room.style.setProperty("inset","0","important");
+    room.style.setProperty("width","100%","important");
+    room.style.setProperty("height","100dvh","important");
+    room.style.setProperty("min-height","100dvh","important");
+    room.style.setProperty("max-height","100dvh","important");
+    room.style.setProperty("margin","0","important");
+    room.style.setProperty("transform","none","important");
+  }
+
+  function refreshReaction(){
+    try{
+      if(typeof window.baobaoRenderCharReactionsV322==="function"){
+        window.baobaoRenderCharReactionsV322(false);
+      }
+    }catch(_){ }
+  }
+
+  function apply(){
+    installStyle();
+    moveChatToViewport();
+    refreshReaction();
+  }
+
+  function wrapOpen(name){
+    const old=window[name];
+    if(typeof old!=="function"||old.__bbBottomReactionWrapped)return;
+    const wrapped=function(){
+      apply();
+      const result=old.apply(this,arguments);
+      requestAnimationFrame(apply);
+      setTimeout(apply,80);
+      setTimeout(apply,320);
+      return result;
+    };
+    wrapped.__bbBottomReactionWrapped=true;
+    wrapped.__bbPrevious=old;
+    window[name]=wrapped;
+    try{globalThis[name]=wrapped}catch(_){ }
+  }
+
+  function boot(){
+    apply();
+    ["openChatRoom","openChatWithPersona","openExistingChat","routeToChat"].forEach(wrapOpen);
+  }
+
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});
+  else boot();
+  window.addEventListener("pageshow",()=>setTimeout(boot,0));
+  window.addEventListener("resize",apply,{passive:true});
+  if(window.visualViewport)window.visualViewport.addEventListener("resize",apply,{passive:true});
+  [120,500,1200,2600].forEach(delay=>setTimeout(boot,delay));
+})();
