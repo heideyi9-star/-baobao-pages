@@ -3315,7 +3315,7 @@ API Key<br>
   height:354px;
   display:flex;
   align-items:flex-start;
-  overflow:hidden;
+  overflow:visible;
   box-sizing:border-box;
 }
 .p2-mini-profile-card,
@@ -3346,7 +3346,10 @@ API Key<br>
   function applyFinalOverflowFix(){
     var s = document.createElement('style');
     s.id = 'bugfix-pages-overflow-final-v411';
-    s.textContent = '.pages-viewport,.pages-container{overflow:hidden!important}';
+    s.textContent = [
+      '#desktop:not(.page-two-mode) .pages-viewport,#desktop:not(.page-two-mode) .pages-container{overflow:hidden!important}',
+      '#desktop.page-two-mode .pages-viewport,#desktop.page-two-mode .pages-container,#desktop.page-two-mode .apps-page.page2-only,#desktop.page-two-mode .p2-bottom-widgets{overflow:visible!important}'
+    ].join('');
     document.head.appendChild(s);
   }
   if(document.readyState === 'complete'){
@@ -3538,6 +3541,146 @@ API Key<br>
   window.addEventListener('load',()=>{installFlushStyle();installEmptyPresetPanel();});
 })();
 </script>
+
+<style id="bb-safari-real-viewport-page2-v413">
+/* Safari 地址栏会改变真实可视高度。第二页改用实时 visualViewport，
+   并允许桌面内容纵向滚动，两个底部组件不再被浏览器工具栏或旧裁切规则截断。 */
+:root{--bb-real-vh:100dvh}
+html,body{
+  min-height:var(--bb-real-vh)!important;
+  height:var(--bb-real-vh)!important;
+}
+body.fullscreen-mode .phone{
+  height:var(--bb-real-vh)!important;
+  min-height:var(--bb-real-vh)!important;
+  max-height:var(--bb-real-vh)!important;
+}
+body.fullscreen-mode .screen,
+body.fullscreen-mode #desktop{
+  height:100%!important;
+  min-height:100%!important;
+  max-height:100%!important;
+}
+html body #desktop.page-two-mode{
+  overflow:hidden!important;
+}
+html body #desktop.page-two-mode .desk-scroll{
+  position:absolute!important;
+  inset:0!important;
+  width:100%!important;
+  height:100%!important;
+  min-height:0!important;
+  padding:calc(env(safe-area-inset-top,0px) + 4px) 0 calc(112px + env(safe-area-inset-bottom,0px))!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  overscroll-behavior-y:contain!important;
+  -webkit-overflow-scrolling:touch!important;
+  touch-action:pan-y!important;
+  scrollbar-width:none!important;
+}
+html body #desktop.page-two-mode .desk-scroll::-webkit-scrollbar{display:none!important}
+html body #desktop.page-two-mode .pages-viewport,
+html body #desktop.page-two-mode .pages-container{
+  height:760px!important;
+  min-height:760px!important;
+  overflow:visible!important;
+}
+html body #desktop.page-two-mode .apps-page.page2-only{
+  height:760px!important;
+  min-height:760px!important;
+  overflow:visible!important;
+}
+html body #desktop.page-two-mode .p2-bottom-widgets{
+  overflow:visible!important;
+  clip-path:none!important;
+  contain:none!important;
+}
+html body #desktop.page-two-mode .dock{
+  position:absolute!important;
+  left:12px!important;
+  right:12px!important;
+  top:auto!important;
+  bottom:calc(4px + env(safe-area-inset-bottom,0px))!important;
+  height:87px!important;
+  margin:0!important;
+  z-index:900!important;
+  overflow:visible!important;
+}
+body.bb-page2-real-scroll{
+  touch-action:pan-y!important;
+  overscroll-behavior-y:none!important;
+}
+body.bb-page2-real-scroll .phone,
+body.bb-page2-real-scroll #desktop{
+  touch-action:pan-y!important;
+}
+</style>
+<script id="bb-safari-real-viewport-page2-v413-script">
+(function(){
+  'use strict';
+  if(window.__bbSafariRealViewportPage2V413)return;
+  window.__bbSafariRealViewportPage2V413=true;
+
+  function syncViewport(){
+    var vv=window.visualViewport;
+    var height=Math.max(320,Math.round((vv&&vv.height)||window.innerHeight||document.documentElement.clientHeight||844));
+    document.documentElement.style.setProperty('--bb-real-vh',height+'px');
+    var phone=document.querySelector('.phone');
+    if(phone&&document.body.classList.contains('fullscreen-mode')){
+      phone.style.setProperty('height',height+'px','important');
+      phone.style.setProperty('min-height',height+'px','important');
+      phone.style.setProperty('max-height',height+'px','important');
+    }
+  }
+
+  function syncPage2(){
+    var desktop=document.getElementById('desktop');
+    var active=!!(desktop&&desktop.classList.contains('page-two-mode'));
+    document.body.classList.toggle('bb-page2-real-scroll',active);
+    if(!active)return;
+    var scroller=desktop.querySelector('.desk-scroll');
+    if(scroller){
+      scroller.style.setProperty('overflow-y','auto','important');
+      scroller.style.setProperty('overflow-x','hidden','important');
+      scroller.style.setProperty('height','100%','important');
+      scroller.style.setProperty('touch-action','pan-y','important');
+    }
+    var finalOverflow=document.getElementById('bugfix-pages-overflow-final-v411');
+    if(finalOverflow){
+      finalOverflow.textContent=
+        '#desktop:not(.page-two-mode) .pages-viewport,#desktop:not(.page-two-mode) .pages-container{overflow:hidden!important}'+
+        '#desktop.page-two-mode .pages-viewport,#desktop.page-two-mode .pages-container,#desktop.page-two-mode .apps-page.page2-only,#desktop.page-two-mode .p2-bottom-widgets{overflow:visible!important}';
+    }
+  }
+
+  function apply(){
+    syncViewport();
+    syncPage2();
+  }
+
+  function boot(){
+    apply();
+    var desktop=document.getElementById('desktop');
+    if(desktop&&!desktop.__bbPage2ClassObserverV413){
+      desktop.__bbPage2ClassObserverV413=true;
+      new MutationObserver(function(){requestAnimationFrame(apply)}).observe(desktop,{attributes:true,attributeFilter:['class']});
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+  else boot();
+  window.addEventListener('load',apply);
+  window.addEventListener('resize',apply,{passive:true});
+  window.addEventListener('orientationchange',function(){setTimeout(apply,120)},{passive:true});
+  window.addEventListener('pageshow',function(){setTimeout(apply,0)});
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize',apply,{passive:true});
+    window.visualViewport.addEventListener('scroll',syncViewport,{passive:true});
+  }
+  [120,500,1200,2600].forEach(function(ms){setTimeout(apply,ms)});
+})();
+</script>
+
 </body>
 </html>
 
