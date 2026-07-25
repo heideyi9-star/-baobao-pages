@@ -11906,7 +11906,7 @@ function retrieve(query,limit){
 }
 window.baobaoMemoryRetrieve=retrieve;
 function buildMemoryPrompt(query){
-  const {db,box}=ensureBox(),chosen=retrieve(query,8);lastInjectedCount=chosen.length;
+  const {db,box}=ensureBox(),chosen=retrieve(query,14);lastInjectedCount=chosen.length;
   const lines=[];
   lines.push("【仅供当前角色内部思考的记忆，不得输出】");
   lines.push("以下记忆只属于当前角色“"+String(persona().name||"当前角色")+"”，以及用户明确标记为全角色共享的事实。严禁读取、暗示或借用其他角色的聊天、关系、查手机经历、朋友圈互动和私密事件。");
@@ -11956,7 +11956,7 @@ async function summarizeWithAI(manual){
   }catch(e){console.warn("记忆总结失败",e);if(manual&&typeof showToast==="function")showToast("记忆总结失败："+e.message,true)}finally{if(btn)btn.classList.remove("memv1-loading")}
 }
 window.memoryV1SummarizeNow=()=>summarizeWithAI(true);
-function maybeAutoSummarize(){const {box}=ensureBox(),count=(state.chatMessages||[]).filter(m=>!m.hiddenSystem).length;if(count>=12&&count-(box.lastAutoSummaryCount||0)>=20)setTimeout(()=>summarizeWithAI(false),1800)}
+function maybeAutoSummarize(){const {box}=ensureBox(),count=(state.chatMessages||[]).filter(m=>!m.hiddenSystem).length;if(count>=8&&count-(box.lastAutoSummaryCount||0)>=10)setTimeout(()=>summarizeWithAI(false),1800)}
 window.openMemoryV1=function(){importAntiRecon();document.getElementById("memoryV1Panel").classList.add("show");renderMemoryV1()}
 window.closeMemoryV1=function(){document.getElementById("memoryV1Panel").classList.remove("show")}
 window.memoryV1SetTab=function(el){document.querySelectorAll(".memv1-tab").forEach(x=>x.classList.remove("active"));el.classList.add("active");currentTab=el.dataset.tab;renderMemoryV1()}
@@ -40574,7 +40574,7 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     if(type==="transfer")return `【转账：¥${Number(message.amount||message.content||0).toFixed(2)}；备注：${clean(message.note)||"无"}；状态：${clean(message.transferStatus)||"待处理"}】`;
     return smartClip(message.content||message.text,1800);
   }
-  function visibleHistory(limit=26){
+  function visibleHistory(limit=60){
     const s=appState();
     const list=Array.isArray(s.chatMessages)?s.chatMessages:[];
     return list.filter(message=>message&&!message.hiddenSystem&&!message.recalled&&["user","assistant"].includes(message.role))
@@ -41205,7 +41205,7 @@ ${continuation?`【本轮是爱心续聊】
       else if(typeof showToast==="function")showToast("他已经说太多话了，你回复一下吧",true);
       return null;
     }
-    const history=visibleHistory(26);
+    const history=visibleHistory(60);
     if(!history.length)return null;
     const pending=(Array.isArray(appState().chatMessages)?appState().chatMessages:[])
       .filter(message=>message&&message.type==="image"&&message._visionPromise&&!message.visionDesc)
@@ -41317,9 +41317,9 @@ ${continuation?`【本轮是爱心续聊】
     try{requestChatReply=strictRequest}catch(_){ }
     window.BaobaoPersonaEngine=window.BaobaoPersonaEngine||{};
     window.BaobaoPersonaEngine.splitHumanMessages=splitByPersona;
-    window.BaobaoPersonaEngine.buildPersonaPrompt=()=>strictSystemPrompt(visibleHistory(26));
+    window.BaobaoPersonaEngine.buildPersonaPrompt=()=>strictSystemPrompt(visibleHistory(60));
     window.BaobaoPersonaEngine.getDebug=()=>window.baobaoLastPersonaDebug||null;
-    const personaCore={request:strictRequest,complete:cleanCompletion,prompt:()=>strictSystemPrompt(visibleHistory(26)),split:splitByPersona,quality:(reply)=>livingQuality(reply,visibleHistory(26)),grounding:(reply)=>groundingQuality(reply,visibleHistory(26)),behavior:(reply)=>behaviorQuality(reply,visibleHistory(26)),profile:()=>personaBehaviorProfile(currentPersona()),mode:()=>resolvePersonaChatStyle(currentPersona()),anchors:()=>personaAnchorLines(currentPersona(),messageForAI(latestUserMessage()))};
+    const personaCore={request:strictRequest,complete:cleanCompletion,prompt:()=>strictSystemPrompt(visibleHistory(60)),split:splitByPersona,quality:(reply)=>livingQuality(reply,visibleHistory(60)),grounding:(reply)=>groundingQuality(reply,visibleHistory(60)),behavior:(reply)=>behaviorQuality(reply,visibleHistory(60)),profile:()=>personaBehaviorProfile(currentPersona()),mode:()=>resolvePersonaChatStyle(currentPersona()),anchors:()=>personaAnchorLines(currentPersona(),messageForAI(latestUserMessage()))};
     window.BaobaoStrictPersonaV391=personaCore;
     window.BaobaoStrictPersonaV324=personaCore; // 兼容旧页面入口。
   }
