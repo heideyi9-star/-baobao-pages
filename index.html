@@ -11,8 +11,21 @@
     var t=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
     var a=document.getElementById("lockTime");
     var b=document.getElementById("clock");
+    var c=document.getElementById("miniStatusTime");
     if(a)a.textContent=t;
     if(b)b.textContent=t;
+    if(c)c.textContent=t;
+    try{
+      var raw=localStorage.getItem("baobao_state");
+      var s=raw?JSON.parse(raw):null;
+      if(s&&typeof s==="object"){
+        var n=document.getElementById("lockName");
+        if(n&&!n.textContent)n.textContent=s.name||s.profileName||"未设置昵称";
+        var av=document.getElementById("lockAvatar");
+        var src=s.avatar||s.charAvatar||(s.wechatProfile&&s.wechatProfile.avatar)||"";
+        if(av&&src&&!av.firstElementChild)av.innerHTML='<img src="'+String(src).replace(/"/g,"&quot;")+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
+      }
+    }catch(_){ }
   }
   tick();
   var timer=setInterval(tick,500);
@@ -23,17 +36,21 @@
 <link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=304">
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
+<link rel="preload" href="./app.js?v=420-fastboot-20260725-2323" as="script">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=412">
-<script id="bb-pwa-cache-v293">
+<link rel="manifest" href="./baobao-manifest.json?v=420-fastboot-20260725-2323">
+<script id="bb-cache-reset-v420">
 (function(){
   "use strict";
-  if(!("serviceWorker" in navigator))return;
-  window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=412",{scope:"./"}).then(function(reg){
-      try{reg.update();}catch(e){}
-    }).catch(function(){});
-  },{once:true});
+  var build="420-fastboot-20260725-2323";
+  try{localStorage.setItem("bb_active_build",build);}catch(_){}
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.getRegistrations().then(function(list){list.forEach(function(reg){try{reg.unregister();}catch(_){}});}).catch(function(){});
+  }
+  if("caches" in window){
+    caches.keys().then(function(keys){return Promise.all(keys.map(function(key){return caches.delete(key);}));}).catch(function(){});
+  }
 })();
 </script>
 <meta name="theme-color" content="#f7f7f7">
@@ -42,7 +59,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>豹豹机4.9 · 412 账号隔离发图修复版</title>
+<title>豹豹机4.9 · 420 快速启动版</title>
 
 
 
@@ -495,7 +512,7 @@ html body #desktop .dock{
 }
 </style>
 <link rel="stylesheet" href="./app.css?v=331">
-<script defer src="./app.js?v=412-account-isolation-photo-pwa"></script>
+<script defer src="./app.js?v=420-fastboot-20260725-2323"></script>
 
 
 <style id="bb-chat-message-home-v373">
