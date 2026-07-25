@@ -5371,7 +5371,7 @@ document.addEventListener("DOMContentLoaded",renderMemoryAvatar);
 不要提及模型、系统、提示词、设定、扮演或“作为AI”。
 
 无论是否提供了详细人设，都必须像真实中国年轻网友聊天：
-1. 默认用短句，通常回复1到4条，每条2到24个汉字。
+1. 按当下情绪自然回复，不限制消息条数；短句、长句、停顿和连发都由角色自己决定。
 2. 用户只发“嗨、在吗、干嘛、？、嗯”等短消息时，不要写长段问候，不要主动提供帮助。
 3. 允许自然地只回“嗯”“哦”“咋了”“？”“刚看到”“干嘛”等。
 4. 不要每次都完整、礼貌、周全地回答；真人会犹豫、嘴硬、跑题、犯懒、调侃。
@@ -5549,7 +5549,7 @@ ${offlineMemory}
       if(bySentence.length > 1) parts = bySentence;
     }
 
-    parts = parts.slice(0, 4);
+    /* no fixed message-count cap */
     return parts.length ? parts : ["嗯"];
   }
 
@@ -6827,9 +6827,9 @@ ${memoryPrompt()}
   }
 
   function naturalize(text){
-    let parts=cleanOutput(text).split(/\n+/).map(x=>x.trim()).filter(Boolean).slice(0,5);
+    let parts=cleanOutput(text).split(/\n+/).map(x=>x.trim()).filter(Boolean);
     if(parts.length===1 && parts[0].length>52){
-      parts=parts[0].split(/(?<=[。！？!?…])\s*/).map(x=>x.trim()).filter(Boolean).slice(0,4);
+      parts=parts[0].split(/(?<=[。！？!?…])\s*/).map(x=>x.trim()).filter(Boolean);
     }
     const dna=inferDNA(), e=emotion();
     // 很高嘴硬或情绪强时，偶尔把关心拆成后补一句，而不是一次端正说完。
@@ -7067,8 +7067,8 @@ ${memoryPrompt()}
   }
   function clean(s){return txt(s).replace(/^```[a-z]*\s*/i,"").replace(/```$/g,"").replace(/^(回复|角色回复|assistant|角色)\s*[:：]\s*/i,"").replace(/\n{3,}/g,"\n\n").trim();}
   function split(s){
-    let a=clean(s).split(/\n+/).map(txt).filter(Boolean).slice(0,5);
-    if(a.length===1&&a[0].length>54)a=a[0].split(/(?<=[。！？!?…])\s*/).map(txt).filter(Boolean).slice(0,4);
+    let a=clean(s).split(/\n+/).map(txt).filter(Boolean);
+    if(a.length===1&&a[0].length>54)a=a[0].split(/(?<=[。！？!?…])\s*/).map(txt).filter(Boolean);
     // 去掉模型偶尔产生的重复消息
     a=a.filter((x,i)=>i===0||x!==a[i-1]);
     return a.length?a:["嗯"];
@@ -10170,12 +10170,12 @@ ${clean(reply)}
         content:
           "你正在扮演一个真实的人，在微信朋友圈里给用户评论。"+
           "必须严格服从角色完整人设、性格、关系与最近聊天语气，不能用通用客服式套话。"+
-          "评论应像真人顺手打出来的，通常1句话，最多2句，建议4到45个汉字。"+
+          "评论应像真人顺手打出来的，不限制句数和字数，但必须只说这名角色此刻真正会说的内容；短就短，想多说也不要被截断。"+
           "禁止输出角色名、引号、标签、分析、括号说明或“朋友圈评论：”。"+
           "禁止只说“看见了”“哈哈”“怎么了”“挺好的”这类万能句。"+
           "必须抓住这条动态里最具体的一点来回应：图片内容、截图里的对话、正文里的笑点、物品、人物动作或前后关系。"+
           "不要机械复述动态原文；要有角色自己的态度、熟悉感、称呼习惯或潜台词。"+
-          "若角色最后给用户发了消息但用户没回、却发布了朋友圈，可以按人设吃醋、控诉、嘴硬或装作不在意，但不能每个人都用相同方式。"+
+          "只有当最近私聊里确实存在“角色发了消息而用户没回”，且这名角色的人设会在公开评论里提这件事时，才可以自然带到；否则不要强行质问消息。每名角色必须针对动态里的具体内容产生不同反应。"+
           "如果人设冷淡，就克制简短；如果嘴毒，就自然挖苦；如果温柔，就贴近关系关心；如果占有欲强，可以明显不满。"
       },
       {
@@ -30026,7 +30026,7 @@ async function baobaoVision(payload){
 不要提及模型、系统、提示词、设定、扮演或“作为AI”。
 
 无论是否提供了详细人设，都必须像真实中国年轻网友聊天：
-1. 默认用短句，通常回复1到4条，每条2到24个汉字。
+1. 按当下情绪自然回复，不限制消息条数；短句、长句、停顿和连发都由角色自己决定。
 2. 用户只发“嗨、在吗、干嘛、？、嗯”等短消息时，不要写长段问候，不要主动提供帮助。
 3. 允许自然地只回“嗯”“哦”“咋了”“？”“刚看到”“干嘛”等。
 4. 不要每次都完整、礼貌、周全地回答；真人会犹豫、嘴硬、跑题、犯懒、调侃。
@@ -36565,16 +36565,19 @@ ${offline}
     const direct=cleanMomentText(idea);
     if(direct)return direct;
     const now=new Date(),h=now.getHours();
+    const name=String(person&&person.name||"");
+    const raw=personaDescription(person);
     const pools=h<10
-      ?["醒了。今天也慢慢来。","早。还不太想动。","今天的光有点好看。"]
+      ?[/困|懒|睡/.test(raw)?"闹钟响了三遍。":"醒是醒了，人还没加载完。","今天第一句话先欠着。","窗帘缝里那点光烦死了。"]
       :h<18
-        ?["今天就这样。","随手记一下。","忙里偷了会儿闲。"]
-        :["今晚不想说太多。","天黑以后适合安静一点。","今天到这里。"];
+        ?[/游戏|电竞/.test(raw)?"这把再输我真下了。":/音乐|吉他|贝斯|乐队/.test(raw)?"刚才那段终于顺了。":"今天脑子不营业。","刚刚发生了件挺好笑的事，算了不说。","有些人最好现在来找我。"]
+        :[/黏|恋爱|老婆|宝贝/.test(raw)?"某个人再不出现我就要闹了。":/冷|寡言|克制/.test(raw)?"今晚安静得有点过头。":"刚回到家，懒得动。","想说点什么，又不知道从哪句开始。","夜里人容易说真话。"] ;
     let seed=0;String(person.id||person.name||"").split("").forEach(ch=>seed+=ch.charCodeAt(0));
     return pools[(seed+now.getDate())%pools.length];
   }
   function fallbackReply(person){
-    const options=["发了。","行，发了。","随便写了两句。","你自己去看。","刚发完。"];
+    const raw=personaDescription(person);
+    const options=/冷|寡言|克制/.test(raw)?["发了","自己看","刚发"]:/黏|撒娇|话多|活泼/.test(raw)?["发了 你快去看","我发了 记得第一个赞","刚发完 你不许装没看见"]:["发了 你看看","刚写完","好了 去看吧"];
     let seed=Date.now()+String(person.id||"").length;
     return [options[seed%options.length]];
   }
@@ -36589,7 +36592,7 @@ ${offline}
       wb?"世界书：\n"+wb:"",
       recent?"最近私聊：\n"+recent:"",
       idea?"用户给的发布方向："+idea:"用户没有指定文案，由角色自己决定发什么。",
-      "请让这个角色以本人身份发一条微信朋友圈。正文要像真实年轻人发的，0到90个汉字，可短句、口语、留白或轻微情绪；不要写标题、解释、标签、角色名、引号、系统提示，也不要复述人设。",
+      "请让这个角色以本人身份发一条微信朋友圈。必须像这个人此刻真的随手发的，而不是文案生成器：要有一个具体触发点、当下细节、私人语气或只对熟人看得懂的潜台词。允许没头没尾、口语、错字、吐槽、半句话、只发一个具体念头；禁止“随手记一下、今天就这样、忙里偷闲、岁月静好、记录生活”等万能模板。正文0到120个汉字，不要标题、解释、标签、角色名、引号或系统提示。",
       "同时给用户一句私聊里的自然回应，2到18个汉字，不要说发布成功、系统、程序、功能。",
       '只输出JSON：{"text":"朋友圈正文","location":"可为空","reply":"私聊回应"}'
     ].filter(Boolean).join("\n\n");
@@ -37007,7 +37010,7 @@ ${offline}
       recentChat(person)?"最近私聊：\n"+recentChat(person):"",
       "角色发的朋友圈："+String(post.text||"（只有图片）").slice(0,220),
       "用户评论："+String(comment.text||"").slice(0,160),
-      "只回复一句自然口语，2到24个汉字。要贴人设和关系，可以嘴硬、调侃、简短或有情绪；不要客服腔，不要解释，不要写角色名、引号、标签或“回复：”。"
+      "像真人在自己朋友圈评论区里回这一个具体的人。先理解用户评论是在接哪句话、夸哪一点或问什么，再按角色与用户的真实关系回应。可以一句或两句，长度不限但要自然；允许只回表情式短句、接梗、翻旧账或私密称呼。禁止“知道了、看见了、回你了、你又来了、你觉得呢、这还用问”这类可套在任何评论下的万能回复。不要客服腔，不解释规则，不写角色名或“回复：”。"
     ].filter(Boolean).join("\n\n");
     if(typeof window.sendChatCompletion==="function"){
       try{
@@ -40760,11 +40763,11 @@ ${time?`【时间】\n${time}\n\n`:""}${wb?`【当前触发的世界书】\n${wb
     const lines=[];
     if(mode==="younger"){
       lines.push("当前人设整体偏年下或高表达。把它当作默认倾向，不是每轮必须完成的任务；先理解用户这句话，再决定要不要撒娇、耍赖、黏人或连发。");
-      lines.push("消息数量按场景变化：普通聊天通常1到4条，情绪明显高涨时才可以更多；允许只回一句有辨识度的话，不要为了显得黏而硬把话题扯回关系。");
+      lines.push("消息数量按场景变化：消息数量完全由当下表达欲决定；可以只回一句，也可以自然连续说很多句，不得为了整齐强行截断。");
       lines.push("被拒绝、被嫌弃或被骂时，按照原始人设和当下关系反应。资料明确会赖着才继续黏，资料支持生气、冷淡或暂时退开时也要允许这样做。");
     }else if(mode==="older"){
       lines.push("当前人设整体偏成熟、克制或话少。把它当作默认倾向，不是固定的霸总模板；先直接回应用户，再按场景决定是否补一句关心、判断或安排。");
-      lines.push("通常1到3条，但情绪强烈或事情复杂时可以自然多说；话少不等于只回‘嗯/行’，也不必每轮都给建议或带领。");
+      lines.push("平时可以简短，但不设置条数上限；有话时应把想说的自然说完，话少不等于只回“嗯/行”。");
     }else{
       lines.push("当前不强套年下或年上模板。消息数量、亲密度、主动程度和情绪表达都由完整原始人设、最近上下文和本轮内容共同决定。");
     }
@@ -40823,7 +40826,7 @@ ${social}
 2. 角色的第一反应、愿不愿意回答、回几条、是否发表情包，都由原始人设决定，不使用随机“活人感策略”。
 3. 可以简短、冷淡、黏人、别扭、沙雕、认真或沉默。上方聊天风格只提供倾向，不是每轮必须执行的模板；以原始人设、当前关系、上下文和用户这句话为准。
 4. 不复述人设，不解释心理，不写旁白或括号动作。只输出角色会真正发出去的消息。
-5. 多条消息用换行分隔，不编号。消息数量由本轮内容和人物状态决定：通常1到4条，确实情绪高或表达欲强时可更多；允许一句话说完，不要为了人设强行拆条。
+5. 多条消息用换行分隔，不编号。消息数量不设上限，由本轮内容、人物状态和表达欲自然决定；可以一句话说完，也可以长短不一地连续发送，不得机械截断。
 6. 如果人物资料里规定无标点、特定称呼、常用梗、错字或句号习惯，严格保持；没有规定时才使用自然口语。
 7. 不要为了“正确”“体贴”擅自劝导、总结、教育、安慰或提供方案，除非这个角色确实会这么做。
 8. 情绪和态度有惯性：如果上一轮在生气、撒娇、冷战或开心，这一轮要延续这种状态自然演变，不能毫无理由瞬间恢复正常语气。
@@ -40839,7 +40842,7 @@ ${social}
 17. 在内部先判断本轮是否需要调用人物资料。需要时找出最相关的一两条来影响事实、态度或说法；不需要时只根据上下文自然回应。只输出最后聊天正文。
 18. 用户可能只按了聊天栏右侧的爱心，没有输入新文字。这表示“继续说下去”，不是让你重新回答上一条问题。此时必须顺着你刚刚那句话、当前情绪和关系自然续一句或几句，可以补充、黏人、吐槽、追问、转一个自然相关话题或只发符合人设的短反应；禁止重复上一轮原话，禁止假装用户又说了一遍旧消息。
 18.1 如果资料明确支持黏人、死皮赖脸或越骂越黏，用户冷淡或拒绝时不要自动套礼貌退场模板；但具体是继续贴近、生气、嘴硬还是暂时沉默，仍由原始人设和当下情绪决定。
-18.2 如果角色表达欲强或情绪高，可以连续发2到5条长短不一的消息；普通情绪下不必为了表现活人感刻意连发。
+18.2 如果角色表达欲强或情绪高，可以连续发任意数量的长短消息，直到把这一刻真正想说的话说完；普通情绪下也不必刻意连发。
 18.3 亲昵称呼、撒娇和顺杆爬只在资料支持时使用；资料明确支持时不得在重写阶段把它们删掉。贴人设优先于抽象的“不过度卖萌”。
 18.4 偏年下或黏人的角色只在语境自然时出现讨回应、讨夸、讨陪、耍赖或装委屈；禁止把这些当成每轮必做任务。
 18.5 偏成熟或简洁的角色要直接、有分寸，但可以按情绪多说，也不必每轮都给安排、建议或带领；避免退化成无人格的“嗯/哦/行”。
@@ -44911,4 +44914,76 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
   window.addEventListener("pageshow",()=>setTimeout(boot,0));
   [120,400,900,1800,3500,7000].forEach(delay=>setTimeout(boot,delay));
   console.log("豹豹机 412：账号隔离、承诺发图与主屏幕翻页防跳转已启用");
+})();
+
+
+/* ===== 豹豹机 edge：存储容量迁移 + 朋友圈配额修复 ===== */
+(function(){
+  "use strict";
+  const DB_NAME="baobao_edge_large_store_v2", STORE="kv", STATE_KEY="full_state";
+  let dbPromise=null, writeChain=Promise.resolve();
+  function openDB(){
+    if(dbPromise)return dbPromise;
+    dbPromise=new Promise(resolve=>{
+      if(!window.indexedDB){resolve(null);return;}
+      const r=indexedDB.open(DB_NAME,1);
+      r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains(STORE))r.result.createObjectStore(STORE)};
+      r.onsuccess=()=>resolve(r.result);r.onerror=()=>resolve(null);
+    });
+    return dbPromise;
+  }
+  async function put(key,value){
+    const db=await openDB();if(!db)return false;
+    return new Promise(resolve=>{try{const tx=db.transaction(STORE,"readwrite");tx.objectStore(STORE).put(value,key);tx.oncomplete=()=>resolve(true);tx.onerror=tx.onabort=()=>resolve(false)}catch(_){resolve(false)}});
+  }
+  async function get(key){
+    const db=await openDB();if(!db)return null;
+    return new Promise(resolve=>{try{const tx=db.transaction(STORE,"readonly"),r=tx.objectStore(STORE).get(key);r.onsuccess=()=>resolve(r.result||null);r.onerror=()=>resolve(null)}catch(_){resolve(null)}});
+  }
+  function clone(v){try{return structuredClone(v)}catch(_){try{return JSON.parse(JSON.stringify(v))}catch(__){return null}}}
+  function lightweight(full){
+    const out={...full,__largeStore:true,__largeStoreAt:Date.now()};
+    out.chatRecords={};out.chatMessages=[];
+    const imageKeys=["wallpaper","lockWallpaper","coverImage","avatar","charAvatar","page1PolaroidPhoto","page1PolaroidBackPhoto","page2ProfileAvatar","page2MiniProfileAvatar","page2MiniSongPhoto"];
+    imageKeys.forEach(k=>{if(typeof out[k]==="string"&&out[k].startsWith("data:image/"))out[k]=""});
+    if(out.chatBackground&&out.chatBackground.type==="image")out.chatBackground={type:"default",value:""};
+    return out;
+  }
+  function saveLarge(){
+    const full=clone(window.state||{});if(!full)return false;
+    full.__largeStoreAt=Date.now();
+    writeChain=writeChain.then(()=>put(STATE_KEY,full)).catch(()=>false);
+    try{localStorage.setItem("baobao_state",JSON.stringify(lightweight(full)))}catch(_){
+      try{localStorage.removeItem("baobao_state");localStorage.setItem("baobao_state",JSON.stringify({__largeStore:true,__largeStoreAt:full.__largeStoreAt}))}catch(__){}
+    }
+    try{window.BaobaoChatStoreV405&&window.BaobaoChatStoreV405.schedule(false)}catch(_){ }
+    return true;
+  }
+  window.saveLocal=saveLarge;try{saveLocal=saveLarge}catch(_){ }
+  async function restore(){
+    const full=await get(STATE_KEY);if(!full||typeof full!=="object")return;
+    Object.assign(window.state||{},full);
+    try{if(state.activeChatId&&state.chatRecords&&Array.isArray(state.chatRecords[state.activeChatId]))state.chatMessages=state.chatRecords[state.activeChatId]}catch(_){ }
+    try{typeof render==="function"&&render()}catch(_){ }
+    try{typeof renderChatMessages==="function"&&renderChatMessages()}catch(_){ }
+    try{typeof renderMomentsFeed==="function"&&renderMomentsFeed()}catch(_){ }
+  }
+  function freeLegacyQuota(){
+    try{
+      const raw=localStorage.getItem("baobao_state");
+      if(raw&&raw.length>350000){
+        const parsed=JSON.parse(raw);put(STATE_KEY,parsed);localStorage.setItem("baobao_state",JSON.stringify(lightweight(parsed)));
+      }
+      // 删除已失效的临时草稿、缓存和重复备份，不碰 API、人设、朋友圈正文。
+      Object.keys(localStorage).forEach(k=>{
+        if(/(?:temp|draft|cache|backup|snapshot).*(?:image|photo|wallpaper)|(?:image|photo).*(?:temp|cache)/i.test(k)){
+          const v=localStorage.getItem(k)||"";if(v.length>120000)localStorage.removeItem(k);
+        }
+      });
+    }catch(_){ }
+  }
+  freeLegacyQuota();
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>restore(),{once:true});else restore();
+  window.addEventListener("pagehide",saveLarge);
+  window.BaobaoLargeStoreV2={save:saveLarge,restore,put,get};
 })();

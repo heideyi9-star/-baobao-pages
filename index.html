@@ -3370,6 +3370,146 @@ API Key<br>
   }
 })();
 </script>
+
+<script>
+/* 豹豹机：聊天上下贴边 + CSS 预设首次清空 */
+(function(){
+  'use strict';
+  const CLEAR_MARK='bb_empty_css_preset_migration_v3';
+
+  function clearOldCssOnce(){
+    if(localStorage.getItem(CLEAR_MARK)==='1') return;
+    localStorage.removeItem('bb_bubble_css_presets_v290');
+    localStorage.removeItem('bb_active_bubble_preset_v290');
+    localStorage.removeItem('bb_custom_bubble_css');
+    localStorage.setItem(CLEAR_MARK,'1');
+    const old=document.getElementById('bbCustomBubbleStyle');
+    if(old) old.textContent='';
+  }
+
+  function installFlushStyle(){
+    let st=document.getElementById('bb-chat-full-edge-v3');
+    if(!st){ st=document.createElement('style'); st.id='bb-chat-full-edge-v3'; }
+    st.textContent=`
+      html,body{height:100%!important;}
+      html body #chatRoom{
+        position:fixed!important;
+        inset:0!important;
+        top:0!important;right:0!important;bottom:0!important;left:0!important;
+        width:100vw!important;
+        height:100dvh!important;
+        min-height:100dvh!important;
+        max-height:100dvh!important;
+        margin:0!important;
+        padding:0!important;
+        border:0!important;
+        border-radius:0!important;
+        transform:none!important;
+        box-sizing:border-box!important;
+        overflow:hidden!important;
+        z-index:99999!important;
+        background:#fff!important;
+      }
+      html body #chatRoom .chat-head{
+        position:absolute!important;
+        top:0!important;left:0!important;right:0!important;
+        width:100%!important;
+        height:calc(56px + env(safe-area-inset-top))!important;
+        min-height:calc(56px + env(safe-area-inset-top))!important;
+        margin:0!important;
+        padding:env(safe-area-inset-top) 20px 0!important;
+        box-sizing:border-box!important;
+        border-radius:0!important;
+        transform:none!important;
+        z-index:20!important;
+        background:#fff!important;
+      }
+      html body #chatRoom .chat-msgs,
+      html body #chatRoom #chatMsgs{
+        position:absolute!important;
+        top:calc(56px + env(safe-area-inset-top))!important;
+        right:0!important;
+        bottom:calc(64px + env(safe-area-inset-bottom))!important;
+        left:0!important;
+        width:100%!important;
+        height:auto!important;
+        margin:0!important;
+        box-sizing:border-box!important;
+        overflow-y:auto!important;
+        -webkit-overflow-scrolling:touch!important;
+      }
+      html body #chatRoom .chat-input-bar{
+        position:absolute!important;
+        left:0!important;right:0!important;bottom:0!important;top:auto!important;
+        width:100%!important;
+        height:calc(64px + env(safe-area-inset-bottom))!important;
+        min-height:calc(64px + env(safe-area-inset-bottom))!important;
+        max-height:calc(64px + env(safe-area-inset-bottom))!important;
+        margin:0!important;
+        padding:8px 18px calc(8px + env(safe-area-inset-bottom))!important;
+        box-sizing:border-box!important;
+        border-radius:0!important;
+        transform:none!important;
+        z-index:20!important;
+        background:#fff!important;
+      }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function installEmptyPresetPanel(){
+    window.openBubbleSettings=function(){
+      clearOldCssOnce();
+      const title=document.getElementById('modalTitle');
+      const body=document.getElementById('modalBody');
+      if(title) title.textContent='气泡样式设置';
+      if(!body) return;
+      body.innerHTML=`
+        <div class="bb-setting-field">
+          <div class="bb-setting-label">自定义 CSS</div>
+          <textarea class="bb-setting-textarea" id="bbBubbleCss" placeholder="把你的聊天 CSS 粘贴到这里"></textarea>
+        </div>
+        <div class="bb-setting-actions">
+          <div class="option" onclick="applyBubbleCss()">应用 CSS</div>
+          <div class="option secondary-option" onclick="document.getElementById('bbBubbleCss').value=''">清空输入框</div>
+        </div>
+        <div class="bb-bubble-save-box-v290">
+          <div class="bb-setting-label">保存为预设</div>
+          <div class="bb-bubble-save-row-v290">
+            <input class="bb-setting-input" id="bbBubblePresetNameV290" maxlength="24" placeholder="填写预设名称">
+            <button type="button" onclick="saveBubblePresetV290()">保存</button>
+          </div>
+        </div>
+        <div class="bb-setting-label bb-bubble-list-title-v290">已保存预设</div>
+        <div class="bb-bubble-preset-list-v290" id="bbBubblePresetListV290">
+          <div class="bb-bubble-preset-empty-v290">还没有保存的预设</div>
+        </div>`;
+      if(typeof openPanel==='function') openPanel('modal');
+    };
+
+    window.resetBubbleCss=function(){
+      localStorage.removeItem('bb_custom_bubble_css');
+      localStorage.removeItem('bb_active_bubble_preset_v290');
+      const box=document.getElementById('bbBubbleCss');
+      if(box) box.value='';
+      const style=document.getElementById('bbCustomBubbleStyle');
+      if(style) style.textContent='';
+      if(typeof showToast==='function') showToast('已清空 CSS');
+    };
+  }
+
+  function boot(){
+    clearOldCssOnce();
+    installFlushStyle();
+    installEmptyPresetPanel();
+    setTimeout(installFlushStyle,100);
+    setTimeout(installFlushStyle,800);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot,{once:true});
+  else boot();
+  window.addEventListener('load',()=>{installFlushStyle();installEmptyPresetPanel();});
+})();
+</script>
 </body>
 </html>
 
