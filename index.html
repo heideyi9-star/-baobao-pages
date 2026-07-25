@@ -3621,9 +3621,33 @@ body.bb-page2-real-scroll #desktop{
   if(window.__bbSafariRealViewportPage2V413)return;
   window.__bbSafariRealViewportPage2V413=true;
 
+  var stableViewportHeight=0;
+  var stableViewportWidth=0;
+
+  function bbViewportEditableActive(){
+    var el=document.activeElement;
+    return !!(el&&el.matches&&el.matches('input,textarea,select,[contenteditable="true"]'));
+  }
+
   function syncViewport(){
     var vv=window.visualViewport;
-    var height=Math.max(320,Math.round((vv&&vv.height)||window.innerHeight||document.documentElement.clientHeight||844));
+    var current=Math.max(320,Math.round((vv&&vv.height)||window.innerHeight||document.documentElement.clientHeight||844));
+    var width=Math.round((vv&&vv.width)||window.innerWidth||document.documentElement.clientWidth||390);
+    var focused=bbViewportEditableActive();
+
+    /* Safari 键盘弹出时 visualViewport 会突然缩短几百像素。
+       这不是豹豹机真实高度，不能拿它重设 html/body，否则页面下半段会露出黑底。 */
+    if(!stableViewportHeight||Math.abs(width-stableViewportWidth)>90){
+      stableViewportHeight=current;
+      stableViewportWidth=width;
+    }
+    var keyboardOpen=!!(focused&&stableViewportHeight-current>120);
+    if(!keyboardOpen){
+      stableViewportHeight=current;
+      stableViewportWidth=width;
+    }
+    var height=keyboardOpen?stableViewportHeight:current;
+    document.body.classList.toggle('bb-ios-keyboard-open',keyboardOpen);
     document.documentElement.style.setProperty('--bb-real-vh',height+'px');
     var phone=document.querySelector('.phone');
     if(phone&&document.body.classList.contains('fullscreen-mode')){
@@ -3745,6 +3769,116 @@ html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-edit{
 html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-title{height:25px!important;line-height:25px!important;margin:0!important;}
 html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-line{height:18px!important;line-height:18px!important;margin:0!important;}
 </style>
+
+<style id="bb-api-keyboard-guard-v417">
+/* API / 设置输入框打开键盘时保持豹豹机完整高度，不露出黑色空区。 */
+html body.bb-ios-keyboard-open{
+  background:#f6f6f8!important;
+}
+html body.bb-ios-keyboard-open .phone,
+html body.bb-ios-keyboard-open .screen{
+  background:#f6f6f8!important;
+}
+html body.bb-non-desktop-keyboard #p2ProfileEditbar{
+  display:none!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+html body.bb-ios-keyboard-open .panel,
+html body.bb-ios-keyboard-open .ios-settings,
+html body.bb-ios-keyboard-open #settings,
+html body.bb-ios-keyboard-open #apiSettings,
+html body.bb-ios-keyboard-open #chatAPI,
+html body.bb-ios-keyboard-open #visionAPI,
+html body.bb-ios-keyboard-open #imageAPI,
+html body.bb-ios-keyboard-open #minimaxAPI{
+  overflow-y:auto!important;
+  -webkit-overflow-scrolling:touch!important;
+  overscroll-behavior-y:contain!important;
+  scroll-padding-bottom:46vh!important;
+}
+</style>
+<script id="bb-api-keyboard-guard-v417-script">
+(function(){
+  'use strict';
+  if(window.__bbApiKeyboardGuardV417)return;
+  window.__bbApiKeyboardGuardV417=true;
+
+  function isDesktopTextInput(el){
+    return !!(el&&el.classList&&el.classList.contains('p2-profile-text-input'));
+  }
+
+  function closeDesktopTextEditor(){
+    try{
+      if(typeof window.finishPage2ProfileTextEdit==='function'){
+        window.finishPage2ProfileTextEdit(true);
+      }
+    }catch(_){ }
+    var bar=document.getElementById('p2ProfileEditbar');
+    if(bar){
+      bar.classList.remove('is-visible');
+      bar.setAttribute('aria-hidden','true');
+      bar.style.removeProperty('top');
+      bar.style.removeProperty('bottom');
+    }
+    document.querySelectorAll('.p2-profile-text-input.is-editing').forEach(function(input){
+      input.classList.remove('is-editing');
+      input.readOnly=true;
+    });
+  }
+
+  function restoreStableViewportSoon(){
+    [0,40,140,320,620].forEach(function(ms){
+      setTimeout(function(){
+        try{
+          var vv=window.visualViewport;
+          var event=new Event('resize');
+          window.dispatchEvent(event);
+          if(vv)vv.dispatchEvent(new Event('scroll'));
+        }catch(_){ }
+      },ms);
+    });
+  }
+
+  document.addEventListener('focusin',function(event){
+    var target=event.target;
+    var editable=!!(target&&target.matches&&target.matches('input,textarea,select,[contenteditable="true"]'));
+    if(!editable)return;
+    var desktop=isDesktopTextInput(target);
+    document.body.classList.toggle('bb-non-desktop-keyboard',!desktop);
+    if(!desktop){
+      closeDesktopTextEditor();
+      setTimeout(function(){
+        try{target.scrollIntoView({block:'center',inline:'nearest',behavior:'smooth'});}catch(_){ }
+      },220);
+    }
+    restoreStableViewportSoon();
+  },true);
+
+  document.addEventListener('focusout',function(){
+    setTimeout(function(){
+      var active=document.activeElement;
+      if(!(active&&active.matches&&active.matches('input,textarea,select,[contenteditable="true"]'))){
+        document.body.classList.remove('bb-non-desktop-keyboard');
+      }
+      restoreStableViewportSoon();
+    },180);
+  },true);
+
+  /* 一旦离开桌面进入设置/API等页面，旧的桌面文字确认条必须立刻结束。 */
+  document.addEventListener('click',function(event){
+    var target=event.target;
+    if(target&&target.closest&&target.closest('.panel,.ios-settings,#settings,#apiSettings,#chatAPI,#visionAPI,#imageAPI,#minimaxAPI')){
+      closeDesktopTextEditor();
+      document.body.classList.add('bb-non-desktop-keyboard');
+    }
+  },true);
+
+  window.addEventListener('pagehide',closeDesktopTextEditor);
+  window.addEventListener('pageshow',function(){setTimeout(restoreStableViewportSoon,0)});
+})();
+</script>
+
 </body>
 </html>
 
@@ -4089,3 +4223,69 @@ html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-line{height:18px
 <!-- index(324)：每个角色可选择自动、年下黏糊、年上简洁或自然人设；聊天核心按模式硬路由并分别检查重写。 -->
 
 <!-- index(326)：修正第一页组件顺序；只保留三图组件，八个 App 放在组件下方，移除旧英文条和大号桌面时间。 -->
+
+
+<style id="bb-page2-left-widget-ghost-kill-v418">
+/* 彻底遮住资料卡底图里印死的旧英文，只显示当前输入的三行文字。 */
+html body #desktop.page-two-mode .p2-mini-profile-card::after{
+  content:""!important;
+  position:absolute!important;
+  left:38.5%!important;
+  right:1.2%!important;
+  top:11.5%!important;
+  height:61.5%!important;
+  z-index:4!important;
+  display:block!important;
+  background:#fff!important;
+  opacity:1!important;
+  border-radius:14px!important;
+  box-shadow:0 0 0 3px #fff!important;
+  pointer-events:none!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy{
+  left:39.5%!important;
+  right:1.8%!important;
+  top:12.5%!important;
+  height:59.5%!important;
+  z-index:8!important;
+  padding:8px 10px!important;
+  background:#fff!important;
+  background-image:none!important;
+  opacity:1!important;
+  box-shadow:none!important;
+  filter:none!important;
+  mix-blend-mode:normal!important;
+  isolation:isolate!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy::before,
+html body #desktop.page-two-mode .p2-mini-profile-copy::after{
+  content:none!important;
+  display:none!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-edit{
+  position:relative!important;
+  z-index:9!important;
+  display:block!important;
+  width:100%!important;
+  background:#fff!important;
+  background-image:none!important;
+  opacity:1!important;
+  filter:none!important;
+  text-shadow:none!important;
+  box-shadow:none!important;
+  -webkit-text-stroke:0 transparent!important;
+  mix-blend-mode:normal!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-title{
+  height:26px!important;
+  line-height:26px!important;
+  margin:0 0 2px!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-line{
+  height:19px!important;
+  line-height:19px!important;
+  margin:0!important;
+}
+</style>
+
+<!-- v418：导入冻结旧保存器并校验 IndexedDB；资料卡底图旧英文彻底遮盖。 -->

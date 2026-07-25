@@ -331,6 +331,7 @@ if(!Array.isArray(state.chatMessages)) state.chatMessages=[];
   }
 
   function persistNow(){
+    if(window.__bbImportFreezeV4)return Promise.resolve(true);
     clearTimeout(saveTimer);
     saveTimer=0;
     const snapshot=makeSnapshot();
@@ -344,6 +345,7 @@ if(!Array.isArray(state.chatMessages)) state.chatMessages=[];
   }
 
   function schedule(force){
+    if(window.__bbImportFreezeV4)return true;
     clearTimeout(saveTimer);
     if(force===true)return persistNow();
     saveTimer=setTimeout(persistNow,60);
@@ -14398,6 +14400,7 @@ window.baobaoAI = {
   let saveBusy=false;
 
   function flushSave(){
+    if(window.__bbImportFreezeV4)return true;
     if(!rawSave||saveBusy)return true;
     if(window.__bbVirtualChatRenderV265){
       scheduleSave(80);
@@ -14438,6 +14441,7 @@ window.baobaoAI = {
   }
 
   function smoothSave(force){
+    if(window.__bbImportFreezeV4)return true;
     savePending=true;
     try{if(window.BaobaoChatStoreV405)window.BaobaoChatStoreV405.schedule(force===true);}catch(error){}
     if(force===true)return flushSave();
@@ -44951,6 +44955,7 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
     return out;
   }
   function saveLarge(){
+    if(window.__bbImportFreezeV4)return true;
     const full=clone(window.state||{});if(!full)return false;
     full.__largeStoreAt=Date.now();
     writeChain=writeChain.then(()=>put(STATE_KEY,full)).catch(()=>false);
@@ -45352,33 +45357,132 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
     return light;
   }
 
+  function isPlainObject(value){
+    return !!value&&typeof value==="object"&&!Array.isArray(value);
+  }
+
+  function mergeImported(base,extra){
+    if(!isPlainObject(base))base={};
+    if(!isPlainObject(extra))return safeClone(base)||{};
+    const out=safeClone(base)||{};
+    Object.keys(extra).forEach(key=>{
+      const value=extra[key];
+      if(isPlainObject(value)&&isPlainObject(out[key]))out[key]=mergeImported(out[key],value);
+      else out[key]=safeClone(value);
+    });
+    return out;
+  }
+
+  function parseStateValue(value){
+    if(isPlainObject(value))return safeClone(value);
+    if(typeof value!=="string"||!value.trim())return null;
+    try{
+      const parsed=JSON.parse(value);
+      return isPlainObject(parsed)?parsed:null;
+    }catch(_){return null;}
+  }
+
+  function extractImportedState(raw,storage){
+    let imported=null;
+    const candidates=[
+      raw&&raw.fullState,
+      raw&&raw.state,
+      raw&&raw.data&&raw.data.state,
+      storage&&storage.baobao_state,
+      raw
+    ];
+    candidates.forEach(candidate=>{
+      const parsed=parseStateValue(candidate);
+      if(!parsed)return;
+      /* 纯 localStorage 备份对象不是 state，本身不直接合并。 */
+      const looksLikeState=("page1Apps" in parsed)||( "page2Apps" in parsed)||( "personas" in parsed)||( "wallpaper" in parsed)||( "chatRecords" in parsed)||( "name" in parsed);
+      if(!looksLikeState)return;
+      imported=imported?mergeImported(imported,parsed):parsed;
+    });
+    if(raw&&raw.chatHistory&&isPlainObject(raw.chatHistory.chatRecords)){
+      imported=imported||{};
+      imported.chatRecords=safeClone(raw.chatHistory.chatRecords)||{};
+      if(!imported.activeChatId&&raw.chatHistory.activeChatId)imported.activeChatId=raw.chatHistory.activeChatId;
+      if(!Array.isArray(imported.chatOrder)&&Array.isArray(raw.chatHistory.chatOrder))imported.chatOrder=raw.chatHistory.chatOrder.slice();
+    }
+    return imported;
+  }
+
+  async function verifyLargeState(expected){
+    try{
+      const saved=window.BaobaoLargeStoreV2&&typeof window.BaobaoLargeStoreV2.get==="function"
+        ?await window.BaobaoLargeStoreV2.get(LARGE_STATE_KEY):null;
+      if(!saved||typeof saved!=="object")return false;
+      const keys=["page1Apps","page2Apps","personas","page2ProfileText","page2MiniProfileTitle","page2MiniSongText","wallpaper","charAvatar"];
+      return keys.some(key=>key in expected&&key in saved);
+    }catch(_){return false;}
+  }
+
   async function robustImport(file,mode){
+    let committed=false;
     try{
       if(!file)return;
-      const raw=JSON.parse(await file.text());
-      const storage=raw&&raw.storage&&typeof raw.storage==="object"?raw.storage:raw;
-      if(!storage||typeof storage!=="object")throw new Error("备份文件格式不正确");
-      let fullState=raw.fullState||null;
-      if(!fullState&&storage.baobao_state){
-        try{fullState=JSON.parse(storage.baobao_state);}catch(_){ }
-      }
-      if(!fullState||typeof fullState!=="object")throw new Error("备份中没有完整状态");
+      const fileText=typeof file.text==="function"?await file.text():await new Promise((resolve,reject)=>{
+        const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||""));reader.onerror=()=>reject(new Error("文件读取失败"));reader.readAsText(file);
+      });
+      const raw=JSON.parse(fileText);
+      const storage=raw&&isPlainObject(raw.storage)?raw.storage:(isPlainObject(raw)?raw:{});
+      let imported=extractImportedState(raw,storage);
+      if(!imported||!isPlainObject(imported))throw new Error("备份中没有可恢复的完整数据");
       if(!confirm(`确定${mode==="merge"?"合并":"覆盖"}导入这个豹豹机备份吗？`))return;
+
+      /* 先冻结所有旧保存器。否则 location.reload() 触发 pagehide 时，旧页面会把刚导入的数据重新覆盖。 */
+      window.__bbImportFreezeV4=true;
+      try{sessionStorage.setItem("bb_import_freeze_v4","1");}catch(_){ }
+
+      if(mode==="merge"){
+        imported=mergeImported(safeClone(window.state||{})||{},imported);
+        const currentRecords=currentChatRecords();
+        imported.chatRecords={...currentRecords,...(isPlainObject(imported.chatRecords)?imported.chatRecords:{})};
+      }
+      imported.__largeStore=true;
+      imported.__largeStoreAt=Date.now()+1000;
+      imported.__importCommittedAt=Date.now();
+      if(imported.activeChatId&&isPlainObject(imported.chatRecords)&&Array.isArray(imported.chatRecords[imported.activeChatId])){
+        imported.chatMessages=imported.chatRecords[imported.activeChatId];
+      }else if(!Array.isArray(imported.chatMessages))imported.chatMessages=[];
 
       if(mode!=="merge")localStorage.clear();
       let skipped=0;
       Object.entries(storage).forEach(([key,value])=>{
-        if(key==="baobao_state")return;
-        try{localStorage.setItem(key,String(value));}catch(_){skipped++;}
+        if(key==="baobao_state"||key==="fullState"||key==="chatHistory")return;
+        if(value==null||typeof value==="object")return;
+        try{localStorage.setItem(String(key),String(value));}catch(_){skipped++;}
       });
 
-      await putLargeState(fullState);
-      await putChatHistory(fullState,raw.chatHistory);
-      try{localStorage.setItem("baobao_state",JSON.stringify(makeLightState(fullState)));}catch(_){ }
+      const largeOK=await putLargeState(imported);
+      if(!largeOK)throw new Error("完整数据写入失败，请确认未使用无痕模式");
+      const chatOK=await putChatHistory(imported,raw&&raw.chatHistory);
+      if(!chatOK)throw new Error("聊天记录写入失败");
+      if(!(await verifyLargeState(imported)))throw new Error("导入校验失败，浏览器没有保留完整数据");
+
+      /* localStorage 只写启动副本；完整图片、组件、人设和聊天均已进入 IndexedDB。 */
+      try{localStorage.setItem("baobao_state",JSON.stringify(makeLightState(imported)));}catch(_){
+        try{localStorage.setItem("baobao_state",JSON.stringify({__largeStore:true,__largeStoreAt:imported.__largeStoreAt,__importCommittedAt:imported.__importCommittedAt}));}catch(__){ }
+      }
+      try{localStorage.setItem("bb_import_commit_v4",JSON.stringify({at:Date.now(),version:"4",keys:Object.keys(imported).length}));}catch(_){ }
       try{sessionStorage.setItem("bb_force_seed_chat_v405","0");}catch(_){ }
-      alert("导入成功"+(skipped?`，${skipped} 项旧缓存因容量过大未写入，但完整状态和聊天已恢复。`:"，页面将刷新。"));
-      location.reload();
+
+      /* 当前内存也切到导入状态，即使某个旧 pagehide 监听器漏网，也不会再写回导入前的数据。 */
+      try{
+        if(window.state&&typeof window.state==="object"){
+          if(mode!=="merge")Object.keys(window.state).forEach(key=>{if(!(key in imported))delete window.state[key];});
+          Object.assign(window.state,safeClone(imported)||imported);
+        }
+      }catch(_){ }
+      committed=true;
+      alert("导入成功"+(skipped?`，${skipped} 项旧临时缓存因容量限制被跳过；桌面、组件、人设、聊天和图片已完整恢复。`:"，桌面、组件、人设、聊天和图片已完整恢复。"));
+      setTimeout(()=>location.reload(),80);
     }catch(error){
+      if(!committed){
+        window.__bbImportFreezeV4=false;
+        try{sessionStorage.removeItem("bb_import_freeze_v4");}catch(_){ }
+      }
       console.error("豹豹机导入失败",error);
       alert("导入失败："+(error&&error.message?error.message:"未知错误"));
     }
