@@ -3725,6 +3725,26 @@ html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-line{
 }
 </style>
 
+
+<style id="bb-page2-left-widget-ghost-text-final-v416">
+/* 底图本身印有 new here / dreamer / coffee lover。使用完全不透明的覆盖层把旧字彻底盖住，只显示当前输入值。 */
+html body #desktop.page-two-mode .p2-mini-profile-copy{
+  left:43.5%!important;right:4.5%!important;top:14.5%!important;height:59%!important;
+  padding:8px 8px!important;gap:3px!important;
+  background:#fff!important;opacity:1!important;border-radius:12px!important;
+  box-shadow:0 0 0 2px #fff!important;overflow:hidden!important;isolation:isolate!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy::before{
+  content:""!important;position:absolute!important;inset:-4px!important;z-index:-1!important;
+  display:block!important;background:#fff!important;opacity:1!important;pointer-events:none!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-edit{
+  position:relative!important;z-index:2!important;background:#fff!important;opacity:1!important;
+  text-shadow:none!important;-webkit-text-fill-color:currentColor!important;
+}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-title{height:25px!important;line-height:25px!important;margin:0!important;}
+html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-line{height:18px!important;line-height:18px!important;margin:0!important;}
+</style>
 </body>
 </html>
 
