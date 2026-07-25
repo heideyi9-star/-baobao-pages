@@ -45553,8 +45553,8 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
     if(!style){ style=document.createElement("style"); style.id="bbAboutMeWidgetV5Style"; }
     style.textContent=`
       html body #desktop.page-two-mode .p2-mini-profile-card.p2-about-me-card{
-        width:54%!important;height:100%!important;min-height:0!important;aspect-ratio:auto!important;
-        margin:0!important;overflow:visible!important;background:transparent!important;
+        width:54%!important;height:auto!important;min-height:0!important;aspect-ratio:1015 / 906!important;
+        margin:0!important;overflow:visible!important;background:transparent!important;align-self:flex-start!important;
       }
       html body #desktop.page-two-mode .p2-about-paper{
         position:absolute!important;inset:0!important;border-radius:24px!important;overflow:visible!important;
@@ -45915,4 +45915,25 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
   window.addEventListener("pageshow",()=>{installAboutStyle();ensureInput();setTimeout(finishCommittedImport,350);});
+
+  /* about me 外层尺寸守卫：只替换内部内容，不改变原组件占位。 */
+  function keepAboutMeCompact(){
+    let style=document.getElementById("bbAboutMeCompactGuardV6");
+    if(!style){style=document.createElement("style");style.id="bbAboutMeCompactGuardV6";document.head.appendChild(style);}
+    style.textContent=`
+      html body #desktop.page-two-mode .p2-bottom-widgets>.p2-mini-profile-card.p2-about-me-card{
+        position:relative!important;flex:0 0 54%!important;width:54%!important;
+        height:auto!important;min-height:0!important;max-height:none!important;
+        aspect-ratio:1015 / 906!important;align-self:flex-start!important;
+        inset:auto!important;bottom:auto!important;overflow:visible!important;z-index:72!important;
+      }
+      html body #desktop.page-two-mode .p2-about-me-card>.p2-about-paper{
+        position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+      }
+      html body #desktop.page-two-mode .p2-bottom-widgets>.p2-mini-song-card{align-self:flex-start!important;}
+    `;
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",keepAboutMeCompact,{once:true});else keepAboutMeCompact();
+  window.addEventListener("pageshow",keepAboutMeCompact);
+  new MutationObserver(()=>keepAboutMeCompact()).observe(document.documentElement,{childList:true,subtree:true});
 })();
