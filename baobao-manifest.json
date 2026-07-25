@@ -1,10 +1,10 @@
 {
-  "id": "./index.html",
+  "id": "./",
   "name": "豹豹机",
   "short_name": "豹豹机",
   "description": "豹豹机 AI 手机",
   "lang": "zh-CN",
-  "start_url": "./index.html?source=homescreen-v422",
+  "start_url": "./?source=homescreen-v425",
   "scope": "./",
   "display": "standalone",
   "display_override": [
@@ -16,13 +16,13 @@
   "theme_color": "#f7f7f7",
   "icons": [
     {
-      "src": "./apple-touch-icon.png",
+      "src": "./apple-touch-icon.png?v=425",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icon-512.png",
+      "src": "./icon-512.png?v=425",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
