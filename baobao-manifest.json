@@ -1,16 +1,28 @@
 {
+  "id": "./index.html",
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 397 · 第二页完整对话组件与可换壁纸",
-  "start_url": "./?v=397",
+  "description": "豹豹机 AI 手机",
+  "lang": "zh-CN",
+  "start_url": "./index.html?source=homescreen-v422",
   "scope": "./",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "fullscreen"
+  ],
   "orientation": "portrait",
   "background_color": "#f7f7f7",
   "theme_color": "#f7f7f7",
   "icons": [
     {
-      "src": "./apple-touch-icon.png?v=331",
+      "src": "./apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
