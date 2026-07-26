@@ -1,28 +1,16 @@
 {
-  "id": "./",
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 AI 手机",
-  "lang": "zh-CN",
-  "start_url": "./?source=homescreen-v425",
+  "description": "豹豹机 419 · 页面安全区与状态栏修复",
+  "start_url": "./?v=419",
   "scope": "./",
   "display": "standalone",
-  "display_override": [
-    "standalone",
-    "fullscreen"
-  ],
   "orientation": "portrait",
   "background_color": "#f7f7f7",
   "theme_color": "#f7f7f7",
   "icons": [
     {
-      "src": "./apple-touch-icon.png?v=425",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./icon-512.png?v=425",
+      "src": "./apple-touch-icon.png?v=331",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
