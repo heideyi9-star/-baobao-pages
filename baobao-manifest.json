@@ -1,8 +1,8 @@
 {
   "name": "豹豹机",
   "short_name": "豹豹机",
-  "description": "豹豹机 419 · 页面安全区与状态栏修复",
-  "start_url": "./?v=419",
+  "description": "豹豹机 421 · 图片瘦身版：app.js 从 4MB 降到 1.8MB，减少重复下载",
+  "start_url": "./?v=421",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",

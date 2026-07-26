@@ -1,40 +1,33 @@
-/* 豹豹机 419：页面安全区与状态栏修复。 */
-const CACHE_NAME = "baobao-shell-v419";
-const SHELL = [
-  "./",
-  "./index.html",
-  "./app.css",
-  "./app.js",
-  "./apple-touch-icon.png",
-  "./baobao-manifest.json",
-  "./sw.js"
-];
+/* 豹豹机 421：轻量白屏修复 + 减少重复下载。核心文件不再于 install 阶段强制重新拉取一遍，
+   而是交给下面的 fetch 监听器在页面真正请求时顺手写入缓存，避免和页面自身加载 app.js 产生双倍流量。 */
+const CACHE_NAME = "baobao-shell-v421";
 
 self.addEventListener("install", event => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    for (const url of SHELL) {
-      try { await cache.add(new Request(url, { cache: "reload" })); } catch (_) {}
-    }
-    await self.skipWaiting();
-  })());
+  event.waitUntil(self.skipWaiting());
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k.startsWith("baobao-shell-") && k !== CACHE_NAME).map(k => caches.delete(k)));
+    await Promise.all(keys
+      .filter(key => key.startsWith("baobao-shell-") && key !== CACHE_NAME)
+      .map(key => caches.delete(key)));
     await self.clients.claim();
   })());
 });
 
-async function networkAndCache(request, cacheKey) {
-  const response = await fetch(request);
+async function fetchAndStore(request, cacheKey) {
+  const response = await fetch(request, { cache: "no-store" });
   if (response && response.ok) {
     const cache = await caches.open(CACHE_NAME);
     await cache.put(cacheKey || request, response.clone());
   }
   return response;
+}
+
+async function cached(request, fallbackKey) {
+  return (await caches.match(request, { ignoreSearch: true })) ||
+         (fallbackKey ? await caches.match(fallbackKey, { ignoreSearch: true }) : null);
 }
 
 self.addEventListener("fetch", event => {
@@ -44,33 +37,49 @@ self.addEventListener("fetch", event => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    const forceUpdate = url.searchParams.has("v") || url.searchParams.has("fresh");
     event.respondWith((async () => {
-      const canonical = new Request(new URL("./index.html", self.registration.scope).href);
-      if (forceUpdate) {
-        try { return await networkAndCache(request, canonical); }
-        catch (_) { return (await caches.match(canonical)) || Response.error(); }
+      const indexKey = new Request(new URL("./index.html", self.registration.scope).href);
+      try {
+        return await fetchAndStore(request, indexKey);
+      } catch (_) {
+        const fallback = await cached(indexKey, "./index.html");
+        if (fallback) return fallback;
+        return new Response(
+          "<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>豹豹机</title><style>body{font-family:-apple-system,sans-serif;padding:28px;line-height:1.7}button{font-size:16px;padding:10px 16px}</style><h2>页面暂时没有加载出来</h2><p>请检查网络后重新打开。</p><button onclick='location.reload()'>重新加载</button>",
+          { headers: { "Content-Type": "text/html; charset=utf-8" } }
+        );
       }
-      const cached = await caches.match(canonical) || await caches.match("./");
-      if (cached) return cached;
-      try { return await networkAndCache(request, canonical); }
-      catch (_) { return Response.error(); }
     })());
     return;
   }
 
-  if (["script","style","image","manifest","font"].includes(request.destination)) {
+  // 图片、字体这类体积大且不常变的静态资源：缓存优先，命中直接用缓存，避免每次打开都重新下载几百 KB。
+  if (["image", "font"].includes(request.destination)) {
     event.respondWith((async () => {
-      const cached = await caches.match(request,{ignoreSearch:true});
-      if (cached) return cached;
-      try { return await networkAndCache(request,request); }
-      catch (_) { return Response.error(); }
+      const hit = await cached(request);
+      if (hit) return hit;
+      try {
+        return await fetchAndStore(request, request);
+      } catch (_) {
+        return Response.error();
+      }
+    })());
+    return;
+  }
+
+  // 脚本、样式、manifest 这类和版本更新强相关的文件：网络优先，保证改完代码后能及时生效。
+  if (["script", "style", "manifest"].includes(request.destination)) {
+    event.respondWith((async () => {
+      try {
+        return await fetchAndStore(request, request);
+      } catch (_) {
+        return (await cached(request)) || Response.error();
+      }
     })());
   }
 });
 
-
-/* 312：与缓存共用同一个 Service Worker，避免同一作用域注册两个脚本。 */
+/* 与原版共用的 Web Push 通知逻辑。 */
 function bbParsePush(event){
   if(!event.data)return {};
   try{return event.data.json()||{};}catch(error){
