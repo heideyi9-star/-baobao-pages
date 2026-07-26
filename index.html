@@ -2,19 +2,7 @@
 <html lang="zh-CN">
 <head>
 <!-- index(307)：拆除多层聊天引擎叠加，普通私聊改为单一自然聊天核心。 -->
-<meta name="apple-mobile-web-app-title" content="豹豹机">
-<script id="bb-pwa-path-normalizer-v422">
-(function(){
-  try{
-    var p=location.pathname||"/";
-    var last=p.split("/").pop()||"";
-    if(p.charAt(p.length-1)!=="/" && last.indexOf(".")<0){
-      location.replace(p+"/"+location.search+location.hash);
-    }
-  }catch(_){ }
-})();
-</script>
-
+<meta name="apple-mobile-web-app-title" content="斑斑豹">
 <script id="bb-early-start-v274">
 (function(){
   "use strict";
@@ -23,45 +11,29 @@
     var t=String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
     var a=document.getElementById("lockTime");
     var b=document.getElementById("clock");
-    var c=document.getElementById("miniStatusTime");
     if(a)a.textContent=t;
     if(b)b.textContent=t;
-    if(c)c.textContent=t;
-    try{
-      var raw=localStorage.getItem("baobao_state");
-      var s=raw?JSON.parse(raw):null;
-      if(s&&typeof s==="object"){
-        var n=document.getElementById("lockName");
-        if(n&&!n.textContent)n.textContent=s.name||s.profileName||"未设置昵称";
-        var av=document.getElementById("lockAvatar");
-        var src=s.avatar||s.charAvatar||(s.wechatProfile&&s.wechatProfile.avatar)||"";
-        if(av&&src&&!av.firstElementChild)av.innerHTML='<img src="'+String(src).replace(/"/g,"&quot;")+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover">';
-      }
-    }catch(_){ }
   }
   tick();
   var timer=setInterval(tick,500);
   window.addEventListener("load",function(){tick();setTimeout(function(){clearInterval(timer);},15000);},{once:true});
 })();
 </script>
-<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=425">
-<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=425">
-<link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png?v=425">
+<link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png?v=304">
+<link rel="apple-touch-icon-precomposed" href="./apple-touch-icon.png?v=304">
+<link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
-<link rel="preload" href="./app.js?v=425-complete-20260726" as="script">
-
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=425-complete-20260726">
-<script id="bb-pwa-cache-migrate-v425">
+<link rel="manifest" href="./baobao-manifest.json?v=412">
+<script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
-  var active="baobao-pwa-v425-complete-20260726";
-  try{localStorage.setItem("bb_active_build","425-complete-20260726");}catch(_){ }
-  if("caches" in window){
-    caches.keys().then(function(keys){
-      return Promise.all(keys.filter(function(k){return k.indexOf("baobao-")===0&&k!==active;}).map(function(k){return caches.delete(k);}));
+  if(!("serviceWorker" in navigator))return;
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("./sw.js?v=412",{scope:"./"}).then(function(reg){
+      try{reg.update();}catch(e){}
     }).catch(function(){});
-  }
+  },{once:true});
 })();
 </script>
 <meta name="theme-color" content="#f7f7f7">
@@ -70,7 +42,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>豹豹机 4.9</title>
+<title>豹豹机4.9 · 412 账号隔离发图修复版</title>
 
 
 
@@ -522,8 +494,8 @@ html body #desktop .dock{
   overflow:visible!important;
 }
 </style>
-<link rel="stylesheet" href="./app.css?v=425-complete-20260726">
-<script defer src="./app.js?v=425-complete-20260726" onerror="document.documentElement.classList.add('bb-app-load-failed')"></script>
+<link rel="stylesheet" href="./app.css?v=331">
+<script defer src="./app.js?v=412-account-isolation-photo-pwa"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -1348,25 +1320,8 @@ html body #desktop.page-two-mode .dock{
   z-index:700!important;
 }
 </style>
-
-<style id="bb-pwa-fallback-style-v422">
-#bbPwaLoadFallback{display:none;position:fixed;inset:0;z-index:2147483647;background:#f7f7f7;color:#222;align-items:center;justify-content:center;padding:28px;text-align:center;font:600 16px/1.6 -apple-system,BlinkMacSystemFont,sans-serif}
-#bbPwaLoadFallback .bb-pwa-box{max-width:320px;padding:24px;border-radius:24px;background:#fff;box-shadow:0 14px 50px rgba(0,0,0,.12)}
-html.bb-app-load-failed #bbPwaLoadFallback{display:flex}
-</style>
-<script id="bb-pwa-visible-boot-v425">
-(function(){
-  window.addEventListener("error",function(e){
-    if(e&&e.target&&(e.target.tagName==="SCRIPT"||e.target.tagName==="LINK"))document.documentElement.classList.add("bb-app-load-failed");
-  },true);
-  setTimeout(function(){
-    var phone=document.querySelector(".phone");
-    if(!phone)document.documentElement.classList.add("bb-app-load-failed");
-  },7000);
-})();
-</script>
 </head>
-<body><div id="bbPwaLoadFallback"><div class="bb-pwa-box">豹豹机资源没有加载成功。请保持联网后重新打开；仍为空白时，删除旧桌面图标，再从 Safari 重新添加。</div></div><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
+<body><div id="bbBootMarkV288" style="position:fixed;left:-9999px" aria-hidden="true">288</div>
 <div class="phone">
 
 <div class="baobao-message-banner" id="baobaoMessageBanner" aria-live="polite">
@@ -3924,20 +3879,6 @@ html body.bb-ios-keyboard-open #minimaxAPI{
 })();
 </script>
 
-
-<script id="bb-pwa-register-v425">
-(function(){
-  "use strict";
-  function ready(){
-    if(document.querySelector(".phone"))document.documentElement.classList.remove("bb-app-load-failed");
-    if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
-      navigator.serviceWorker.register("./sw.js?v=425-complete-20260726",{scope:"./"}).catch(function(error){console.warn("豹豹机 SW 注册失败",error);});
-    }
-  }
-  if(document.readyState==="complete")ready();else window.addEventListener("load",ready,{once:true});
-  window.addEventListener("pageshow",ready);
-})();
-</script>
 </body>
 </html>
 
