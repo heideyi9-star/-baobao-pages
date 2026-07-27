@@ -46053,3 +46053,132 @@ console.log("豹豹机 394：第二页双对话组件已启用，可点击两句
   window.addEventListener("pageshow",function(){setTimeout(boot,0)});
   console.log("豹豹机 419：iPhone 状态栏与桌面侧滑页面问题已修复");
 })();
+
+/* bb-lock-unlock-v288-script: iOS 全局捕获兜底，避免锁屏手势因初始化顺序或遮罩层失效 */
+(function(){
+  "use strict";
+  if(window.__bbLockUnlockV288)return;
+  window.__bbLockUnlockV288=true;
+
+  var tracking=false;
+  var startX=0;
+  var startY=0;
+  var lastOpenAt=0;
+
+  function byId(id){return document.getElementById(id);}
+
+  function lockIsActive(){
+    var lock=byId("lock");
+    if(!lock||lock.classList.contains("hidden"))return false;
+    try{
+      var style=getComputedStyle(lock);
+      if(style.display==="none"||style.visibility==="hidden"||style.pointerEvents==="none")return false;
+    }catch(error){}
+    return true;
+  }
+
+  function passcodeIsOpen(){
+    var overlay=byId("passcodeOverlay");
+    return !!(overlay&&overlay.classList.contains("show"));
+  }
+
+  function openPasscode(){
+    if(!lockIsActive()||passcodeIsOpen())return;
+    var now=Date.now();
+    if(now-lastOpenAt<320)return;
+    lastOpenAt=now;
+
+    var overlay=byId("passcodeOverlay");
+    if(overlay)overlay.style.removeProperty("display");
+
+    try{
+      if(typeof showPasscodePad==="function"){
+        showPasscodePad();
+        return;
+      }
+    }catch(error){}
+
+    try{
+      if(typeof window.showPasscodePad==="function"){
+        window.showPasscodePad();
+        return;
+      }
+    }catch(error){}
+
+    if(overlay)overlay.classList.add("show");
+  }
+
+  function pointFromTouch(event,changed){
+    var list=changed?event.changedTouches:event.touches;
+    var touch=list&&list[0];
+    return touch?{x:touch.clientX,y:touch.clientY}:null;
+  }
+
+  function begin(x,y){
+    if(!lockIsActive()||passcodeIsOpen())return;
+    tracking=true;
+    startX=Number(x)||0;
+    startY=Number(y)||0;
+  }
+
+  function finish(x,y){
+    if(!tracking)return;
+    tracking=false;
+    if(!lockIsActive()||passcodeIsOpen())return;
+    var dx=Math.abs((Number(x)||0)-startX);
+    var dy=startY-(Number(y)||0);
+    if(dy>24&&dy>dx*.55)openPasscode();
+  }
+
+  document.addEventListener("touchstart",function(event){
+    var point=pointFromTouch(event,false);
+    if(point)begin(point.x,point.y);
+  },{capture:true,passive:true});
+
+  document.addEventListener("touchend",function(event){
+    var point=pointFromTouch(event,true);
+    if(point)finish(point.x,point.y);
+  },{capture:true,passive:true});
+
+  document.addEventListener("touchcancel",function(){tracking=false;},{capture:true,passive:true});
+
+  document.addEventListener("pointerdown",function(event){
+    if(event.pointerType==="touch")return;
+    begin(event.clientX,event.clientY);
+  },true);
+
+  document.addEventListener("pointerup",function(event){
+    if(event.pointerType==="touch")return;
+    finish(event.clientX,event.clientY);
+  },true);
+
+  document.addEventListener("pointercancel",function(){tracking=false;},true);
+
+  document.addEventListener("click",function(event){
+    if(!lockIsActive()||passcodeIsOpen())return;
+    var target=event.target;
+    if(target&&target.closest&&target.closest("#passcodeOverlay"))return;
+    if(target&&target.closest&&target.closest("#lock .unlock"))openPasscode();
+  },true);
+
+  function repair(){
+    var lock=byId("lock");
+    if(!lock)return;
+    lock.style.pointerEvents="auto";
+    lock.style.touchAction="none";
+    var tip=lock.querySelector(".unlock");
+    if(tip){
+      tip.style.pointerEvents="auto";
+      tip.style.touchAction="none";
+    }
+  }
+
+  repair();
+  if(document.readyState==="loading"){
+    document.addEventListener("DOMContentLoaded",repair,{once:true});
+  }
+  window.addEventListener("pageshow",repair);
+  setTimeout(repair,0);
+  setTimeout(repair,120);
+  setTimeout(repair,700);
+})();
