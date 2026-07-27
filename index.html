@@ -24,13 +24,13 @@
 <link rel="icon" type="image/png" sizes="512x512" href="./apple-touch-icon.png?v=304">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<link rel="manifest" href="./baobao-manifest.json?v=419">
+<link rel="manifest" href="./baobao-manifest.json?v=412">
 <script id="bb-pwa-cache-v293">
 (function(){
   "use strict";
   if(!("serviceWorker" in navigator))return;
   window.addEventListener("load",function(){
-    navigator.serviceWorker.register("./sw.js?v=419",{scope:"./"}).then(function(reg){
+    navigator.serviceWorker.register("./sw.js?v=412",{scope:"./"}).then(function(reg){
       try{reg.update();}catch(e){}
     }).catch(function(){});
   },{once:true});
@@ -42,7 +42,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-<title>豹豹机4.9 · 419 页面安全区修复版</title>
+<title>豹豹机4.9 · 412 账号隔离发图修复版</title>
 
 
 
@@ -494,8 +494,8 @@ html body #desktop .dock{
   overflow:visible!important;
 }
 </style>
-<link rel="stylesheet" href="./app.css?v=419">
-<script defer src="./app.js?v=419-page-safe-area-fix"></script>
+<link rel="stylesheet" href="./app.css?v=331">
+<script defer src="./app.js?v=412-account-isolation-photo-pwa"></script>
 
 
 <style id="bb-chat-message-home-v373">
@@ -1537,7 +1537,7 @@ onchange="fontFileChosen(this)">
 </div>
 
 <div class="ios-row ios-row-toggle">
-<div class="ios-row-label">状态栏<div class="ios-row-desc">浏览器模式显示内部状态栏，主屏幕模式使用系统状态栏</div></div>
+<div class="ios-row-label">状态栏<div class="ios-row-desc">显示豹豹机内部时间、5G 与电池</div></div>
 <label class="ios-switch">
 <input type="checkbox" id="miniStatusbarToggle" onchange="toggleMiniStatusbar(this)">
 <span class="ios-switch-track"></span>
@@ -4289,55 +4289,3 @@ html body #desktop.page-two-mode .p2-mini-profile-copy .p2-mini-line{
 </style>
 
 <!-- v418：导入冻结旧保存器并校验 IndexedDB；资料卡底图旧英文彻底遮盖。 -->
-
-
-<style id="bb-page-safe-area-fix-v419">
-/* 419：修复 iPhone 主屏幕模式下顶部状态栏重复、灵动岛下坠、锁屏内容过低与设置页滚动条外露。 */
-:root{
-  --phone-safe-top:max(58px, calc(env(safe-area-inset-top, 0px) + 6px))!important;
-  --phone-safe-bottom:max(18px, calc(env(safe-area-inset-bottom, 0px) + 6px))!important;
-}
-
-/* 安装到主屏幕后已经有真实 iPhone 状态栏，不再叠一层豹豹机时间/5G/电池。 */
-html.bb-standalone-v412 #miniPhoneStatusbar{
-  display:none!important;
-}
-@media (display-mode:standalone){
-  #miniPhoneStatusbar{display:none!important;}
-}
-
-/* 灵动岛放回真实状态栏中间，不再被安全区再向下推一遍。 */
-#desktop .dynamic{
-  top:max(10px, calc(env(safe-area-inset-top, 0px) - 42px))!important;
-}
-
-/* 锁屏只避开一次真实状态栏，时间和资料卡整体上移到正常位置。 */
-#lock{
-  padding-top:var(--phone-safe-top)!important;
-}
-#lock .lock-card{
-  margin-top:30px!important;
-}
-#lock .unlock{
-  bottom:calc(var(--phone-safe-bottom) + 18px)!important;
-}
-
-/* 设置等 iOS 面板保留底部安全区，同时隐藏生硬的网页滚动条。 */
-.panel.ios-settings{
-  padding-bottom:calc(34px + env(safe-area-inset-bottom, 0px))!important;
-  scrollbar-width:none!important;
-  overscroll-behavior-y:contain!important;
-}
-.panel.ios-settings::-webkit-scrollbar{
-  width:0!important;
-  height:0!important;
-  display:none!important;
-}
-
-/* 设置页首屏最后一项不再贴着圆角底边。 */
-#settings .ios-group:last-child{
-  margin-bottom:18px!important;
-}
-</style>
-
-<!-- v419：页面安全区修复。主屏幕模式不再重复显示两套状态栏，灵动岛、锁屏和设置页恢复正常位置。 -->
